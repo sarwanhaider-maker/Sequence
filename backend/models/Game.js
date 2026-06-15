@@ -1,5 +1,13 @@
-// models/Game.js
 const mongoose = require('mongoose');
+
+const PlayerSchema = new mongoose.Schema({
+  socketId: String,
+  name: String,
+  hand: [Object],
+  isTurn: { type: Boolean, default: false },
+  team: String,
+  index: Number
+}, { _id: false });
 
 const GameSchema = new mongoose.Schema({
   roomId: {
@@ -7,27 +15,16 @@ const GameSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
-  players: {
-    player1: {
-      socketId: String,
-      name: String,
-      hand: [Object],
-      isTurn: { type: Boolean, default: true }
-    },
-    player2: {
-      socketId: String,
-      name: String,
-      hand: [Object],
-      isTurn: { type: Boolean, default: false }
-    }
-  },
+  players: [PlayerSchema],
   scores: {
     red: { type: Number, default: 0 },
-    blue: { type: Number, default: 0 }
+    blue: { type: Number, default: 0 },
+    green: { type: Number }
   },
   shuffledDeck: [Object],
   cards: [Object],
-  protectedPatterns: [Array]
+  protectedPatterns: [Array],
+  targetSequences: { type: Number, default: 2 }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Game', GameSchema);

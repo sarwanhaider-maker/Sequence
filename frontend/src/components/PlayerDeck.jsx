@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 
-const PlayerDeck = ({ socket, playerHand, setSelectCard, setHoveredCard, playingAs, currentPlayer }) => {
+const PlayerDeck = ({ socket, playerHand, setSelectCard, setHoveredCard, playingAs, currentPlayerIndex }) => {
 
   const [selectedCardId, setSelectedCardId] = useState(null);
+  
   const handleCardClick = (card) => {
-      // socket?.emit('clickedcard', { cardId: card.id });
       setSelectedCardId(prevId => prevId === card.id ? null : card.id);
       setSelectCard(card.id);
   };
@@ -23,11 +23,11 @@ const PlayerDeck = ({ socket, playerHand, setSelectCard, setHoveredCard, playing
         Player Deck
       </div>
       <div className="player-deck-cards">
-        {playerHand.map((card) => (
+        {playerHand && playerHand.map((card) => (
           <img key={card.id} src={card.img} alt={`Card ${card.id}`}
-            className={`w-16 h-24 mr-2 ${selectedCardId === card.id ? 'selected-card' : ''}`}
-            onClick={() => playingAs === currentPlayer && handleCardClick(card)}
-            onMouseEnter={() => handleMouseEnter(card.matches)}
+            className={`w-16 h-24 mr-2 cursor-pointer ${selectedCardId === card.id ? 'selected-card' : ''}`}
+            onClick={() => playingAs === currentPlayerIndex && handleCardClick(card)}
+            onMouseEnter={() => handleMouseEnter(card.matches || [])}
             onMouseLeave={() => handleMouseLeave()} />
         ))}
       </div>

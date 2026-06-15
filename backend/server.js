@@ -9,8 +9,6 @@ const RoomController = require('./controllers/roomController');
 const Game = require('./models/Game');
 const Session = require('./models/session');
 const config = require('./config/config');
-//const setupSocketHandlers = require('./socketHandlers');
-//const { initializeGameForRoom, startGameForRoom } = require('./controllers/startController');
 
 dotenv.config();
 
@@ -24,15 +22,6 @@ mongoose.connect(config.MONGO_URL)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
-  // Initialize the Room Controller here after setting up all dependencies
-// const roomController = new RoomController(io, initializeGameForRoom, startGameForRoom);
-
-// setupSocketHandlers(io);
-
-// httpServer.listen(3000, () => {
-//     console.log(`Server running on port 3000`);
-// });
-
 const activeSockets = new Map();
 
 function deepClone() {
@@ -41,16 +30,15 @@ function deepClone() {
 }
 
 async function joinRoom(socketId, roomId) {
-    const session = await Session.findOne({ sessionId: socketId });
+    const session = await Session.findOne({ userId: socketId });
     if (session) {
       session.roomId = roomId;
       await session.save();
     }
-  }
+}
 
-
-async function createSession(socketId,roomId = null, playingAs) {
-    const expirationTime = new Date(new Date().getTime() + (2 * 60 * 60 * 1000)); // 2 hours from now
+async function createSession(socketId, roomId = null, playingAs = "") {
+    const expirationTime = new Date(new Date().getTime() + (2 * 60 * 60 * 1000));
     const newSession = new Session({  
         userId: socketId,    
         roomId: roomId,    
@@ -68,153 +56,120 @@ async function createSession(socketId,roomId = null, playingAs) {
     }
 }
 
-
-// Method to initialize a game in a room
 async function initializeGameForRoom(roomId, playerName, playerId) {
-    // Check if a game already exists for the roomId
-    const newSessionId = await createSession(playerId, roomId, playingAs='player1');
-    await joinRoom(playerId, roomId);
-    let existingGame = await Game.findOne({ roomId: roomId });
-  
-    if (!existingGame) {
-      let gameInitialState = gameController.initializeGame(allCards);
-      gameInitialState.players.player1.socketId = playerId;
-      gameInitialState.players.player1.name = playerName;
+    // Stub function required by RoomController signature
+}
 
-      let newGame = new Game({
-        roomId: roomId,
-        players: gameInitialState.players,
-        scores: gameInitialState.scores,
-        shuffledDeck: gameInitialState.shuffledDeck,
-        cards: gameInitialState.cards,
-        protectedPatterns: gameInitialState.protectedPatterns
-      });
-  
-      try {
-        await newGame.save();
-        //console.log(`Game initialized in room ${roomId} by ${playerName}`);
-      } catch (err) {
-        console.error('Error saving new game to MongoDB:', err);
-      }
-    } else {
-      //console.log(`Game already exists for room ${roomId}, proceeding with existing game.`);
-    }
-  }
-
-  // Method to start a game in a room
-async function startGameForRoom(roomId, playerName, playerId) {
-    const newSessionId = await createSession(playerId, roomId, playingAs='player2');
-    await joinRoom(playerId, roomId);
+async function startGameForRoom(roomId, playerSockets, playerNames, gameMode) {
     try {
-        let game = await Game.findOne({ roomId: roomId });
-        if (game && !game.players.player2.socketId) {
-            game.players.player2.socketId = playerId;
-            game.players.player2.name = playerName;
-            game.cards = deepClone();
-            // Save the updated game state back to the database
-            await game.save();
-
-            this.io.to(game.players.player1.socketId).emit('OpponentFound', {
-                opponentName: playerName,
-                yourHand: game.players.player1.hand,
-                playingAs: "player1",
-                deckCount: game.shuffledDeck.length,
-                cards: game.cards,
-            });
-
-            this.io.to(playerId).emit('OpponentFound', {
-                opponentName: game.players.player1.name,
-                yourHand: game.players.player2.hand,
-                playingAs: "player2",
-                deckCount: game.shuffledDeck.length,
-                cards: game.cards,
-            });
-
-            //console.log(`Game in room ${roomId} ready. Players: ${game.players.player1.socketId}, ${playerId}`);
-        } else {
-            console.log(`Game not found for room ${roomId}, or player2 already exists.`);
+        // Create session for each player
+        for (let i = 0; i < playerSockets.length; i++) {
+            const playerId = playerSockets[i];
+            await createSession(playerId, roomId, i.toString());
+            await joinRoom(playerId, roomId);
         }
+
+        let gameInitialState = gameController.initializeGame(allCards, playerSockets, playerNames, gameMode);
+        
+        let newGame = new Game({
+            roomId: roomId,
+            players: gameInitialState.players,
+            scores: gameInitialState.scores,
+            shuffledDeck: gameInitialState.shuffledDeck,
+            cards: deepClone(),
+            protectedPatterns: [],
+            targetSequences: gameInitialState.targetSequences
+        });
+    
+        await newGame.save();
+        console.log(`Game started in room ${roomId}. Players count: ${playerSockets.length}, mode: ${gameMode}`);
+
+        // Emit OpponentFound to all players
+        newGame.players.forEach(player => {
+            io.to(player.socketId).emit('OpponentFound', {
+                yourHand: player.hand,
+                playingAs: player.index,
+                deckCount: newGame.shuffledDeck.length,
+                cards: newGame.cards,
+                players: newGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                currentPlayerIndex: 0
+            });
+        });
     } catch (err) {
-        console.error(`Error updating game for room ${roomId}:`, err);
+        console.error(`Error starting game for room ${roomId}:`, err);
     }
 }
+
 const roomController = new RoomController(io, initializeGameForRoom, startGameForRoom);
 
-io.on("connection", async(socket) => {
+io.on("connection", async (socket) => {
     let sessionID = socket.handshake.query.sessionId;
-    console.log(sessionID);
+    console.log(`Connection: ${socket.id}, sessionId: ${sessionID}`);
+    
     if (sessionID) {
         const existingSocket = activeSockets.get(sessionID);
         if (existingSocket) {
-        existingSocket.disconnect();
-        activeSockets.delete(sessionID);
+            existingSocket.disconnect();
+            activeSockets.delete(sessionID);
         }
         activeSockets.set(sessionID, socket);
         console.log(`Reconnected client ${sessionID}`);
 
-        // Check if the user has an existing session and room ID
-        const existingSession = await Session.findOne({ sessionId: sessionID });
+        const existingSession = await Session.findOne({ userId: sessionID });
         if (existingSession) {
-        const roomId = existingSession.roomId;
-        const playerId = existingSession.userId;
-        const playingAs = existingSession.playingAs;
-        
-        // Fetch game data and emit it to the client
-        let game = await Game.findOne({ roomId: roomId });
-        if (playingAs === "player1") {
-            this.io.to(playerId).emit('OpponentFound', {
-              opponentName: game.players.player2.name,
-              yourHand: game.players.player1.hand,
-              playingAs: "player1",
-              deckCount: game.shuffledDeck.length,
-              cards: game.cards,
-            });
-          } else {
-            this.io.to(playerId).emit('OpponentFound', {
-              opponentName: game.players.player1.name,
-              yourHand: game.players.player2.hand,
-              playingAs: "player2",
-              deckCount: game.shuffledDeck.length,
-              cards: game.cards,
-            });
-          }
+            const roomId = existingSession.roomId;
+            const playerId = existingSession.userId;
+            const playingAs = parseInt(existingSession.playingAs);
+            
+            let game = await Game.findOne({ roomId: roomId });
+            if (game && !isNaN(playingAs) && playingAs >= 0 && playingAs < game.players.length) {
+                // Update player's socket ID to new socket ID
+                game.players[playingAs].socketId = socket.id;
+                await game.save();
 
+                socket.join(roomId);
+                socket.emit('OpponentFound', {
+                    yourHand: game.players[playingAs].hand,
+                    playingAs: playingAs,
+                    deckCount: game.shuffledDeck.length,
+                    cards: game.cards,
+                    players: game.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                    currentPlayerIndex: game.players.findIndex(p => p.isTurn)
+                });
+            }
         }
     } else {
         console.log(`New connection: ${socket.id}`);
-        const newSessionID = createSession(socket.id);
+        const newSessionID = await createSession(socket.id);
         activeSockets.set(newSessionID, socket);
     }
+
     socket.on('Boardcardclicked', async (data) => {
         const { roomId, cardId, selectedCard } = data;
 
         try {
-            // Fetch the game state from MongoDB
             let game = await Game.findOne({ roomId: roomId });
             if (!game) {
                 console.log("Game not found for room: ", roomId);
                 return;
             }
 
-            // Determine the current player based on the game state
-            let currentTurn = game.players.player1.isTurn ? 'player1' : 'player2';
-            let currentPlayer = game.players[currentTurn];
+            let currentTurnIndex = game.players.findIndex(p => p.isTurn);
+            let currentPlayer = game.players[currentTurnIndex];
             if (socket.id !== currentPlayer.socketId || !currentPlayer.hand.some(card => card.id === selectedCard)) {
                 console.log("Not this player's turn or invalid card manipulation");
                 return;
             }
             let cards = game.cards;
 
-            // Handle card selection and update the game state
-            let  updatedGame = gameController.handleCardSelection(game, cardId, game.shuffledDeck,cards, currentTurn, selectedCard);
+            let updatedGame = gameController.handleCardSelection(game, cardId, game.shuffledDeck, cards, socket.id, selectedCard);
             if (!updatedGame.success) {
-                console.log('Error: ', message);
+                console.log('Error: ', updatedGame.message);
                 return;
             }
 
             let updateData = {
-                'players.player1': updatedGame.game.players.player1,
-                'players.player2': updatedGame.game.players.player2,
+                'players': updatedGame.game.players,
                 'scores': updatedGame.game.scores,
                 'shuffledDeck': updatedGame.game.shuffledDeck,
                 'cards': updatedGame.game.cards,
@@ -224,23 +179,32 @@ io.on("connection", async(socket) => {
             await Game.updateOne({ roomId: roomId }, { $set: updateData });
             let patternResult = gameController.Pattern(updatedGame.game, game.cards);
             if (patternResult.winner) {
-                io.emit('gameOver', { winner: gameResult.winner });
+                io.to(roomId).emit('gameOver', { winner: patternResult.winner });
             } else {
-                if (patternResult.updated) {
-                    await game.save();
+                if (patternResult.game) {
+                    await Game.updateOne({ roomId: roomId }, { $set: {
+                        'scores': patternResult.game.scores,
+                        'protectedPatterns': patternResult.game.protectedPatterns
+                    }});
                 }
 
-                Object.keys(game.players).forEach(playerKey => {
-                    const player = game.players[playerKey];
-                    io.to(player.socketId).emit('updateGameState', {
-                        deckCount: game.shuffledDeck.length,
-                        score: game.scores,
-                        cards: game.cards,
-                        prevTurn: currentTurn,
-                        currentTurn: game.players.player1.isTurn ? 'player1' : 'player2',
-                        playerHand: player.hand,
+                // Check again for winner after updates
+                let target = game.targetSequences || 2;
+                let finalWinner = Object.keys(game.scores || {}).find(color => game.scores[color] >= target) || null;
+                if (finalWinner) {
+                    io.to(roomId).emit('gameOver', { winner: finalWinner });
+                } else {
+                    game.players.forEach(player => {
+                        io.to(player.socketId).emit('updateGameState', {
+                            deckCount: game.shuffledDeck.length,
+                            score: game.scores,
+                            cards: game.cards,
+                            currentPlayerIndex: game.players.findIndex(p => p.isTurn),
+                            players: game.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                            playerHand: player.hand,
+                        });
                     });
-                });
+                }
             }
         } catch (err) {
             console.error('Error processing Boardcardclicked:', err);
@@ -248,8 +212,11 @@ io.on("connection", async(socket) => {
     });
 
     socket.on('room_closed', roomId => {
-        // Handle room closure, if necessary
+        // Handle room closure
     });
 });
 
-httpServer.listen(3000);
+const PORT = process.env.PORT || config.PORT || 3000;
+httpServer.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});

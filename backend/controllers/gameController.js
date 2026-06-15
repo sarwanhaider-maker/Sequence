@@ -7,53 +7,100 @@ function shuffleDeck(cards) {
     return shuffledCards;
 }
 
-function initializeGame(cards) {
+function initializeGame(cards, playerSockets, playerNames, gameMode) {
+    let numPlayers = playerSockets.length;
+    let handSize = 4;
+    let targetSequences = 2;
+    let useGreen = false;
+
+    if (gameMode === "2_players") {
+        handSize = 7;
+        targetSequences = 2;
+    } else if (gameMode === "3_players") {
+        handSize = 6;
+        targetSequences = 1;
+        useGreen = true;
+    } else if (gameMode === "4_players") {
+        handSize = 6;
+        targetSequences = 2;
+    } else if (gameMode === "6_players_3_teams") {
+        handSize = 5;
+        targetSequences = 1;
+        useGreen = true;
+    } else if (gameMode === "6_players_2_teams") {
+        handSize = 5;
+        targetSequences = 2;
+    } else if (gameMode === "8_players") {
+        handSize = 4;
+        targetSequences = 2;
+    }
+
     const initialDeck = shuffleDeck(
         cards.filter((card) => ![1, 10, 91, 100].includes(card.id))
     );
-    const player1InitialHand = initialDeck.slice(0, 5);
-    const player2InitialHand = initialDeck.slice(5, 10);
-    const remainingDeck = initialDeck.slice(10);
 
-    games = {
-        players: {
-            player1: { hand: player1InitialHand, isTurn: true, socketId: null , name: null },
-            player2: { hand: player2InitialHand, isTurn: false, socketId: null , name: null},
-        },
-        scores: {
-            red: 0,
-            blue: 0,
-        },
+    let players = [];
+    for (let i = 0; i < numPlayers; i++) {
+        let hand = initialDeck.slice(i * handSize, (i + 1) * handSize);
+        let team = "blue";
+        if (useGreen) {
+            team = i % 3 === 0 ? "blue" : (i % 3 === 1 ? "red" : "green");
+        } else {
+            team = i % 2 === 0 ? "blue" : "red";
+        }
+        players.push({
+            socketId: playerSockets[i],
+            name: playerNames[i],
+            hand: hand,
+            isTurn: i === 0,
+            team: team,
+            index: i
+        });
+    }
+
+    let remainingDeck = initialDeck.slice(numPlayers * handSize);
+
+    let scores = { red: 0, blue: 0 };
+    if (useGreen) {
+        scores.green = 0;
+    }
+
+    return {
+        players: players,
+        scores: scores,
         shuffledDeck: remainingDeck,
         cards: null,
         protectedPatterns: [],
+        targetSequences: targetSequences
     };
-    return games;
 }
+
 function handleCardSelection(
     game,
     cardId,
     shuffledDeck,
     cards,
-    currentTurn,
+    socketId,
     selectedCard
 ) {
-    let cardIndex = cardId - 1; // cardId starts from 1 and maps directly to the index by subtracting 1
-    let currentPlayer = currentTurn === 'player1' ? 'player1' : 'player2';
-    let nextPlayer = currentPlayer === 'player1' ? 'player2' : 'player1';
-    let playerHand = game.players[currentPlayer].hand;
+    let cardIndex = cardId - 1;
+    let currentPlayer = game.players.find(p => p.socketId === socketId);
+    if (!currentPlayer) {
+        return { success: false, message: "Player not found." };
+    }
+    let playerHand = currentPlayer.hand;
     let cardInQuestion = game.cards[cardIndex];
 
-    const isCardProtected = (cardIndex, protectedPatterns) => {
-        return protectedPatterns.includes(cardIndex);
-    }
+    const isCardProtected = (id) => {
+        return (game.protectedPatterns || []).some(pattern => pattern.includes(id));
+    };
 
     if (selectedCard > 100 && selectedCard <= 104) {
         cardInQuestion.selected = "True";
-        cardInQuestion.selectedby = currentPlayer == "player1" ? "blue" : "red";
+        cardInQuestion.selectedby = currentPlayer.team;
     }
     else if (selectedCard > 104 && selectedCard <= 108 && cardInQuestion.selected === "True") {
-        if (!isCardProtected(cardInQuestion, game.protectedPatterns)) {
+        if (!isCardProtected(cardInQuestion.id)) {
             cardInQuestion.selected = false;
             cardInQuestion.selectedby = "";
         }
@@ -63,23 +110,29 @@ function handleCardSelection(
     }
     else {
         cardInQuestion.selected = "True";
-        cardInQuestion.selectedby = currentPlayer == "player1" ? "blue" : "red";
+        cardInQuestion.selectedby = currentPlayer.team;
     }
 
     let indexToRemove = playerHand.findIndex(
         (card) => card.id === cardId || (selectedCard > 100 && selectedCard < 109 && card.id === selectedCard) || (card.matches && card.matches.includes(cardId))
     );
-    playerHand.splice(indexToRemove, 1);
+    if (indexToRemove !== -1) {
+        playerHand.splice(indexToRemove, 1);
+    }
     if (shuffledDeck.length > 0) {
         let newCard = shuffledDeck.shift();
         playerHand.push(newCard);
     }
 
-    game.players[currentPlayer].isTurn = false;
-    game.players[nextPlayer].isTurn = true;
-    game.players[currentPlayer].hand = playerHand;
+    currentPlayer.hand = playerHand;
 
-    return (player = { success: true, game, shuffledDeck, cards, currentPlayer, nextPlayer, playerHand });
+    // Advance turn
+    let currentIndex = game.players.findIndex(p => p.socketId === socketId);
+    game.players[currentIndex].isTurn = false;
+    let nextIndex = (currentIndex + 1) % game.players.length;
+    game.players[nextIndex].isTurn = true;
+
+    return { success: true, game, shuffledDeck, cards };
 }
 
 function Pattern(game, cards) {
@@ -99,7 +152,6 @@ function Pattern(game, cards) {
                 const { row, col } = getPositionFromId(card.id);
                 board[row][col] = { color: card.selectedby, isPartOfPattern: false, index: card.id };
             }
-
         });
     }
 
@@ -115,7 +167,6 @@ function Pattern(game, cards) {
                 count++;
                 patternIndices.push(cell.index);
                 if (count >= 5) {
-                    console.log(patternIndices);
                     if (isPatternNew(patternIndices)) {
                         return { isPattern: true, patternIndices };
                     }
@@ -124,17 +175,15 @@ function Pattern(game, cards) {
                 count = 0;
                 patternIndices = [];
             }
-        };
+        }
         return { isPattern: false, patternIndices: [] };
     };
 
     const isPatternNew = (patternIndices) => {
         let existingPatterns = game.protectedPatterns || [];
-        //if the new pattern is entirely new
         let isEntirelyNew = !existingPatterns.some(pattern =>
             patternIndices.every(index => pattern.includes(index))
         );
-        //for overlap with existing protected patterns, allowing up to one card ID overlap
         let isValidOverlap = existingPatterns.map(pattern =>
             patternIndices.filter(index => pattern.includes(index)).length
         ).every(count => count <= 1);
@@ -159,7 +208,7 @@ function Pattern(game, cards) {
         const getDownRightDiagonal = (startRow, startCol) => {
             let cells = [];
             for (let i = 0; startRow + i < 10 && startCol + i < 10; i++) {
-                cells.push({ ...board[startRow + i][startCol + i], index: (startRow + i) * 10 + startCol + i + 1 }); // Adjusted index to match card IDs
+                cells.push({ ...board[startRow + i][startCol + i], index: (startRow + i) * 10 + startCol + i + 1 });
             }
             return cells;
         };
@@ -167,7 +216,7 @@ function Pattern(game, cards) {
         const getUpRightDiagonal = (startRow, startCol) => {
             let cells = [];
             for (let i = 0; startRow - i >= 0 && startCol + i < 10; i++) {
-                cells.push({ ...board[startRow - i][startCol + i], index: (startRow - i) * 10 + startCol + i + 1 }); // Adjusted index to match card IDs
+                cells.push({ ...board[startRow - i][startCol + i], index: (startRow - i) * 10 + startCol + i + 1 });
             }
             return cells;
         };
@@ -195,19 +244,18 @@ function Pattern(game, cards) {
                 let result = checkConsecutive(sequence, color);
                 if (result.isPattern && isPatternNew(result.patternIndices)) {
                     addProtectedPattern(result.patternIndices);
-                    game.scores[color] += 1; // Increment score for new diagonal patterns
+                    game.scores[color] += 1;
                 }
             });
         });
 
         for (let i = 0; i < 10; i++) {
-
             let row = board[i].map((cell, index) => ({ ...cell, index: i * 10 + index + 1 }));
             getSequencesOfFive(row).forEach(sequence => {
                 let rowResult = checkConsecutive(sequence, color);
                 if (rowResult.isPattern && isPatternNew(rowResult.patternIndices)) {
                     addProtectedPattern(rowResult.patternIndices);
-                    game.scores[color] += 1; // Increment score here for new horizontal patterns
+                    game.scores[color] += 1;
                 }
             });
 
@@ -216,15 +264,21 @@ function Pattern(game, cards) {
                 let colResult = checkConsecutive(sequence, color);
                 if (colResult.isPattern && isPatternNew(colResult.patternIndices)) {
                     addProtectedPattern(colResult.patternIndices);
-                    game.scores[color] += 1; // Increment score here for new vertical patterns
+                    game.scores[color] += 1;
                 }
             });
         }
     };
 
-    ["blue", "red"].forEach(color => checkPatterns(color));
-    let winner = Object.keys(game?.scores || {}).find(color => game.scores[color] === 2) || null;
-    return (result = { winner, game });
+    let colors = ["blue", "red"];
+    if (game.scores.green !== undefined) {
+        colors.push("green");
+    }
+
+    colors.forEach(color => checkPatterns(color));
+    let target = game.targetSequences || 2;
+    let winner = Object.keys(game?.scores || {}).find(color => game.scores[color] >= target) || null;
+    return { winner, game };
 }
 
 function checkForWinner(game, cards) {

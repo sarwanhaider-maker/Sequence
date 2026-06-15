@@ -24,7 +24,7 @@ class RoomController {
 
   async handleCreateCustomRoom(socket) {
     socket.on("create_custom_room", async (data, callback) => {
-      const { playerName } = data;
+      const { playerName, playerLimit, gameMode } = data;
       const roomId = await this.generateUniqueRoomId();
       try {
         const newRoom = new Room({
@@ -33,6 +33,8 @@ class RoomController {
           isCustom: true,
           empty: true,
           playersName: [playerName],
+          playerLimit: playerLimit || 8,
+          gameMode: gameMode || "8_players"
         });
         await newRoom.save();
 
@@ -40,9 +42,14 @@ class RoomController {
         if (typeof callback === 'function') {
           callback({ roomId });
         }
-        console.log(`Room created with ID: ${roomId}, by player: ${playerName}`);
-        await initializeGameForRoom(roomId, playerName, socket.id);
+        console.log(`Room created with ID: ${roomId}, by player: ${playerName}, limit: ${newRoom.playerLimit}, mode: ${newRoom.gameMode}`);
+        
         socket.emit("custom_room_created", { roomId });
+        this.io.to(roomId).emit("room_update", {
+          players: [playerName],
+          playerLimit: newRoom.playerLimit,
+          gameMode: newRoom.gameMode
+        });
       } catch (err) {
         console.error('Error saving room to MongoDB:', err);
         socket.emit("room_creation_error", "Failed to create the room.");
@@ -56,17 +63,28 @@ class RoomController {
       try {
         const room = await Room.findOne({ roomId: roomId });
 
-        if (room && room.players.length < 2) {
+        if (room && room.players.length < room.playerLimit) {
           room.players.push(socket.id);
           room.playersName.push(playerName);
-          room.empty = false;
+          if (room.players.length === room.playerLimit) {
+            room.empty = false;
+          }
           await room.save();
 
           socket.join(roomId);
           if (typeof callback === 'function') {
-            callback({ success: true });
+            callback({ success: true, playerLimit: room.playerLimit, playersCount: room.players.length });
           }
-          await startGameForRoom(roomId, playerName, socket.id);
+
+          if (room.players.length === room.playerLimit) {
+            await this.startGameForRoom(roomId, room.players, room.playersName, room.gameMode);
+          } else {
+            this.io.to(roomId).emit("room_update", {
+              players: room.playersName,
+              playerLimit: room.playerLimit,
+              gameMode: room.gameMode
+            });
+          }
         } else {
           socket.emit("room_join_error", "Room is full or does not exist.");
         }
@@ -82,7 +100,7 @@ class RoomController {
       const { playerName } = data;
       let room;
       try {
-        room = await Room.findOne({ empty: true });
+        room = await Room.findOne({ empty: true, isCustom: false, playerLimit: 2 });
         if (!room) {
           const roomId = await this.generateUniqueRoomId();
           room = new Room({
@@ -91,22 +109,23 @@ class RoomController {
             isCustom: false,
             empty: true,
             playersName: [playerName],
+            playerLimit: 2,
+            gameMode: "2_players"
           });
           await room.save();
         } else {
           room.players.push(socket.id);
           room.playersName.push(playerName);
-          room.empty = room.players.length < 2;
+          room.empty = false;
           await room.save();
         }
 
         socket.join(room.roomId);
         if (room.players.length === 2) {
-          await this.startGameForRoom(room.roomId, playerName, socket.id);
+          await this.startGameForRoom(room.roomId, room.players, room.playersName, room.gameMode);
           callback({ roomId: room.roomId });
         } else {
           callback({ waiting: true, waitingroom: room.roomId });
-          await this.initializeGameForRoom(room.roomId, playerName, socket.id);
         }
       } catch (err) {
         console.error("Error handling play online:", err);

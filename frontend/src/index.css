@@ -194,6 +194,17 @@ body {
   text-shadow: 1px 1px 2px #000; /* Text shadow for better legibility */
 }
 
+.poker-chip-green {
+  @apply w-10 h-10 rounded-full flex justify-center items-center;
+  @apply border-4 border-white; /* Preserve the white border to look like the edge of a chip */
+  @apply text-black text-sm font-bold z-10;
+
+  /* Enhanced visual styling for green chip */
+  background: radial-gradient(circle, rgba(40, 167, 69, 1) 0%, rgba(20, 80, 30, 1) 100%);
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2), inset 0px 2px 4px rgba(255, 255, 255, 0.2);
+  text-shadow: 1px 1px 2px #000;
+}
+
 .card.highlighted {
   @apply border-4 border-yellow-600; /* Adds a yellow border to the card */
   @apply scale-150; /* Scales up the card slightly */

@@ -1,4 +1,3 @@
-// models/Room.js
 const mongoose = require('mongoose');
 
 const RoomSchema = new mongoose.Schema({
@@ -18,9 +17,17 @@ const RoomSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
-  playersName:[{
+  playersName: [{
     type: String
-  }]
+  }],
+  playerLimit: {
+    type: Number,
+    default: 8
+  },
+  gameMode: {
+    type: String,
+    default: "8_players"
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Room', RoomSchema);
