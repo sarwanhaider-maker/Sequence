@@ -18,6 +18,7 @@ const io = new Server(httpServer, {
     cors: config.corsOptions
 });
 
+mongoose.set('bufferCommands', false);
 mongoose.connect(config.MONGO_URL)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));

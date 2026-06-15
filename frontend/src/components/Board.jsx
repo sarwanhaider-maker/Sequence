@@ -41,6 +41,9 @@ export default function Boards() {
   const [playerLimit, setPlayerLimit] = useState(8);
   const [gameMode, setGameMode] = useState("8_players");
   const [protectedPatterns, setProtectedPatterns] = useState([]);
+  const [socketStatus, setSocketStatus] = useState("connecting");
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectError, setConnectError] = useState(null);
 
   // Splash Screen & Wizard States
   const [showSplash, setShowSplash] = useState(true);
@@ -52,6 +55,22 @@ export default function Boards() {
     if (!socket) {
       const newSocket = io(SERVER_URL, { autoConnect: true });
       setSocket(newSocket);
+
+      newSocket.on("connect", () => {
+        setSocketStatus("connected");
+        setIsConnected(true);
+        setConnectError(null);
+      });
+      newSocket.on("disconnect", () => {
+        setSocketStatus("disconnected");
+        setIsConnected(false);
+      });
+      newSocket.on("connect_error", (err) => {
+        setSocketStatus("error");
+        setIsConnected(false);
+        setConnectError(err.message || err.toString());
+      });
+
       return () => {
         newSocket.close();
       };
@@ -143,7 +162,10 @@ export default function Boards() {
       Swal.fire("Joined room successfully.");
     });
     socket.on("room_join_error", (error) => {
-      Swal.fire("Error", error.message || "Join room error", "error");
+      Swal.fire("Error", typeof error === 'string' ? error : error.message || "Join room error", "error");
+    });
+    socket.on("room_creation_error", (error) => {
+      Swal.fire("Error", typeof error === 'string' ? error : error.message || "Failed to create room.", "error");
     });
     socket.on("room_update", (data) => {
       setConnectedPlayers(data.players);
@@ -159,11 +181,16 @@ export default function Boards() {
       socket.off("custom_room_created");
       socket.off("custom_room_joined");
       socket.off("room_join_error");
+      socket.off("room_creation_error");
       socket.off("room_update");
     };
   }, [socket]);
 
   const onlineButton = useCallback(async () => {
+    if (!socket || !isConnected) {
+      Swal.fire("Connection Error", `Not connected to the game server. It is trying to connect to: ${SERVER_URL}\n\nPlease verify that the backend server is running and accessible.`, "error");
+      return;
+    }
     if (!playerName.trim()) {
       Swal.fire("Error", "Please enter your name first!", "error");
       return;
@@ -179,15 +206,19 @@ export default function Boards() {
         navigate(`/room/${response.waitingroom}`);
       }
     });
-  }, [socket, navigate, playerName]);
+  }, [socket, isConnected, navigate, playerName]);
 
   const createCustomRoom = useCallback(async () => {
+    if (!socket || !isConnected) {
+      Swal.fire("Connection Error", `Not connected to the game server. It is trying to connect to: ${SERVER_URL}\n\nPlease verify that the backend server is running and accessible.`, "error");
+      return;
+    }
     if (!playerName.trim()) {
       Swal.fire("Error", "Please enter your name first!", "error");
       return;
     }
     socket.emit("create_custom_room", { playerName, playerLimit, gameMode }, (response) => {
-      if (response.roomId) {
+      if (response && response.roomId) {
         setInCustomGame(true);
         setCustomRoomId(response.roomId);
         setPlayOnline(true);
@@ -195,11 +226,16 @@ export default function Boards() {
         navigate(`/room/${response.roomId}`);
       } else {
         console.error("Failed to create custom room.");
+        Swal.fire("Error", "Server failed to respond with room ID. Please try again or check the backend server logs.", "error");
       }
     });
-  }, [socket, navigate, playerName, playerLimit, gameMode]);
+  }, [socket, isConnected, navigate, playerName, playerLimit, gameMode]);
 
   const joinCustomRoom = useCallback(async (forcedRoomCode = null) => {
+    if (!socket || !isConnected) {
+      Swal.fire("Connection Error", `Not connected to the game server. It is trying to connect to: ${SERVER_URL}\n\nPlease verify that the backend server is running and accessible.`, "error");
+      return;
+    }
     let roomCode = forcedRoomCode;
     if (!roomCode) {
       const roomCodeInput = await Swal.fire({
@@ -424,10 +460,17 @@ export default function Boards() {
       <>
         {renderWizard()}
         <div className="flex flex-col items-center justify-center min-h-[85vh] w-full" style={{ animation: "fadeIn 0.5s ease-out" }}>
-          <h1 style={{ fontFamily: "'Cinzel', serif", fontSize: "3rem", fontWeight: "800", color: "white", textShadow: "0 0 15px rgba(16, 217, 210, 0.5)", margin: "0 0 20px 0", letterSpacing: "6px", textAlign: "center" }}>SEQUENCE</h1>
+          <h1 style={{ fontFamily: "'Cinzel', serif", fontSize: "2.2rem", fontWeight: "800", color: "white", textShadow: "0 0 15px rgba(16, 217, 210, 0.5)", margin: "0 0 10px 0", letterSpacing: "6px", textAlign: "center" }}>SEQUENCE</h1>
           
           <div className="setup-container">
             <h2>Online Multiplayer Lobby</h2>
+            <div style={{ fontSize: "0.85rem", marginBottom: "15px", opacity: 0.85 }}>
+              Server: <span style={{ color: socketStatus === "connected" ? "#4ade80" : "#f87171", fontWeight: "bold" }}>
+                {socketStatus === "connected" ? "Connected" : socketStatus === "error" ? "Connection Error" : "Connecting..."}
+              </span>
+              {connectError && <div style={{ color: "#f87171", fontSize: "0.75rem", marginTop: "4px", fontWeight: "bold" }}>Error: {connectError}</div>}
+              <div style={{ fontSize: "0.75rem", opacity: 0.6, marginTop: "2px" }}>({SERVER_URL})</div>
+            </div>
             
             <div className="form-group">
               <label htmlFor="pname">Your Name</label>
