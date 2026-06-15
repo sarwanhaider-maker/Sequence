@@ -181,27 +181,61 @@
     /* Left Side: Game Board */
     .board-container {
       background: #3e2a20; /* Wood style board border */
-      padding: 10px;
+      padding: 10px 14px;
       border-radius: 12px;
       box-shadow: 0 20px 40px rgba(0,0,0,0.6);
       border: 4px solid #291a13;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
     }
 
     .board-grid {
       display: grid;
       grid-template-columns: repeat(10, min(50px, 5.2vh));
-      grid-template-rows: repeat(10, min(50px, 5.2vh));
+      grid-template-rows: repeat(10, min(70px, 7.28vh)); /* 5:7 playing card aspect ratio */
       gap: 4px;
+    }
+
+    .board-border-text {
+      font-family: 'Cinzel', serif;
+      font-size: min(0.8rem, 1.6vh);
+      font-weight: 700;
+      color: var(--accent-gold);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      opacity: 0.85;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.9);
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .left-border-text {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      text-align: center;
+    }
+
+    .right-border-text {
+      writing-mode: vertical-rl;
+      text-align: center;
     }
 
     @media (max-width: 768px) {
       .board-grid {
         grid-template-columns: repeat(10, 8.5vw);
-        grid-template-rows: repeat(10, 8.5vw);
+        grid-template-rows: repeat(10, 11.9vw); /* 8.5vw * 1.4 = 11.9vw */
         gap: 3px;
       }
       .board-container {
-        padding: 8px;
+        padding: 8px 10px;
+        gap: 6px;
+      }
+      .board-border-text {
+        font-size: 0.6rem;
+        letter-spacing: 1px;
       }
     }
 
@@ -537,9 +571,11 @@
     <div class="game-layout">
       <!-- Left: Board -->
       <div class="board-container">
+        <div class="board-border-text left-border-text">ONE-EYED JACKS: REMOVE CHIP</div>
         <div id="board" class="board-grid">
           <!-- Rendered dynamically -->
         </div>
+        <div class="board-border-text right-border-text">TWO-EYED JACKS: PLACE WILD CHIP</div>
       </div>
 
       <!-- Right: Control/Info Panel -->
@@ -813,9 +849,9 @@
 
           if (cardCode === "Free") {
             cell.classList.add('corner');
-            cell.innerHTML = '<img src="frontend/public/assests/1B.svg" style="width:100%; height:100%; border-radius:4px; object-fit:cover; pointer-events:none;" alt="Star">';
+            cell.innerHTML = '<img src="frontend/public/assests/1B.svg" style="width:100%; height:100%; border-radius:4px; object-fit:fill; pointer-events:none;" alt="Star">';
           } else {
-            cell.innerHTML = `<img src="frontend/public/assests/${cardCode}.svg" style="width:100%; height:100%; border-radius:4px; object-fit:cover; pointer-events:none;" alt="${cardCode}">`;
+            cell.innerHTML = `<img src="frontend/public/assests/${cardCode}.svg" style="width:100%; height:100%; border-radius:4px; object-fit:fill; pointer-events:none;" alt="${cardCode}">`;
           }
 
           cell.addEventListener('click', () => handleCellClick(r, c));
