@@ -233,12 +233,15 @@ export default function Boards() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
-      if (!localStorage.getItem("sequence_wizard_seen")) {
+      if (urlRoomId) {
+        localStorage.setItem("sequence_wizard_seen", "true");
+        setShowWizard(false);
+      } else if (!localStorage.getItem("sequence_wizard_seen")) {
         setShowWizard(true);
       }
     }, 1500);
     return () => clearTimeout(timer);
-  }, []);
+  }, [urlRoomId]);
 
   // Listen to socket connections
   useEffect(() => {
@@ -400,7 +403,7 @@ export default function Boards() {
   }, [socket]);
 
   const onlineButton = useCallback(async () => {
-    if (!socket || !isConnected) {
+    if (!socket || !socket.connected) {
       Swal.fire("Connection Error", `Not connected to the game server. It is trying to connect to: ${SERVER_URL}\n\nPlease verify that the backend server is running and accessible.`, "error");
       return;
     }
@@ -422,7 +425,7 @@ export default function Boards() {
   }, [socket, isConnected, navigate, playerName]);
 
   const createCustomRoom = useCallback(async () => {
-    if (!socket || !isConnected) {
+    if (!socket || !socket.connected) {
       Swal.fire("Connection Error", `Not connected to the game server. It is trying to connect to: ${SERVER_URL}\n\nPlease verify that the backend server is running and accessible.`, "error");
       return;
     }
@@ -445,7 +448,7 @@ export default function Boards() {
   }, [socket, isConnected, navigate, playerName, playerLimit, gameMode]);
 
   const joinCustomRoom = useCallback(async (forcedRoomCode = null) => {
-    if (!socket || !isConnected) {
+    if (!socket || !socket.connected) {
       Swal.fire("Connection Error", `Not connected to the game server. It is trying to connect to: ${SERVER_URL}\n\nPlease verify that the backend server is running and accessible.`, "error");
       return;
     }
