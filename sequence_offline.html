@@ -438,14 +438,9 @@
     .hand-card {
       width: min(65px, 8.5vh);
       height: min(95px, 12.5vh);
-      background: white;
       border-radius: 6px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.3);
       cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding: 6px;
       user-select: none;
       transition: all 0.2s ease;
       position: relative;
@@ -818,17 +813,9 @@
 
           if (cardCode === "Free") {
             cell.classList.add('corner');
-            cell.innerHTML = '★';
+            cell.innerHTML = '<img src="frontend/public/assests/1B.svg" style="width:100%; height:100%; border-radius:4px; object-fit:cover; pointer-events:none;" alt="Star">';
           } else {
-            const rank = cardCode.substring(0, cardCode.length - 1);
-            const suit = cardCode.substring(cardCode.length - 1);
-            const suitSymbol = SUITS[suit];
-            const isRed = (suit === 'D' || suit === 'H');
-
-            cell.innerHTML = `
-              <span class="card-rank ${isRed ? 'suit-red' : 'suit-black'}">${RANKS[rank]}</span>
-              <span class="card-suit ${isRed ? 'suit-red' : 'suit-black'}">${suitSymbol}</span>
-            `;
+            cell.innerHTML = `<img src="frontend/public/assests/${cardCode}.svg" style="width:100%; height:100%; border-radius:4px; object-fit:cover; pointer-events:none;" alt="${cardCode}">`;
           }
 
           cell.addEventListener('click', () => handleCellClick(r, c));
@@ -900,24 +887,11 @@
 
       const activePlayer = gameState.players[gameState.currentPlayerIndex];
       activePlayer.hand.forEach((card, idx) => {
-        const rank = card.substring(0, card.length - 1);
-        const suit = card.substring(card.length - 1);
-        const suitSymbol = SUITS[suit];
-        const isRed = (suit === 'D' || suit === 'H');
-
         const cardDiv = document.createElement('div');
         cardDiv.className = `hand-card ${gameState.selectedHandCardIndex === idx ? 'selected' : ''}`;
         
         cardDiv.innerHTML = `
-          <div class="card-corner ${isRed ? 'suit-red' : 'suit-black'}">
-            <span class="card-corner-rank">${RANKS[rank] || rank}</span>
-            <span class="card-corner-suit">${suitSymbol}</span>
-          </div>
-          <div class="card-center-suit ${isRed ? 'suit-red' : 'suit-black'}">${suitSymbol}</div>
-          <div class="card-corner card-corner-bottom ${isRed ? 'suit-red' : 'suit-black'}">
-            <span class="card-corner-rank">${RANKS[rank] || rank}</span>
-            <span class="card-corner-suit">${suitSymbol}</span>
-          </div>
+          <img src="frontend/public/assests/${card}.svg" style="width:100%; height:100%; border-radius:6px; pointer-events:none;" alt="${card}">
         `;
 
         cardDiv.addEventListener('click', () => {
