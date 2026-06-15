@@ -1,15 +1,98 @@
 const { Server } = require('socket.io');
 const Client = require('socket.io-client');
 const RoomController = require('../controllers/roomController');
+const Room = require('../models/room');
+const Game = require('../models/Game');
+
+jest.mock('../models/room', () => {
+  let roomsDb = [];
+  const MockRoom = function(data) {
+    Object.assign(this, data);
+    this.save = jest.fn().mockImplementation(() => {
+      const idx = roomsDb.findIndex(r => r.roomId === this.roomId);
+      if (idx > -1) {
+        roomsDb[idx] = this;
+      } else {
+        roomsDb.push(this);
+      }
+      return Promise.resolve(this);
+    });
+  };
+  MockRoom.findOne = jest.fn().mockImplementation((query) => {
+    if (query.players) {
+      return Promise.resolve(roomsDb.find(r => r.players.includes(query.players)));
+    }
+    if (query.roomId) {
+      return Promise.resolve(roomsDb.find(r => r.roomId === query.roomId));
+    }
+    if (query.empty !== undefined) {
+      return Promise.resolve(roomsDb.find(r => r.empty === query.empty && !r.isCustom));
+    }
+    return Promise.resolve(null);
+  });
+  MockRoom.deleteOne = jest.fn().mockImplementation((query) => {
+    const index = roomsDb.findIndex(r => r.roomId === query.roomId);
+    if (index > -1) {
+      roomsDb.splice(index, 1);
+    }
+    return Promise.resolve({ deletedCount: 1 });
+  });
+  MockRoom._db = () => roomsDb;
+  MockRoom._clear = () => { roomsDb.length = 0; };
+  return MockRoom;
+});
+
+jest.mock('../models/Game', () => {
+  let gamesDb = [];
+  const MockGame = function(data) {
+    Object.assign(this, data);
+    this.save = jest.fn().mockImplementation(() => {
+      const idx = gamesDb.findIndex(g => g.roomId === this.roomId);
+      if (idx > -1) {
+        gamesDb[idx] = this;
+      } else {
+        gamesDb.push(this);
+      }
+      return Promise.resolve(this);
+    });
+  };
+  MockGame.findOne = jest.fn().mockImplementation((query) => {
+    return Promise.resolve(gamesDb.find(g => g.roomId === query.roomId));
+  });
+  MockGame.deleteOne = jest.fn().mockImplementation((query) => {
+    const index = gamesDb.findIndex(g => g.roomId === query.roomId);
+    if (index > -1) {
+      gamesDb.splice(index, 1);
+    }
+    return Promise.resolve({ deletedCount: 1 });
+  });
+  MockGame.deleteMany = jest.fn().mockImplementation((query) => {
+    const index = gamesDb.findIndex(g => g.roomId === query.roomId);
+    if (index > -1) {
+      gamesDb.splice(index, 1);
+    }
+    return Promise.resolve({ deletedCount: 1 });
+  });
+  MockGame._db = () => gamesDb;
+  MockGame._clear = () => { gamesDb.length = 0; };
+  return MockGame;
+});
 
 describe('RoomController', () => {
   let io, roomController, clientA, clientB;
+  let mockInitializeGame, mockStartGame;
 
   beforeEach((done) => {
+    Room._clear();
+    Game._clear();
     io = new Server();
-    roomController = new RoomController(io);
+    mockInitializeGame = jest.fn();
+    mockStartGame = jest.fn();
+    roomController = new RoomController(io, mockInitializeGame, mockStartGame);
+    
     clientA = Client('http://localhost:3000');
     clientB = Client('http://localhost:3000');
+    
     io.on('connection', (socket) => {
       socket.on('disconnect', () => {
         socket.disconnect(true);
@@ -29,31 +112,32 @@ describe('RoomController', () => {
   it('should create a custom room', (done) => {
     clientA.on('custom_room_created', (data) => {
       expect(data.roomId).toEqual(expect.any(String));
-      expect(roomController.roomManager.rooms[data.roomId].isCustom).toBe(true);
+      const room = Room._db().find(r => r.roomId === data.roomId);
+      expect(room).toBeDefined();
+      expect(room.isCustom).toBe(true);
       done();
     });
-    clientA.emit('create_custom_room');
+    clientA.emit('create_custom_room', { playerName: 'Player A' });
   });
 
   it('should join a custom room', (done) => {
     clientA.on('custom_room_created', (data) => {
       const roomId = data.roomId;
-      clientB.on('start_game', () => {
-        expect(roomController.roomManager.rooms[roomId].players).toContain(clientB.id);
-        expect(roomController.roomManager.rooms[roomId].empty).toBe(false);
+      clientB.on('room_update', (roomData) => {
+        const room = Room._db().find(r => r.roomId === roomId);
+        expect(room.players).toContain(clientB.id);
         done();
       });
-      clientB.emit('join_custom_room', { roomId });
+      clientB.emit('join_custom_room', { roomId, playerName: 'Player B' });
     });
-    clientA.emit('create_custom_room');
+    clientA.emit('create_custom_room', { playerName: 'Player A' });
   });
 
   it('should match players in random queue', (done) => {
-    clientA.emit('play_online');
-    clientB.emit('play_online');
+    clientA.emit('play_online', { playerName: 'Player A' });
+    clientB.emit('play_online', { playerName: 'Player B' });
     setTimeout(() => {
-      // Find the room that contains both clientA and clientB
-      const room = Object.values(roomController.roomManager.rooms).find((r) =>
+      const room = Room._db().find((r) =>
         r.players.includes(clientA.id) && r.players.includes(clientB.id)
       );
       expect(room).toBeDefined();
@@ -65,17 +149,15 @@ describe('RoomController', () => {
   });
 
   it('should remove a room when gameOverclicked is emitted', (done) => {
-    clientA.emit('create_custom_room');
+    clientA.emit('create_custom_room', { playerName: 'Player A' });
     clientA.on('custom_room_created', (data) => {
-      let {roomId} = data;
-      roomId = clientA.emit('gameOverclicked', { roomId });
+      const { roomId } = data;
+      clientA.emit('gameOverclicked', roomId);
       setTimeout(() => {
-        expect(roomController.roomManager.rooms[roomId]).toBeUndefined();
-        expect(roomController.roomManager.queue).not.toContain(roomId);
+        const room = Room._db().find(r => r.roomId === roomId);
+        expect(room).toBeUndefined();
         done();
       }, 500);
     });
   });
-
-  
 });

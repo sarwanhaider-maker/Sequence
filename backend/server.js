@@ -70,6 +70,7 @@ async function startGameForRoom(roomId, playerSockets, playerNames, gameMode) {
             await joinRoom(playerId, roomId);
         }
 
+        await Game.deleteMany({ roomId: roomId });
         let gameInitialState = gameController.initializeGame(allCards, playerSockets, playerNames, gameMode);
         
         let newGame = new Game({

@@ -1,5 +1,6 @@
 const { Server } = require("socket.io");
 const Room = require('../models/room');
+const Game = require('../models/Game');
 
 class RoomController {
   constructor(io, initializeGameForRoom, startGameForRoom) {
@@ -24,7 +25,7 @@ class RoomController {
 
   async handleCreateCustomRoom(socket) {
     socket.on("create_custom_room", async (data, callback) => {
-      const { playerName, playerLimit, gameMode } = data;
+      const { playerName, playerLimit, gameMode } = data || {};
       const roomId = await this.generateUniqueRoomId();
       try {
         const newRoom = new Room({
@@ -59,7 +60,7 @@ class RoomController {
 
   async handleJoinCustomRoom(socket) {
     socket.on("join_custom_room", async (data, callback) => {
-      const { roomId, playerName } = data;
+      const { roomId, playerName } = data || {};
       try {
         const room = await Room.findOne({ roomId: roomId });
 
@@ -97,7 +98,7 @@ class RoomController {
 
   async handlePlayOnline(socket) {
     socket.on("play_online", async (data, callback) => {
-      const { playerName } = data;
+      const { playerName } = data || {};
       let room;
       try {
         room = await Room.findOne({ empty: true, isCustom: false, playerLimit: 2 });
@@ -123,9 +124,13 @@ class RoomController {
         socket.join(room.roomId);
         if (room.players.length === 2) {
           await this.startGameForRoom(room.roomId, room.players, room.playersName, room.gameMode);
-          callback({ roomId: room.roomId });
+          if (typeof callback === 'function') {
+            callback({ roomId: room.roomId });
+          }
         } else {
-          callback({ waiting: true, waitingroom: room.roomId });
+          if (typeof callback === 'function') {
+            callback({ waiting: true, waitingroom: room.roomId });
+          }
         }
       } catch (err) {
         console.error("Error handling play online:", err);
@@ -147,7 +152,7 @@ class RoomController {
 
   async handleStartCustomGame(socket) {
     socket.on("start_custom_game", async (data, callback) => {
-      const { roomId } = data;
+      const { roomId } = data || {};
       try {
         const room = await Room.findOne({ roomId: roomId });
         if (!room) {
@@ -199,6 +204,59 @@ class RoomController {
     });
   }
 
+  async cleanUpSocketRoom(socket) {
+    try {
+      const room = await Room.findOne({ players: socket.id });
+      if (!room) return;
+
+      console.log(`Cleaning up room ${room.roomId} for socket ${socket.id}`);
+
+      const playerIndex = room.players.indexOf(socket.id);
+      if (playerIndex > -1) {
+        room.players.splice(playerIndex, 1);
+        room.playersName.splice(playerIndex, 1);
+      }
+
+      const activeGame = await Game.findOne({ roomId: room.roomId });
+      if (activeGame) {
+        await Game.deleteOne({ roomId: room.roomId });
+        console.log(`Deleted active game for room ${room.roomId} because player disconnected/left.`);
+        this.io.to(room.roomId).emit("game_reset_to_lobby");
+      }
+
+      if (room.players.length === 0) {
+        await Room.deleteOne({ roomId: room.roomId });
+        console.log(`Deleted empty room ${room.roomId}`);
+      } else {
+        room.empty = true;
+        await room.save();
+
+        this.io.to(room.roomId).emit("room_update", {
+          players: room.playersName,
+          playerLimit: room.playerLimit,
+          gameMode: room.gameMode
+        });
+      }
+    } catch (err) {
+      console.error("Error in cleanUpSocketRoom:", err);
+    }
+  }
+
+  handlePlayAgain(socket) {
+    socket.on("play_again", async (data) => {
+      const { roomId } = data || {};
+      try {
+        const room = await Room.findOne({ roomId: roomId });
+        if (room && room.players[0] === socket.id) {
+          await this.startGameForRoom(roomId, room.players, room.playersName, room.gameMode);
+          console.log(`Play again triggered for room ${roomId}`);
+        }
+      } catch (err) {
+        console.error("Error handling play again:", err);
+      }
+    });
+  }
+
   registerEvents() {
     this.io.on("connection", (socket) => {
       this.handleCreateCustomRoom(socket);
@@ -206,6 +264,14 @@ class RoomController {
       this.handlePlayOnline(socket);
       this.handleStartCustomGame(socket);
       this.handleDisconnection(socket);
+      this.handlePlayAgain(socket);
+
+      socket.on("disconnect", () => {
+        this.cleanUpSocketRoom(socket);
+      });
+      socket.on("leave_room", () => {
+        this.cleanUpSocketRoom(socket);
+      });
     });
   }
 }

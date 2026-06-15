@@ -67,14 +67,14 @@ body {
 
 .board-grid {
   display: grid;
-  grid-template-columns: repeat(10, min(60.7px, calc(7.14vh - 4.3px)));
-  grid-template-rows: repeat(10, min(85px, calc(10vh - 6px))); /* 5:7 playing card aspect ratio */
+  grid-template-columns: repeat(10, min(50px, calc(4.85vh - 3px)));
+  grid-template-rows: repeat(10, min(70px, calc(6.8vh - 4px))); /* 5:7 playing card aspect ratio */
   gap: 3px;
 }
 
 .board-border-text {
   font-family: 'Cinzel', serif;
-  font-size: min(0.8rem, calc(1.6vh - 2px));
+  font-size: min(0.7rem, calc(1.3vh - 2px));
   font-weight: 700;
   color: var(--accent-gold);
   letter-spacing: 2px;
@@ -490,6 +490,10 @@ body {
 
 /* Mobile Media Queries */
 @media (max-width: 768px) {
+  #mobile-header {
+    display: flex !important;
+  }
+
   body {
     padding: 4px;
     justify-content: center;

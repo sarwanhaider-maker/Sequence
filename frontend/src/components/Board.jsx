@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Cards from "./Cards";
 import PlayerDeck from "./PlayerDeck";
@@ -12,6 +12,127 @@ const SERVER_URL = import.meta.env.VITE_API_URL || (
     ? "http://localhost:8000"
     : window.location.origin
 );
+
+class GameSounds {
+  static initAudio() {
+    if (!this.ctx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        this.ctx = new AudioCtx();
+      }
+    }
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
+
+  static playChipPlace() {
+    try {
+      this.initAudio();
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      const now = this.ctx.currentTime;
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(500, now);
+      osc.frequency.exponentialRampToValueAtTime(150, now + 0.12);
+
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+
+      osc.start(now);
+      osc.stop(now + 0.12);
+    } catch (e) {
+      console.error("Audio error:", e);
+    }
+  }
+
+  static playWin() {
+    try {
+      this.initAudio();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const playTone = (freq, time, duration) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, time);
+        gain.gain.setValueAtTime(0.15, time);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
+        osc.start(time);
+        osc.stop(time + duration);
+      };
+      
+      playTone(261.63, now, 0.2); // C4
+      playTone(329.63, now + 0.12, 0.2); // E4
+      playTone(392.00, now + 0.24, 0.2); // G4
+      playTone(523.25, now + 0.36, 0.5); // C5
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  static playLose() {
+    try {
+      this.initAudio();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const playTone = (freq, time, duration) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, time);
+        gain.gain.setValueAtTime(0.1, time);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
+        osc.start(time);
+        osc.stop(time + duration);
+      };
+      
+      playTone(392.00, now, 0.25); // G4
+      playTone(311.13, now + 0.15, 0.25); // Eb4
+      playTone(261.63, now + 0.3, 0.25); // C4
+      playTone(196.00, now + 0.45, 0.6); // G3
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  static playTurnAlert() {
+    try {
+      this.initAudio();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, now);
+      osc.frequency.setValueAtTime(800, now + 0.08);
+
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+      
+      osc.start(now);
+      osc.stop(now + 0.25);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+}
+
+const countChips = (boardCards) => {
+  if (!boardCards) return 0;
+  return boardCards.reduce((total, card) => total + (card.color ? 1 : 0), 0);
+};
 
 export default function Boards() {
   const { roomId: urlRoomId } = useParams();
@@ -44,6 +165,37 @@ export default function Boards() {
   const [socketStatus, setSocketStatus] = useState("connecting");
   const [isConnected, setIsConnected] = useState(false);
   const [connectError, setConnectError] = useState(null);
+
+  // Refs for tracking live state inside socket events
+  const playingAsRef = useRef(playingAs);
+  const playersListRef = useRef(playersList);
+  const roomRef = useRef(room);
+  const connectedPlayersRef = useRef(connectedPlayers);
+  const playerNameRef = useRef(playerName);
+  const prevChipsCount = useRef(0);
+  const currentPlayerIndexRef = useRef(currentPlayerIndex);
+  const customRoomIdRef = useRef(customRoomId);
+
+  useEffect(() => { playingAsRef.current = playingAs; }, [playingAs]);
+  useEffect(() => { playersListRef.current = playersList; }, [playersList]);
+  useEffect(() => { roomRef.current = room; }, [room]);
+  useEffect(() => { connectedPlayersRef.current = connectedPlayers; }, [connectedPlayers]);
+  useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
+  useEffect(() => { currentPlayerIndexRef.current = currentPlayerIndex; }, [currentPlayerIndex]);
+  useEffect(() => { customRoomIdRef.current = customRoomId; }, [customRoomId]);
+
+  // Audio Context auto-resume on first user gesture
+  useEffect(() => {
+    const resumeAudio = () => {
+      GameSounds.initAudio();
+    };
+    window.addEventListener("click", resumeAudio);
+    window.addEventListener("touchstart", resumeAudio);
+    return () => {
+      window.removeEventListener("click", resumeAudio);
+      window.removeEventListener("touchstart", resumeAudio);
+    };
+  }, []);
 
   // Splash Screen & Wizard States
   const [showSplash, setShowSplash] = useState(true);
@@ -99,6 +251,20 @@ export default function Boards() {
   useEffect(() => {
     if (socket) {
       socket.on("updateGameState", (gameState) => {
+        // Play chip placement sound if chip count increases or decreases
+        const currentCount = countChips(gameState.cards);
+        if (currentCount !== prevChipsCount.current) {
+          prevChipsCount.current = currentCount;
+          GameSounds.playChipPlace();
+        }
+
+        // Play turn alert if it just transitioned to the local player's turn
+        const previouslyMyTurn = playingAsRef.current === currentPlayerIndexRef.current;
+        const nowMyTurn = playingAsRef.current === gameState.currentPlayerIndex;
+        if (!previouslyMyTurn && nowMyTurn) {
+          GameSounds.playTurnAlert();
+        }
+
         setDeckCount(gameState.deckCount);
         setCards(gameState.cards);
         setYourHand(gameState.playerHand);
@@ -137,6 +303,8 @@ export default function Boards() {
     socket.on("connect", () => {});
     socket.on("OpponentNotFound", () => {});
     socket.on("OpponentFound", (data) => {
+      Swal.close();
+      prevChipsCount.current = countChips(data.cards);
       setIsWaitingForMatch(false);
       setPlayingAs(data.playingAs);
       setYourHand(data.yourHand);
@@ -145,12 +313,56 @@ export default function Boards() {
       setPlayersList(data.players || []);
       setCurrentPlayerIndex(data.currentPlayerIndex || 0);
       setProtectedPatterns(data.protectedPatterns || []);
+
+      // If it is our turn on start, play turn alert
+      if (data.playingAs === (data.currentPlayerIndex || 0)) {
+        GameSounds.playTurnAlert();
+      }
     });
     socket.on("gameOver", (data) => {
+      const isHost = connectedPlayersRef.current[0] === playerNameRef.current;
+      const myTeam = playersListRef.current[playingAsRef.current]?.team || "unknown";
+
+      if (data.winner === myTeam) {
+        GameSounds.playWin();
+      } else {
+        GameSounds.playLose();
+      }
+
       Swal.fire({
         title: `${data.winner.toUpperCase()} Won the game!`,
-        icon: "success",
+        text: data.winner === myTeam ? "Congratulations! Your team won!" : "Better luck next time!",
+        icon: data.winner === myTeam ? "success" : "error",
+        showCancelButton: true,
+        confirmButtonText: isHost ? "Play Again" : "Wait for Host",
+        cancelButtonText: "Exit to Lobby",
+        allowOutsideClick: false
+      }).then((result) => {
+        if (result.isConfirmed) {
+          if (isHost) {
+            socket.emit("play_again", { roomId: roomRef.current });
+          } else {
+            Swal.fire("Please wait", "Waiting for the host to restart the game...", "info");
+          }
+        } else {
+          socket.emit("leave_room");
+          window.location.href = "/";
+        }
       });
+    });
+    socket.on("game_reset_to_lobby", () => {
+      setCards([]);
+      setYourHand(null);
+      setPlayersList([]);
+      setPlayOnline(false);
+      Swal.close();
+      if (customRoomIdRef.current) {
+        setInCustomGame(true);
+        Swal.fire("Game Stopped", "A player left the game lobby. Returning to waiting lobby...", "info");
+      } else {
+        setInCustomGame(false);
+        Swal.fire("Game Stopped", "A player left the game lobby. Returning to main menu...", "info");
+      }
     });
     socket.on("custom_room_created", (data) => {
       setInCustomGame(true);
@@ -178,6 +390,7 @@ export default function Boards() {
       socket.off("OpponentNotFound");
       socket.off("OpponentFound");
       socket.off("gameOver");
+      socket.off("game_reset_to_lobby");
       socket.off("custom_room_created");
       socket.off("custom_room_joined");
       socket.off("room_join_error");
@@ -303,8 +516,8 @@ export default function Boards() {
       confirmButtonText: "Yes, Quit!"
     }).then((result) => {
       if (result.isConfirmed) {
-        if (socket && room) {
-          socket.emit("gameOverclicked", room);
+        if (socket) {
+          socket.emit("leave_room");
         }
         window.location.href = "/";
       }
@@ -314,42 +527,84 @@ export default function Boards() {
   const renderMobileHeader = () => {
     if (playersList.length === 0) return null;
     const activeTeam = playersList[currentPlayerIndex]?.team || "blue";
+    const myTeam = playersList[playingAs]?.team || "unknown";
+    const activePlayer = playersList[currentPlayerIndex];
+    const isMyTurn = playingAs === currentPlayerIndex;
 
     return (
-      <div id="mobile-header" style={{ display: "none", justifyContent: "space-between", alignItems: "center", width: "100%", maxWidth: "420px", padding: "6px 12px", background: "var(--panel-bg)", backdropFilter: "blur(15px)", border: "1px solid var(--border-color)", borderRadius: "12px", marginBottom: "8px", boxShadow: "0 4px 15px rgba(0,0,0,0.3)", boxSizing: "border-box", flexShrink: 0 }}>
-        {/* Blue Team */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 8px", borderRadius: "8px", border: activeTeam === "blue" ? "1px solid var(--accent-gold)" : "1px solid transparent", boxShadow: activeTeam === "blue" ? "0 0 8px var(--accent-gold)" : "none", transition: "all 0.3s" }}>
-          <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "var(--blue-chip)", border: "1px solid rgba(255,255,255,0.4)" }}></div>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: "0.75rem", fontWeight: "700" }}>Blue Team</span>
-            <span style={{ fontSize: "0.8rem", fontWeight: "800", color: "var(--accent-gold)" }}>Score: {blueScore}</span>
-          </div>
-        </div>
-
-        <div style={{ fontFamily: "'Cinzel', serif", fontSize: "0.95rem", fontWeight: "800", color: "#b0a9c9" }}>VS</div>
-
-        {/* Red Team */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 8px", borderRadius: "8px", border: activeTeam === "red" ? "1px solid var(--accent-gold)" : "1px solid transparent", boxShadow: activeTeam === "red" ? "0 0 8px var(--accent-gold)" : "none", transition: "all 0.3s", flexDirection: "row-reverse", textAlign: "right" }}>
-          <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "var(--red-chip)", border: "1px solid rgba(255,255,255,0.4)" }}></div>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: "0.75rem", fontWeight: "700" }}>Red Team</span>
-            <span style={{ fontSize: "0.8rem", fontWeight: "800", color: "var(--accent-gold)" }}>Score: {redScore}</span>
-          </div>
-        </div>
-
-        {greenScore !== undefined && (
-          <>
-            <div style={{ fontFamily: "'Cinzel', serif", fontSize: "0.95rem", fontWeight: "800", color: "#b0a9c9" }}>VS</div>
-            {/* Green Team */}
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 8px", borderRadius: "8px", border: activeTeam === "green" ? "1px solid var(--accent-gold)" : "1px solid transparent", boxShadow: activeTeam === "green" ? "0 0 8px var(--accent-gold)" : "none", transition: "all 0.3s", flexDirection: "row-reverse", textAlign: "right" }}>
-              <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "var(--green-chip)", border: "1px solid rgba(255,255,255,0.4)" }}></div>
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: "0.75rem", fontWeight: "700" }}>Green Team</span>
-                <span style={{ fontSize: "0.8rem", fontWeight: "800", color: "var(--accent-gold)" }}>Score: {greenScore}</span>
-              </div>
+      <div id="mobile-header" style={{ display: "none", flexDirection: "column", width: "100%", maxWidth: "420px", padding: "8px 12px", background: "var(--panel-bg)", backdropFilter: "blur(15px)", border: "1px solid var(--border-color)", borderRadius: "12px", marginBottom: "8px", boxShadow: "0 4px 15px rgba(0,0,0,0.3)", boxSizing: "border-box", flexShrink: 0, gap: "6px" }}>
+        {/* Scores Row */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+          {/* Blue Team */}
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "2px 6px", borderRadius: "6px", border: activeTeam === "blue" ? "1px solid var(--accent-gold)" : "1px solid transparent", boxShadow: activeTeam === "blue" ? "0 0 6px var(--accent-gold)" : "none" }}>
+            <div style={{ width: "16px", height: "16px", borderRadius: "50%", background: "var(--blue-chip)", border: "1px solid rgba(255,255,255,0.4)" }}></div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ fontSize: "0.65rem", fontWeight: "700" }}>Blue</span>
+              <span style={{ fontSize: "0.7rem", fontWeight: "800", color: "var(--accent-gold)" }}>{blueScore}</span>
             </div>
-          </>
-        )}
+          </div>
+
+          <div style={{ fontFamily: "'Cinzel', serif", fontSize: "0.8rem", fontWeight: "800", color: "#b0a9c9" }}>VS</div>
+
+          {/* Red Team */}
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "2px 6px", borderRadius: "6px", border: activeTeam === "red" ? "1px solid var(--accent-gold)" : "1px solid transparent", boxShadow: activeTeam === "red" ? "0 0 6px var(--accent-gold)" : "none" }}>
+            <div style={{ width: "16px", height: "16px", borderRadius: "50%", background: "var(--red-chip)", border: "1px solid rgba(255,255,255,0.4)" }}></div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ fontSize: "0.65rem", fontWeight: "700" }}>Red</span>
+              <span style={{ fontSize: "0.7rem", fontWeight: "800", color: "var(--accent-gold)" }}>{redScore}</span>
+            </div>
+          </div>
+
+          {greenScore !== undefined && (
+            <>
+              <div style={{ fontFamily: "'Cinzel', serif", fontSize: "0.8rem", fontWeight: "800", color: "#b0a9c9" }}>VS</div>
+              {/* Green Team */}
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "2px 6px", borderRadius: "6px", border: activeTeam === "green" ? "1px solid var(--accent-gold)" : "1px solid transparent", boxShadow: activeTeam === "green" ? "0 0 6px var(--accent-gold)" : "none" }}>
+                <div style={{ width: "16px", height: "16px", borderRadius: "50%", background: "var(--green-chip)", border: "1px solid rgba(255,255,255,0.4)" }}></div>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <span style={{ fontSize: "0.65rem", fontWeight: "700" }}>Green</span>
+                  <span style={{ fontSize: "0.7rem", fontWeight: "800", color: "var(--accent-gold)" }}>{greenScore}</span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Info/Status Row */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "6px", width: "100%", fontSize: "0.75rem" }}>
+          {/* Your Team Color Info */}
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            <span style={{ opacity: 0.7 }}>You:</span>
+            <span style={{ 
+              color: myTeam === "blue" ? "#3b82f6" : myTeam === "red" ? "#ef4444" : myTeam === "green" ? "#22c55e" : "#b0a9c9",
+              fontWeight: "800", 
+              textTransform: "uppercase" 
+            }}>
+              {myTeam} Team
+            </span>
+            <div style={{ 
+              width: "10px", 
+              height: "10px", 
+              borderRadius: "50%", 
+              background: myTeam === "blue" ? "var(--blue-chip)" : myTeam === "red" ? "var(--red-chip)" : myTeam === "green" ? "var(--green-chip)" : "gray" 
+            }}></div>
+          </div>
+
+          {/* Active Turn Indicator */}
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            <span style={{ opacity: 0.7 }}>Turn:</span>
+            {isMyTurn ? (
+              <span className="blink-turn" style={{ color: "var(--accent-gold)", fontWeight: "800" }}>YOUR TURN! ⭐</span>
+            ) : (
+              <span style={{ 
+                color: activeTeam === "blue" ? "#3b82f6" : activeTeam === "red" ? "#ef4444" : activeTeam === "green" ? "#22c55e" : "#b0a9c9", 
+                fontWeight: "700" 
+              }}>
+                {activePlayer?.name || "Opponent"}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     );
   };
