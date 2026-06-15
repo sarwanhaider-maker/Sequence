@@ -36,7 +36,7 @@ export default function Cards({roomId, socket, selectCard, cards, hoveredCard, p
              {cards.map((card) => (
                 <div key={card.id} className={`card ${hoveredCard.includes(card.id) ? 'highlighted' : ''}`} 
                 onClick={() => handleClick(card.id, selectCard, socket, card)}>
-                    {card.img && <img src={card.img} alt={`Card ${card.id}`} />} 
+                    {card.img && <img src={card.img.replace('../', '')} alt={`Card ${card.id}`} />} 
                     {card.selected && card.selected === "True" && (
                         <div className={`poker-chip-${card.selectedby} absolute`}></div>
                     )}

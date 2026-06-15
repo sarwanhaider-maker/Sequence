@@ -8,7 +8,7 @@ export default function Deck({ deckCount }) {
           {[...Array(4)].map((_, index) => (
             <img
               key={index}
-              src="../assests/1B.svg"
+              src="assests/1B.svg"
               alt="Card Back"
               className={`w-14 h-24 ${index > 0 ? '-ml-8' : ''}`}
             style={{ zIndex: 4 - index }} 

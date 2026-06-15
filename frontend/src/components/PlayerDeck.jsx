@@ -24,7 +24,7 @@ const PlayerDeck = ({ socket, playerHand, setSelectCard, setHoveredCard, playing
       </div>
       <div className="player-deck-cards">
         {playerHand && playerHand.map((card) => (
-          <img key={card.id} src={card.img} alt={`Card ${card.id}`}
+          <img key={card.id} src={card.img && card.img.replace('../', '')} alt={`Card ${card.id}`}
             className={`w-16 h-24 mr-2 cursor-pointer ${selectedCardId === card.id ? 'selected-card' : ''}`}
             onClick={() => playingAs === currentPlayerIndex && handleCardClick(card)}
             onMouseEnter={() => handleMouseEnter(card.matches || [])}
