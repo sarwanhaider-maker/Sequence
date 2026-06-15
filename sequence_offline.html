@@ -197,8 +197,8 @@
 
     .board-grid {
       display: grid;
-      grid-template-columns: repeat(10, min(53.5px, calc(6.57vh - 7.5px)));
-      grid-template-rows: repeat(10, min(75px, calc(9.2vh - 10.5px))); /* 5:7 playing card aspect ratio */
+      grid-template-columns: repeat(10, min(60.7px, calc(7.14vh - 4.3px)));
+      grid-template-rows: repeat(10, min(85px, calc(10vh - 6px))); /* 5:7 playing card aspect ratio */
       gap: 3px;
     }
 
@@ -443,10 +443,10 @@
       background: var(--panel-bg);
       backdrop-filter: blur(15px);
       border: 1px solid var(--border-color);
-      border-radius: 16px;
-      padding: 6px 12px;
-      margin-top: 6px;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+      border-radius: 12px;
+      padding: 8px 10px;
+      margin-top: 0;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -455,21 +455,24 @@
 
     .hand-title {
       font-weight: 700;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       margin-bottom: 6px;
       letter-spacing: 1px;
+      color: #b0a9c9;
+      text-transform: uppercase;
     }
 
     .hand-cards {
       display: flex;
       justify-content: center;
-      gap: 10px;
+      gap: 6px;
       flex-wrap: wrap;
+      max-width: 260px;
     }
 
     .hand-cards img {
-      width: min(60px, 8vh);
-      height: min(84px, 11.2vh);
+      width: 58px;
+      height: 81px;
       border-radius: 6px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.3);
       cursor: pointer;
@@ -477,8 +480,8 @@
     }
 
     .hand-card {
-      width: min(60px, 8vh);
-      height: min(84px, 11.2vh);
+      width: 58px;
+      height: 81px;
       border-radius: 6px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.3);
       cursor: pointer;
@@ -659,11 +662,10 @@
     </div>
   </div>
 
-  <h1>SEQUENCE</h1>
-
   <!-- SCREEN 1: Setup Screen -->
   <div id="setup-screen" class="screen active">
-    <div class="setup-container">
+    <h1 style="font-family: 'Cinzel', serif; font-size: 2.2rem; font-weight: 800; color: white; text-shadow: 0 0 15px rgba(16, 217, 210, 0.5); margin: 0 0 20px 0; letter-spacing: 4px; text-align: center; flex-shrink: 0;">SEQUENCE</h1>
+    <div class="setup-container" style="margin-top: 0;">
       <h2>Offline Game Settings</h2>
       
       <div class="form-group">
@@ -723,18 +725,18 @@
           </div>
         </div>
 
+        <!-- Hand Container (relocated to right column) -->
+        <div class="hand-container">
+          <div class="hand-title">YOUR HAND</div>
+          <div id="player-hand" class="hand-cards">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
         <div style="display: flex; gap: 8px; margin-top: auto; flex-shrink: 0;">
           <button id="btn-how-to-play-game" style="flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: #b0a9c9; padding: 8px; font-size: 0.85rem; font-weight: 500; border-radius: 8px; cursor: pointer; transition: all 0.3s;">How to Play</button>
           <button id="btn-quit" class="btn-quit" style="flex: 1; margin-top: 0; padding: 8px; font-size: 0.85rem;">Exit Game</button>
         </div>
-      </div>
-    </div>
-
-    <!-- Hand Container at bottom -->
-    <div class="hand-container">
-      <div class="hand-title">YOUR HAND</div>
-      <div id="player-hand" class="hand-cards">
-        <!-- Rendered dynamically -->
       </div>
     </div>
   </div>
