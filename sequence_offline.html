@@ -508,6 +508,14 @@
       color: #ff4136;
       border-color: #ff4136;
     }
+
+    #game-log::-webkit-scrollbar {
+      width: 4px;
+    }
+    #game-log::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 2px;
+    }
   </style>
 </head>
 <body>
@@ -561,6 +569,16 @@
         <div class="panel" style="display:flex; justify-content: space-between; align-items:center;">
           <span style="font-weight: 600; color:#b0a9c9; font-size:0.9rem; text-transform:uppercase;">Deck Remaining:</span>
           <span id="deck-remaining-val" style="font-size:1.2rem; font-weight:700; color:var(--accent-cyan);">104</span>
+        </div>
+
+        <!-- Game Log Panel -->
+        <div class="panel" style="flex: 1; min-height: 120px; display: flex; flex-direction: column;">
+          <div class="info-title" style="margin-bottom: 8px;">
+            <span>Game Log</span>
+          </div>
+          <div id="game-log" style="flex: 1; overflow-y: auto; font-size: 0.8rem; color: #b0a9c9; max-height: 150px; scrollbar-width: thin; padding-right: 5px;">
+            <div style="color: var(--accent-cyan); font-style: italic;">Game started. Good luck!</div>
+          </div>
         </div>
 
         <button id="btn-quit" class="btn-quit">Exit Game</button>
@@ -673,6 +691,28 @@
       return matches;
     }
 
+    function logMove(message, type = 'info') {
+      const logEl = document.getElementById('game-log');
+      if (logEl) {
+        const item = document.createElement('div');
+        item.style.marginBottom = '4px';
+        item.style.lineHeight = '1.2';
+        if (type === 'blue') {
+          item.style.color = '#7fdbff';
+        } else if (type === 'red') {
+          item.style.color = '#ff851b';
+        } else if (type === 'system') {
+          item.style.color = 'var(--accent-gold)';
+        } else if (type === 'remove') {
+          item.style.color = '#ff4136';
+          item.style.fontWeight = 'bold';
+        }
+        item.textContent = message;
+        logEl.appendChild(item);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+    }
+
     // State Variables
     let gameState = {
       isBotMode: false,
@@ -746,6 +786,12 @@
         for (let h = 0; h < handSize; h++) {
           gameState.players[p].hand.push(gameState.shuffledDeck.pop());
         }
+      }
+
+      // Clear game log
+      const logEl = document.getElementById('game-log');
+      if (logEl) {
+        logEl.innerHTML = '<div style="color: var(--accent-cyan); font-style: italic;">Game started. Good luck!</div>';
       }
 
       // Draw initial Board
@@ -901,6 +947,22 @@
       if (success) {
         sound.playPlace();
         
+        // Log player's move
+        const rank = selectedCard.substring(0, selectedCard.length - 1);
+        const suit = selectedCard.substring(selectedCard.length - 1);
+        const suitName = SUIT_NAMES[suit] || suit;
+        const cardDisplay = `${RANKS[rank] || rank} of ${suitName}`;
+        
+        let moveDesc = "";
+        if (selectedCard === "JC" || selectedCard === "JD") {
+          moveDesc = `${activePlayer.name} played Two-Eyed Jack (${selectedCard}) to place a chip at Row ${row + 1}, Col ${col + 1}`;
+        } else if (selectedCard === "JS" || selectedCard === "JH") {
+          moveDesc = `${activePlayer.name} played One-Eyed Jack (${selectedCard}) to REMOVE chip at Row ${row + 1}, Col ${col + 1}`;
+        } else {
+          moveDesc = `${activePlayer.name} played ${cardDisplay} to place a chip at Row ${row + 1}, Col ${col + 1}`;
+        }
+        logMove(moveDesc, activePlayer.team === 'blue' ? 'blue' : 'red');
+        
         // Remove card from hand and draw new one
         activePlayer.hand.splice(gameState.selectedHandCardIndex, 1);
         if (gameState.shuffledDeck.length > 0) {
@@ -1034,6 +1096,9 @@
               if (slice.every(c => owned.includes(c)) && isPatternNew(slice)) {
                 gameState.protectedPatterns.push(slice);
                 gameState.scores[team === "blue" ? "blue" : "red"] += 1;
+                
+                const playerName = (team === "blue") ? gameState.players[0].name : gameState.players[1].name;
+                logMove(`🎉 ${playerName} completed a SEQUENCE!`, 'system');
                 
                 slice.forEach(coord => {
                   let [r, c] = coord.split(',').map(Number);
@@ -1204,12 +1269,41 @@
 
       if (bestMove) {
         const card = bot.hand[bestMove.handIdx];
+        const rank = card.substring(0, card.length - 1);
+        const suit = card.substring(card.length - 1);
+        const suitName = SUIT_NAMES[suit] || suit;
+        const cardDisplay = `${RANKS[rank] || rank} of ${suitName}`;
+
         if (bestMove.type === 'place') {
           placeChip(bestMove.r, bestMove.c, bot.team);
           sound.playPlace();
+          
+          let moveDesc = "";
+          if (card === "JC" || card === "JD") {
+            moveDesc = `Sequence Bot played Two-Eyed Jack (${card}) to place a chip at Row ${bestMove.r + 1}, Col ${bestMove.c + 1}`;
+          } else {
+            moveDesc = `Sequence Bot played ${cardDisplay} to place a chip at Row ${bestMove.r + 1}, Col ${bestMove.c + 1}`;
+          }
+          logMove(moveDesc, 'red');
         } else {
           removeChip(bestMove.r, bestMove.c);
           sound.playPlace();
+          
+          const moveDesc = `Sequence Bot played One-Eyed Jack (${card}) to REMOVE your chip at Row ${bestMove.r + 1}, Col ${bestMove.c + 1}!`;
+          logMove(moveDesc, 'remove');
+          
+          Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'warning',
+            title: 'Your chip was removed!',
+            text: `Sequence Bot played One-Eyed Jack (${card}) to remove your chip at Row ${bestMove.r + 1}, Col ${bestMove.c + 1}`,
+            showConfirmButton: false,
+            timer: 4000,
+            background: '#1a123a',
+            color: '#fff',
+            iconColor: '#ff4136'
+          });
         }
 
         bot.hand.splice(bestMove.handIdx, 1);
@@ -1239,6 +1333,7 @@
         gameState.selectedHandCardIndex = null;
         updateUI();
       } else {
+        logMove("Sequence Bot passed turn (no valid moves).", "red");
         gameState.currentPlayerIndex = 0;
         gameState.selectedHandCardIndex = null;
         updateUI();
