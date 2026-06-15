@@ -1,8 +1,8 @@
-import { useState } from "react"
+import React from "react";
 
-export default function Cards({roomId, socket, selectCard, cards, hoveredCard, playingAs, currentPlayerIndex}){
+export default function Cards({ roomId, socket, selectCard, cards, hoveredCard, playingAs, currentPlayerIndex, protectedPatterns }) {
 
-    function handleClick(cardId, selectCard, socket, card){
+    function handleClick(cardId, selectCard, socket, card) {
         let card_matches = card.matches;
         let validMove = false;
         
@@ -19,30 +19,47 @@ export default function Cards({roomId, socket, selectCard, cards, hoveredCard, p
             validMove = true;
         }
 
-       if (playingAs === currentPlayerIndex && validMove) {
-            socket?.emit('Boardcardclicked', { roomId, cardId: cardId, selectedCard: selectCard  });
-        }
-        else if (playingAs !== currentPlayerIndex) {
+        if (playingAs === currentPlayerIndex && validMove) {
+            socket?.emit('Boardcardclicked', { roomId, cardId: cardId, selectedCard: selectCard });
+        } else if (playingAs !== currentPlayerIndex) {
             alert("It's not your turn!");
-        }
-        else {
+        } else {
             alert('Invalid move! This action is not allowed.');
         }
     }
+
+    const isProtected = (id) => {
+        return (protectedPatterns || []).some(pattern => pattern.includes(id));
+    };
       
     return (
-        <>
-        <div className="inner-container">
-             {cards.map((card) => (
-                <div key={card.id} className={`card ${hoveredCard.includes(card.id) ? 'highlighted' : ''}`} 
-                onClick={() => handleClick(card.id, selectCard, socket, card)}>
-                    {card.img && <img src={card.img.replace('../', '')} alt={`Card ${card.id}`} />} 
-                    {card.selected && card.selected === "True" && (
-                        <div className={`poker-chip-${card.selectedby} absolute`}></div>
-                    )}
-                </div>
-            ))}
+        <div className="board-container">
+            <div className="board-border-text left-border-text">ONE-EYED JACKS: REMOVE CHIP</div>
+            <div className="board-grid">
+                 {cards.map((card) => {
+                     const protectedClass = isProtected(card.id) ? "seq-protected" : "";
+                     const isCorner = [1, 10, 91, 100].includes(card.id);
+                     return (
+                        <div 
+                            key={card.id} 
+                            className={`card ${isCorner ? 'corner' : ''} ${protectedClass} ${hoveredCard.includes(card.id) ? 'highlighted' : ''}`} 
+                            onClick={() => handleClick(card.id, selectCard, socket, card)}
+                        >
+                            {card.img && (
+                                <img 
+                                    src={"/" + card.img.replace('../', '')} 
+                                    alt={`Card ${card.id}`} 
+                                    style={{ width: "100%", height: "100%", borderRadius: "4px", objectFit: "fill" }}
+                                />
+                            )} 
+                            {card.selected && card.selected === "True" && (
+                                <div className={`chip chip-${card.selectedby}`}></div>
+                            )}
+                        </div>
+                     );
+                 })}
+            </div>
+            <div className="board-border-text right-border-text">TWO-EYED JACKS: PLACE WILD CHIP</div>
         </div>
-        </>
-    )
+    );
 }

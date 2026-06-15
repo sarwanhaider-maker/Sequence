@@ -145,11 +145,66 @@ class RoomController {
     });
   }
 
+  async handleStartCustomGame(socket) {
+    socket.on("start_custom_game", async (data, callback) => {
+      const { roomId } = data;
+      try {
+        const room = await Room.findOne({ roomId: roomId });
+        if (!room) {
+          if (typeof callback === 'function') callback({ success: false, message: "Room not found." });
+          return;
+        }
+        if (room.players[0] !== socket.id) {
+          if (typeof callback === 'function') callback({ success: false, message: "Only the host can start the game." });
+          return;
+        }
+        if (room.players.length < 2) {
+          if (typeof callback === 'function') callback({ success: false, message: "At least 2 players are required to start the game." });
+          return;
+        }
+
+        let actualLimit = room.players.length;
+        let finalMode = room.gameMode;
+        
+        if (actualLimit === 2) {
+          finalMode = "2_players";
+        } else if (actualLimit === 3) {
+          finalMode = "3_players";
+        } else if (actualLimit === 4) {
+          finalMode = "4_players";
+        } else if (actualLimit === 5) {
+          finalMode = "4_players";
+        } else if (actualLimit === 6) {
+          if (room.gameMode !== "6_players_3_teams") {
+            finalMode = "6_players_2_teams";
+          }
+        } else if (actualLimit === 7) {
+          finalMode = "8_players";
+        } else if (actualLimit === 8) {
+          finalMode = "8_players";
+        }
+        
+        room.playerLimit = actualLimit;
+        room.gameMode = finalMode;
+        room.empty = false;
+        await room.save();
+
+        if (typeof callback === 'function') callback({ success: true });
+        
+        await this.startGameForRoom(roomId, room.players, room.playersName, room.gameMode);
+      } catch (err) {
+        console.error("Error starting custom game early:", err);
+        if (typeof callback === 'function') callback({ success: false, message: "Failed to start game." });
+      }
+    });
+  }
+
   registerEvents() {
     this.io.on("connection", (socket) => {
       this.handleCreateCustomRoom(socket);
       this.handleJoinCustomRoom(socket);
       this.handlePlayOnline(socket);
+      this.handleStartCustomGame(socket);
       this.handleDisconnection(socket);
     });
   }

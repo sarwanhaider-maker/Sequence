@@ -84,7 +84,6 @@ async function startGameForRoom(roomId, playerSockets, playerNames, gameMode) {
         await newGame.save();
         console.log(`Game started in room ${roomId}. Players count: ${playerSockets.length}, mode: ${gameMode}`);
 
-        // Emit OpponentFound to all players
         newGame.players.forEach(player => {
             io.to(player.socketId).emit('OpponentFound', {
                 yourHand: player.hand,
@@ -92,7 +91,8 @@ async function startGameForRoom(roomId, playerSockets, playerNames, gameMode) {
                 deckCount: newGame.shuffledDeck.length,
                 cards: newGame.cards,
                 players: newGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
-                currentPlayerIndex: 0
+                currentPlayerIndex: 0,
+                protectedPatterns: newGame.protectedPatterns || []
             });
         });
     } catch (err) {
@@ -134,7 +134,8 @@ io.on("connection", async (socket) => {
                     deckCount: game.shuffledDeck.length,
                     cards: game.cards,
                     players: game.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
-                    currentPlayerIndex: game.players.findIndex(p => p.isTurn)
+                    currentPlayerIndex: game.players.findIndex(p => p.isTurn),
+                    protectedPatterns: game.protectedPatterns || []
                 });
             }
         }
@@ -177,7 +178,14 @@ io.on("connection", async (socket) => {
             };
     
             await Game.updateOne({ roomId: roomId }, { $set: updateData });
-            let patternResult = gameController.Pattern(updatedGame.game, game.cards);
+            
+            let latestGame = await Game.findOne({ roomId: roomId });
+            if (!latestGame) {
+                console.log("Game not found after update: ", roomId);
+                return;
+            }
+
+            let patternResult = gameController.Pattern(latestGame, latestGame.cards);
             if (patternResult.winner) {
                 io.to(roomId).emit('gameOver', { winner: patternResult.winner });
             } else {
@@ -186,22 +194,24 @@ io.on("connection", async (socket) => {
                         'scores': patternResult.game.scores,
                         'protectedPatterns': patternResult.game.protectedPatterns
                     }});
+                    latestGame = await Game.findOne({ roomId: roomId });
                 }
 
                 // Check again for winner after updates
-                let target = game.targetSequences || 2;
-                let finalWinner = Object.keys(game.scores || {}).find(color => game.scores[color] >= target) || null;
+                let target = latestGame.targetSequences || 2;
+                let finalWinner = Object.keys(latestGame.scores || {}).find(color => latestGame.scores[color] >= target) || null;
                 if (finalWinner) {
                     io.to(roomId).emit('gameOver', { winner: finalWinner });
                 } else {
-                    game.players.forEach(player => {
+                    latestGame.players.forEach(player => {
                         io.to(player.socketId).emit('updateGameState', {
-                            deckCount: game.shuffledDeck.length,
-                            score: game.scores,
-                            cards: game.cards,
-                            currentPlayerIndex: game.players.findIndex(p => p.isTurn),
-                            players: game.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                            deckCount: latestGame.shuffledDeck.length,
+                            score: latestGame.scores,
+                            cards: latestGame.cards,
+                            currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
+                            players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
                             playerHand: player.hand,
+                            protectedPatterns: latestGame.protectedPatterns || []
                         });
                     });
                 }

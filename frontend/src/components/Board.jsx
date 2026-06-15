@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Cards from "./Cards";
 import PlayerDeck from "./PlayerDeck";
-import Deck from "./Deck";
 import ScoreComponent from "./Score";
 import { io } from "socket.io-client";
 import PlayerTurn from "./PlayerTurn";
@@ -15,6 +14,9 @@ const SERVER_URL = import.meta.env.VITE_API_URL || (
 );
 
 export default function Boards() {
+  const { roomId: urlRoomId } = useParams();
+  const navigate = useNavigate();
+
   const [cards, setCards] = useState([]);
   const [hoveredCard, setHoveredCard] = useState([]);
   const [redScore, setRedScore] = useState(0);
@@ -23,7 +25,6 @@ export default function Boards() {
   const [playOnline, setPlayOnline] = useState(false);
   const [socket, setSocket] = useState(null);
   const [playerName, setPlayerName] = useState("");
-  const [opponentName, setOpponentName] = useState(null); // Deprecated
   const [playingAs, setPlayingAs] = useState(null);
   const [yourHand, setYourHand] = useState(null);
   const [deckCount, setDeckCount] = useState(null);
@@ -33,13 +34,20 @@ export default function Boards() {
   const [isWaitingForMatch, setIsWaitingForMatch] = useState(false);
   const [room, setRoom] = useState("");
   
-  // New State variables for multi-player and lobby
+  // Lobby and turn states
   const [playersList, setPlayersList] = useState([]);
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
   const [connectedPlayers, setConnectedPlayers] = useState([]);
   const [playerLimit, setPlayerLimit] = useState(8);
   const [gameMode, setGameMode] = useState("8_players");
+  const [protectedPatterns, setProtectedPatterns] = useState([]);
 
+  // Splash Screen & Wizard States
+  const [showSplash, setShowSplash] = useState(true);
+  const [showWizard, setShowWizard] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+
+  // Initialize Socket
   useEffect(() => {
     if (!socket) {
       const newSocket = io(SERVER_URL, { autoConnect: true });
@@ -50,13 +58,25 @@ export default function Boards() {
     }
   }, []);
 
+  // Fade out splash screen and auto-show wizard
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+      if (!localStorage.getItem("sequence_wizard_seen")) {
+        setShowWizard(true);
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Listen to socket connections
   useEffect(() => {
     if (socket) {
       registerSocketEvents();
-      checkForRoomCode();
     }
   }, [socket]);
 
+  // Sync game state changes
   useEffect(() => {
     if (socket) {
       socket.on("updateGameState", (gameState) => {
@@ -67,6 +87,7 @@ export default function Boards() {
         setPlayersList(gameState.players || []);
         setBlueScore(gameState.score.blue);
         setRedScore(gameState.score.red);
+        setProtectedPatterns(gameState.protectedPatterns || []);
         if (gameState.score.green !== undefined) {
           setGreenScore(gameState.score.green);
         }
@@ -77,70 +98,106 @@ export default function Boards() {
     }
   }, [socket]);
 
-  const createCustomRoom = useCallback(async () => {
-    const result = await inputPlayerName();
-    if (!result.isConfirmed) {
-      return;
+  // Direct Route Joining Param Sync
+  useEffect(() => {
+    if (urlRoomId && socket && room !== urlRoomId) {
+      const checkAndJoin = () => {
+        if (socket.connected) {
+          joinCustomRoom(urlRoomId);
+        } else {
+          socket.once("connect", () => {
+            joinCustomRoom(urlRoomId);
+          });
+        }
+      };
+      checkAndJoin();
     }
-    const username = result.value;
-    setPlayerName(username);
+  }, [urlRoomId, socket, room]);
 
-    // Swal Selection for Game Mode
-    const playerLimitResult = await Swal.fire({
-      title: 'Select Game Mode',
-      input: 'select',
-      inputOptions: {
-        '2': '2 Players (2 Teams of 1, Goal: 2 seq)',
-        '3': '3 Players (3 Independent, Goal: 1 seq)',
-        '4': '4 Players (2 Teams of 2, Goal: 2 seq)',
-        '6_teams_3': '6 Players (3 Teams of 2, Goal: 1 seq)',
-        '6_teams_2': '6 Players (2 Teams of 3, Goal: 2 seq)',
-        '8': '8 Players (2 Teams of 4, Goal: 2 seq)'
-      },
-      inputValue: '8',
-      showCancelButton: true
+  const registerSocketEvents = useCallback(() => {
+    socket.on("connect", () => {});
+    socket.on("OpponentNotFound", () => {});
+    socket.on("OpponentFound", (data) => {
+      setIsWaitingForMatch(false);
+      setPlayingAs(data.playingAs);
+      setYourHand(data.yourHand);
+      setDeckCount(data.deckCount);
+      setCards(data.cards);
+      setPlayersList(data.players || []);
+      setCurrentPlayerIndex(data.currentPlayerIndex || 0);
+      setProtectedPatterns(data.protectedPatterns || []);
     });
-    if (!playerLimitResult.isConfirmed) {
+    socket.on("gameOver", (data) => {
+      Swal.fire({
+        title: `${data.winner.toUpperCase()} Won the game!`,
+        icon: "success",
+      });
+    });
+    socket.on("custom_room_created", (data) => {
+      setInCustomGame(true);
+      setCustomRoomId(data.roomId);
+      Swal.fire(`Room created successfully. Room ID: ${data.roomId}`);
+    });
+    socket.on("custom_room_joined", () => {
+      setInCustomGame(true);
+      Swal.fire("Joined room successfully.");
+    });
+    socket.on("room_join_error", (error) => {
+      Swal.fire("Error", error.message || "Join room error", "error");
+    });
+    socket.on("room_update", (data) => {
+      setConnectedPlayers(data.players);
+      setPlayerLimit(data.playerLimit);
+      setGameMode(data.gameMode);
+    });
+
+    return () => {
+      socket.off("connect");
+      socket.off("OpponentNotFound");
+      socket.off("OpponentFound");
+      socket.off("gameOver");
+      socket.off("custom_room_created");
+      socket.off("custom_room_joined");
+      socket.off("room_join_error");
+      socket.off("room_update");
+    };
+  }, [socket]);
+
+  const onlineButton = useCallback(async () => {
+    if (!playerName.trim()) {
+      Swal.fire("Error", "Please enter your name first!", "error");
       return;
     }
+    socket.emit("play_online", { playerName }, (response) => {
+      setPlayOnline(true);
+      if (response.roomId) {
+        setRoom(`${response.roomId}`);
+        navigate(`/room/${response.roomId}`);
+      } else if (response.waiting) {
+        setIsWaitingForMatch(true);
+        setRoom(`${response.waitingroom}`);
+        navigate(`/room/${response.waitingroom}`);
+      }
+    });
+  }, [socket, navigate, playerName]);
 
-    let modeVal = playerLimitResult.value;
-    let limit = 8;
-    let mode = "8_players";
-
-    if (modeVal === '2') {
-      limit = 2;
-      mode = "2_players";
-    } else if (modeVal === '3') {
-      limit = 3;
-      mode = "3_players";
-    } else if (modeVal === '4') {
-      limit = 4;
-      mode = "4_players";
-    } else if (modeVal === '6_teams_3') {
-      limit = 6;
-      mode = "6_players_3_teams";
-    } else if (modeVal === '6_teams_2') {
-      limit = 6;
-      mode = "6_players_2_teams";
-    } else if (modeVal === '8') {
-      limit = 8;
-      mode = "8_players";
+  const createCustomRoom = useCallback(async () => {
+    if (!playerName.trim()) {
+      Swal.fire("Error", "Please enter your name first!", "error");
+      return;
     }
-    
-    socket.emit("create_custom_room", { playerName: username, playerLimit: limit, gameMode: mode }, (response) => {
+    socket.emit("create_custom_room", { playerName, playerLimit, gameMode }, (response) => {
       if (response.roomId) {
         setInCustomGame(true);
         setCustomRoomId(response.roomId);
         setPlayOnline(true);
-        setIsWaitingForMatch(true);
         setRoom(`${response.roomId}`);
         navigate(`/room/${response.roomId}`);
       } else {
         console.error("Failed to create custom room.");
       }
     });
-  }, [socket, navigate]);
+  }, [socket, navigate, playerName, playerLimit, gameMode]);
 
   const joinCustomRoom = useCallback(async (forcedRoomCode = null) => {
     let roomCode = forcedRoomCode;
@@ -162,15 +219,30 @@ export default function Boards() {
       roomCode = roomCodeInput.value;
     }
 
-    const result = await inputPlayerName();
-    if (!result.isConfirmed) {
-      return;
+    if (!playerName.trim()) {
+      const nameResult = await Swal.fire({
+        title: "Enter your Name",
+        input: "text",
+        showCancelButton: true,
+        inputValidator: (value) => {
+          if (!value) {
+            return "You need to write something!";
+          }
+        },
+      });
+      if (!nameResult.isConfirmed) {
+        return;
+      }
+      setPlayerName(nameResult.value);
+      emitJoinRoom(roomCode, nameResult.value);
+    } else {
+      emitJoinRoom(roomCode, playerName);
     }
-    const username = result.value;
-    setPlayerName(username);
-    setPlayOnline(true);
+  }, [socket, navigate, playerName]);
 
-    socket.emit("join_custom_room", { roomId: roomCode, playerName: username }, (response) => {
+  const emitJoinRoom = (roomCode, name) => {
+    setPlayOnline(true);
+    socket.emit("join_custom_room", { roomId: roomCode, playerName: name }, (response) => {
       if (response.success) {
         setInCustomGame(true);
         setCustomRoomId(roomCode);
@@ -178,145 +250,291 @@ export default function Boards() {
         navigate(`/room/${roomCode}`);
       } else {
         console.error("Failed to join custom room.");
+        setPlayOnline(false);
         Swal.fire("Error", response.message || "Failed to join room.", "error");
       }
     });
-  }, [socket, navigate]);
+  };
 
-  const onlineButton = useCallback(async () => {
-    const result = await inputPlayerName();
-    if (!result.isConfirmed) {
-      return;
-    }
-    const username = result.value;
-    setPlayerName(username);
-
-    socket.emit("play_online", { playerName: username }, (response) => {
-      setPlayOnline(true);
-      if (response.roomId) {
-        setRoom(`${response.roomId}`);
-        navigate(`/room/${response.roomId}`);
-      } else if (response.waiting) {
-        setIsWaitingForMatch(true);
-        setRoom(`${response.waitingroom}`);
-        navigate(`/room/${response.waitingroom}`);
+  const handleExitRoom = () => {
+    Swal.fire({
+      title: "Are you sure?",
+      text: "Your game progress will be lost!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, Quit!"
+    }).then((result) => {
+      if (result.isConfirmed) {
+        if (socket && room) {
+          socket.emit("gameOverclicked", room);
+        }
+        window.location.href = "/";
       }
     });
-  }, [socket, navigate]);
+  };
 
-  const inputPlayerName = useCallback(async () => {
-    return await Swal.fire({
-      title: "Enter your Name",
-      input: "text",
-      showCancelButton: true,
-      inputValidator: (value) => {
-        if (!value) {
-          return "You need to write something!";
-        }
-      },
-    });
-  }, []);
+  const renderMobileHeader = () => {
+    if (playersList.length === 0) return null;
+    const activeTeam = playersList[currentPlayerIndex]?.team || "blue";
 
-  const registerSocketEvents = useCallback(() => {
-    socket.on("connect", () => {});
-    socket.on("OpponentNotFound", () => {
-      setOpponentName(false);
-    });
-    socket.on("OpponentFound", (data) => {
-      setIsWaitingForMatch(false);
-      setPlayingAs(data.playingAs);
-      setOpponentName(data.players[0].name); // Fallback for old component structure
-      setYourHand(data.yourHand);
-      setDeckCount(data.deckCount);
-      setCards(data.cards);
-      setPlayersList(data.players || []);
-      setCurrentPlayerIndex(data.currentPlayerIndex || 0);
-    });
-    socket.on("gameOver", (data) => {
-      Swal.fire({
-        title: `${data.winner.toUpperCase()} Won the game!`,
-        icon: "success",
-      });
-    });
-    socket.on("custom_room_created", (data) => {
-      setInCustomGame(true);
-      setCustomRoomId(data.roomId);
-      Swal.fire(`Room created successfully. Room ID: ${data.roomId}`);
-    });
-    socket.on("custom_room_joined", () => {
-      setInCustomGame(true);
-      Swal.fire("Joined room successfully.");
-    });
-    socket.on("room_join_error", (error) => {
-      Swal.fire("Error", error.message, "error");
-    });
-    socket.on("room_update", (data) => {
-      setConnectedPlayers(data.players);
-      setPlayerLimit(data.playerLimit);
-      setGameMode(data.gameMode);
-    });
-
-    return () => {
-      socket.off("connect");
-      socket.off("OpponentNotFound");
-      socket.off("OpponentFound");
-      socket.off("gameOver");
-      socket.off("custom_room_created");
-      socket.off("custom_room_joined");
-      socket.off("room_join_error");
-      socket.off("room_update");
-    };
-  }, [socket]);
-
-  const checkForRoomCode = useCallback(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = urlParams.get("roomCode");
-    if (roomCode) {
-      joinCustomRoom(roomCode);
-    }
-  }, [joinCustomRoom]);
-
-  if (inCustomGame && !playOnline) {
     return (
-      <div className="main-bg">
-        <div className="buttonContainer">
-          <button onClick={createCustomRoom} className="createRoomBtn">
-            Create Custom Room
-          </button>
-          <button onClick={() => joinCustomRoom()} className="joinRoomBtn">
-            Join Custom Room
-          </button>
+      <div id="mobile-header" style={{ display: "none", justifyContent: "space-between", alignItems: "center", width: "100%", maxWidth: "420px", padding: "6px 12px", background: "var(--panel-bg)", backdropFilter: "blur(15px)", border: "1px solid var(--border-color)", borderRadius: "12px", marginBottom: "8px", boxShadow: "0 4px 15px rgba(0,0,0,0.3)", boxSizing: "border-box", flexShrink: 0 }}>
+        {/* Blue Team */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 8px", borderRadius: "8px", border: activeTeam === "blue" ? "1px solid var(--accent-gold)" : "1px solid transparent", boxShadow: activeTeam === "blue" ? "0 0 8px var(--accent-gold)" : "none", transition: "all 0.3s" }}>
+          <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "var(--blue-chip)", border: "1px solid rgba(255,255,255,0.4)" }}></div>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <span style={{ fontSize: "0.75rem", fontWeight: "700" }}>Blue Team</span>
+            <span style={{ fontSize: "0.8rem", fontWeight: "800", color: "var(--accent-gold)" }}>Score: {blueScore}</span>
+          </div>
+        </div>
+
+        <div style={{ fontFamily: "'Cinzel', serif", fontSize: "0.95rem", fontWeight: "800", color: "#b0a9c9" }}>VS</div>
+
+        {/* Red Team */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 8px", borderRadius: "8px", border: activeTeam === "red" ? "1px solid var(--accent-gold)" : "1px solid transparent", boxShadow: activeTeam === "red" ? "0 0 8px var(--accent-gold)" : "none", transition: "all 0.3s", flexDirection: "row-reverse", textAlign: "right" }}>
+          <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "var(--red-chip)", border: "1px solid rgba(255,255,255,0.4)" }}></div>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <span style={{ fontSize: "0.75rem", fontWeight: "700" }}>Red Team</span>
+            <span style={{ fontSize: "0.8rem", fontWeight: "800", color: "var(--accent-gold)" }}>Score: {redScore}</span>
+          </div>
+        </div>
+
+        {greenScore !== undefined && (
+          <>
+            <div style={{ fontFamily: "'Cinzel', serif", fontSize: "0.95rem", fontWeight: "800", color: "#b0a9c9" }}>VS</div>
+            {/* Green Team */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 8px", borderRadius: "8px", border: activeTeam === "green" ? "1px solid var(--accent-gold)" : "1px solid transparent", boxShadow: activeTeam === "green" ? "0 0 8px var(--accent-gold)" : "none", transition: "all 0.3s", flexDirection: "row-reverse", textAlign: "right" }}>
+              <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "var(--green-chip)", border: "1px solid rgba(255,255,255,0.4)" }}></div>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "0.75rem", fontWeight: "700" }}>Green Team</span>
+                <span style={{ fontSize: "0.8rem", fontWeight: "800", color: "var(--accent-gold)" }}>Score: {greenScore}</span>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const renderWizard = () => {
+    if (!showWizard) return null;
+    return (
+      <div id="wizard-overlay" style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(10, 7, 20, 0.85)", backdropFilter: "blur(8px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9998 }}>
+        <div className="wizard-card" style={{ background: "rgba(25, 20, 45, 0.95)", border: "2px solid var(--border-color)", borderRadius: "20px", width: "90%", maxWidth: "480px", padding: "25px", boxShadow: "0 20px 50px rgba(0,0,0,0.6)", display: "flex", flexDirection: "column", alignItems: "center", position: "relative" }}>
+          
+          <img src="/assests/zaesar_logo.png" alt="Zaesar Games Logo" style={{ maxWidth: "110px", height: "auto", marginBottom: "15px", borderRadius: "8px", filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.3))" }} />
+          
+          <button onClick={() => { setShowWizard(false); localStorage.setItem('sequence_wizard_seen', 'true'); }} style={{ position: "absolute", top: "15px", right: "20px", background: "none", border: "none", color: "#b0a9c9", fontSize: "0.85rem", fontWeight: "600", cursor: "pointer", textTransform: "uppercase", letterSpacing: "1px" }}>Skip</button>
+
+          <div style={{ width: "100%", minHeight: "220px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
+            {wizardStep === 1 && (
+              <div className="wizard-step">
+                <h3 style={{ fontFamily: "'Cinzel', serif", fontSize: "1.4rem", color: "var(--accent-gold)", marginBottom: "12px", letterSpacing: "1px" }}>Welcome to Sequence</h3>
+                <p style={{ color: "#d1cde3", fontSize: "0.95rem", lineHeight: "1.5", marginBottom: "15px" }}>
+                  A classic board game combining card strategy and chip placement. The objective is to form continuous rows of 5 chips of your color on the board.
+                </p>
+                <div style={{ fontSize: "3rem", marginBottom: "10px" }}>🏆</div>
+              </div>
+            )}
+
+            {wizardStep === 2 && (
+              <div className="wizard-step">
+                <h3 style={{ fontFamily: "'Cinzel', serif", fontSize: "1.3rem", color: "var(--accent-cyan)", marginBottom: "12px", letterSpacing: "1px" }}>Playing a Turn</h3>
+                <p style={{ color: "#d1cde3", fontSize: "0.95rem", lineHeight: "1.5", marginBottom: "15px" }}>
+                  Select a card from **YOUR HAND** at the bottom of the screen. Matching board cells will highlight in gold. Click a highlighted cell to place a chip and end your turn.
+                </p>
+                <div style={{ fontSize: "3rem", marginBottom: "10px" }}>🃏</div>
+              </div>
+            )}
+
+            {wizardStep === 3 && (
+              <div className="wizard-step">
+                <h3 style={{ fontFamily: "'Cinzel', serif", fontSize: "1.3rem", color: "var(--accent-gold)", marginBottom: "12px", letterSpacing: "1px" }}>Jack Cards Rule</h3>
+                <p style={{ color: "#d1cde3", fontSize: "0.9rem", lineHeight: "1.4", marginBottom: "10px", textAlign: "left" }}>
+                  👑 **Two-Eyed Jacks (Clubs ♣ / Diamonds ♦)**: Wild! Place a chip on any empty space on the board.
+                </p>
+                <p style={{ color: "#d1cde3", fontSize: "0.9rem", lineHeight: "1.4", marginBottom: "15px", textAlign: "left" }}>
+                  👁️ **One-Eyed Jacks (Spades ♠ / Hearts ♥)**: Removal! Remove any of your opponent's chips (unless protected).
+                </p>
+              </div>
+            )}
+
+            {wizardStep === 4 && (
+              <div className="wizard-step">
+                <h3 style={{ fontFamily: "'Cinzel', serif", fontSize: "1.3rem", color: "var(--accent-cyan)", marginBottom: "12px", letterSpacing: "1px" }}>Free Corners & Frozen Sequences</h3>
+                <p style={{ color: "#d1cde3", fontSize: "0.9rem", lineHeight: "1.4", marginBottom: "10px", textAlign: "left" }}>
+                  ⭐ **Corner Cells**: The 4 corners are wild for everyone. You only need 4 chips to form a sequence using a corner.
+                </p>
+                <p style={{ color: "#d1cde3", fontSize: "0.9rem", lineHeight: "1.4", marginBottom: "15px", textAlign: "left" }}>
+                  ❄️ **Frozen Sequences**: Once a sequence of 5 is completed, it is frozen. Its chips cannot be removed. Form **2 sequences** to win!
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: "flex", gap: "8px", margin: "15px 0" }}>
+            {[1, 2, 3, 4].map(step => (
+              <span key={step} onClick={() => setWizardStep(step)} className={`wizard-dot ${wizardStep === step ? 'active' : ''}`}></span>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", gap: "15px", width: "100%", marginTop: "10px" }}>
+            {wizardStep > 1 && (
+              <button onClick={() => setWizardStep(prev => prev - 1)} className="btn-setup" style={{ flex: 1, margin: 0, background: "rgba(255,255,255,0.05)", border: "1px solid var(--border-color)", color: "#fff", padding: "12px", fontSize: "0.95rem", borderRadius: "10px", fontWeight: "600", cursor: "pointer" }}>Previous</button>
+            )}
+            <button
+              onClick={() => {
+                if (wizardStep < 4) {
+                  setWizardStep(prev => prev + 1);
+                } else {
+                  setShowWizard(false);
+                  localStorage.setItem('sequence_wizard_seen', 'true');
+                }
+              }}
+              className="btn-setup btn-setup-primary"
+              style={{ flex: 1, margin: 0, padding: "12px", fontSize: "0.95rem", borderRadius: "10px" }}
+            >
+              {wizardStep === 4 ? "Got It!" : "Next"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 1. Splash Screen
+  if (showSplash) {
+    return (
+      <div id="splash-screen" style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "#0f0b1e", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", zIndex: 9999 }}>
+        <div style={{ textAlign: "center", animation: "scaleIn 1.0s ease forwards" }}>
+          <img src="/assests/zaesar_logo.png" alt="Zaesar Games Logo" style={{ maxWidth: "240px", height: "auto", marginBottom: "1.5rem", filter: "drop-shadow(0 10px 20px rgba(16, 217, 210, 0.3))", borderRadius: "16px" }} />
+          <div style={{ fontFamily: "'Cinzel', serif", fontWeight: 800, fontSize: "1.2rem", color: "var(--accent-cyan)", letterSpacing: "4px", textTransform: "uppercase", animation: "pulse 1.5s infinite alternate", marginTop: "0.5rem" }}>
+            Loading Sequence...
+          </div>
         </div>
       </div>
     );
   }
 
+  // 2. Setup Screen / Lobby Choice
   if (!playOnline && !inCustomGame) {
     return (
-      <div className="main-bg">
-        <button onClick={onlineButton} className="playOnline">
-          Play Online
-        </button>
-        <button
-          onClick={() => setInCustomGame(true)}
-          className="playWithFriendsBtn"
-        >
-          Play with Friends
-        </button>
-      </div>
+      <>
+        {renderWizard()}
+        <div className="flex flex-col items-center justify-center min-h-[85vh] w-full" style={{ animation: "fadeIn 0.5s ease-out" }}>
+          <h1 style={{ fontFamily: "'Cinzel', serif", fontSize: "3rem", fontWeight: "800", color: "white", textShadow: "0 0 15px rgba(16, 217, 210, 0.5)", margin: "0 0 20px 0", letterSpacing: "6px", textAlign: "center" }}>SEQUENCE</h1>
+          
+          <div className="setup-container">
+            <h2>Online Multiplayer Lobby</h2>
+            
+            <div className="form-group">
+              <label htmlFor="pname">Your Name</label>
+              <input
+                type="text"
+                id="pname"
+                placeholder="Enter name"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="gmode">Select Game Mode</label>
+              <select
+                id="gmode"
+                value={gameMode}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setGameMode(val);
+                  if (val === '2_players') setPlayerLimit(2);
+                  else if (val === '3_players') setPlayerLimit(3);
+                  else if (val === '4_players') setPlayerLimit(4);
+                  else if (val === '6_players_3_teams') setPlayerLimit(6);
+                  else if (val === '6_players_2_teams') setPlayerLimit(6);
+                  else if (val === '8_players') setPlayerLimit(8);
+                }}
+              >
+                <option value="2_players">2 Players (2 Teams of 1, Goal: 2 seq)</option>
+                <option value="3_players">3 Players (3 Independent, Goal: 1 seq)</option>
+                <option value="4_players">4 Players (2 Teams of 2, Goal: 2 seq)</option>
+                <option value="6_players_3_teams">6 Players (3 Teams of 2, Goal: 1 seq)</option>
+                <option value="6_players_2_teams">6 Players (2 Teams of 3, Goal: 2 seq)</option>
+                <option value="8_players">8 Players (2 Teams of 4, Goal: 2 seq)</option>
+              </select>
+            </div>
+
+            <button onClick={onlineButton} className="btn-setup btn-setup-primary">
+              Quick Match (Play Online)
+            </button>
+            
+            <button onClick={createCustomRoom} className="btn-setup btn-setup-secondary">
+              Create Custom Room (Play with Friends)
+            </button>
+
+            <button onClick={() => joinCustomRoom()} className="btn-setup" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid var(--border-color)", color: "#b0a9c9" }}>
+              Join Custom Room
+            </button>
+
+            <button onClick={() => setShowWizard(true)} className="btn-setup" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid var(--border-color)", color: "#b0a9c9" }}>
+              How to Play
+            </button>
+          </div>
+        </div>
+      </>
     );
-  } else if (playOnline && playersList.length === 0 && !inCustomGame && isWaitingForMatch) {
+  }
+
+  // 3. Waiting for Quick Match
+  if (playOnline && playersList.length === 0 && !inCustomGame && isWaitingForMatch) {
     return (
-      <div className="waiting">
+      <div className="waiting text-white">
         <p>Waiting for an opponent...</p>
       </div>
     );
-  } else if (inCustomGame && playersList.length === 0) {
+  }
+
+  // 4. Custom Room Lobby Waiting for Friends
+  if (inCustomGame && playersList.length === 0) {
+    const inviteLink = `${window.location.origin}/room/${customRoomId}`;
+    const isHost = connectedPlayers[0] === playerName;
+
     return (
-      <div className="customGameWaiting main-bg text-center text-white p-8">
-        <p className="mb-4 text-3xl font-bold">Room ID: {customRoomId}</p>
-        <p className="text-xl mb-6">Waiting for friends to join ({connectedPlayers.length} / {playerLimit} connected)...</p>
-        <div className="bg-gray-800 p-6 rounded-lg max-w-md mx-auto text-left border border-cyan-500 shadow-md">
+      <div className="customGameWaiting flex flex-col items-center justify-center min-h-[85vh] w-full text-center text-white p-8 animate-[fadeIn_0.5s_ease-out]">
+        <p className="mb-4 text-3xl font-bold text-cyan-400">Room ID: {customRoomId}</p>
+        <p className="text-xl mb-6">Waiting for friends ({connectedPlayers.length} / {playerLimit} connected)...</p>
+        
+        <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(inviteLink);
+              Swal.fire("Copied!", "Invite link copied to clipboard.", "success");
+            }}
+            className="btn-setup btn-setup-primary"
+            style={{ padding: "8px 16px", fontSize: "0.9rem", width: "auto", margin: 0 }}
+          >
+            Copy Invite Link
+          </button>
+          
+          {isHost && connectedPlayers.length >= 2 && (
+            <button
+              onClick={() => {
+                socket.emit("start_custom_game", { roomId: customRoomId }, (res) => {
+                  if (!res.success) {
+                    Swal.fire("Error", res.message || "Failed to start game.", "error");
+                  }
+                });
+              }}
+              className="btn-setup btn-setup-secondary"
+              style={{ padding: "8px 16px", fontSize: "0.9rem", width: "auto", margin: 0 }}
+            >
+              Start Game
+            </button>
+          )}
+        </div>
+
+        <div className="bg-gray-800/80 backdrop-blur-md p-6 rounded-lg max-w-md mx-auto text-left border border-cyan-500/30 shadow-xl w-full">
           <h3 className="text-lg font-bold border-b border-gray-600 pb-2 mb-3 text-cyan-400">Connected Players</h3>
           <ul className="list-disc list-inside space-y-2">
             {connectedPlayers.map((player, idx) => (
@@ -326,16 +544,22 @@ export default function Boards() {
         </div>
       </div>
     );
-  } else {
-    // Game is active! Determine target sequence goal
-    let targetGoal = 2;
-    if (gameMode === "3_players" || gameMode === "6_players_3_teams") {
-      targetGoal = 1;
-    }
-    return (
-      <>
-        <div className="game-board relative mx-auto my-8">
-          <span className="sequence-text sequence-text-left">SEQUENCE</span>
+  }
+
+  // 5. Active Game Screen
+  let targetGoal = 2;
+  if (gameMode === "3_players" || gameMode === "6_players_3_teams") {
+    targetGoal = 1;
+  }
+
+  return (
+    <>
+      {renderWizard()}
+      <div id="game-screen" style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", flex: 1, minHeight: 0 }}>
+        {renderMobileHeader()}
+        
+        <div className="game-layout">
+          {/* Left: Cards Grid (Wood container is inside Cards component) */}
           <Cards
             roomId={room} 
             socket={socket}
@@ -344,27 +568,67 @@ export default function Boards() {
             hoveredCard={hoveredCard}
             currentPlayerIndex={currentPlayerIndex}
             playingAs={playingAs}
+            protectedPatterns={protectedPatterns}
           />
-          <span className="sequence-text sequence-text-right">SEQUENCE</span>
+
+          {/* Right: Info & Decks Sidebar */}
+          <div className="side-panels">
+            {/* Scoreboard Panel */}
+            <div className="panel score-status-panel">
+              <div className="info-title">
+                <span>SCORE BOARD</span>
+                <span className="goal-text">GOAL: {targetGoal} SEQ</span>
+              </div>
+              
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px", fontSize: "0.8rem", borderBottom: "1px solid var(--border-color)", paddingBottom: "6px", flexShrink: 0 }}>
+                <span style={{ color: "#b0a9c9", fontWeight: "600", textTransform: "uppercase" }}>Deck Remaining:</span>
+                <span style={{ fontWeight: "700", color: "var(--accent-cyan)" }}>{deckCount}</span>
+              </div>
+
+              {/* Turn display */}
+              <div className={`turn-alert turn-${playersList[currentPlayerIndex]?.team || "blue"}`} style={{ fontSize: "0.8rem", padding: "4px", marginBottom: "8px" }}>
+                {playingAs === currentPlayerIndex ? "Your Turn" : `${playersList[currentPlayerIndex]?.name || "Opponent"}'s Turn`}
+              </div>
+
+              <ScoreComponent redScore={redScore} blueScore={blueScore} greenScore={greenScore} targetSequences={targetGoal} />
+            </div>
+
+            {/* Turn List Panel */}
+            <PlayerTurn
+              players={playersList}
+              currentPlayerIndex={currentPlayerIndex}
+              playingAs={playingAs}
+            />
+
+            {/* Hand Container Panel */}
+            <PlayerDeck
+              socket={socket}
+              playerHand={yourHand}
+              setSelectCard={setSelectCard}
+              setHoveredCard={setHoveredCard}
+              currentPlayerIndex={currentPlayerIndex}
+              playingAs={playingAs}
+            />
+
+            {/* Quit & Rules Buttons Row */}
+            <div className="action-buttons-row" style={{ display: "flex", gap: "8px", marginTop: "auto", flexShrink: 0 }}>
+              <button
+                onClick={() => setShowWizard(true)}
+                style={{ flex: 1, background: "rgba(255,255,255,0.05)", border: "1px solid var(--border-color)", color: "#b0a9c9", padding: "8px", fontSize: "0.85rem", fontWeight: "500", borderRadius: "8px", cursor: "pointer", transition: "all 0.3s" }}
+              >
+                How to Play
+              </button>
+              <button
+                onClick={handleExitRoom}
+                className="btn-quit"
+                style={{ flex: 1, margin: 0, padding: "8px", fontSize: "0.85rem" }}
+              >
+                Exit Game
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col justify-end items-end relative mr-4 mb-4">
-          <Deck deckCount={deckCount} />
-          <PlayerDeck
-            socket={socket}
-            playerHand={yourHand}
-            setSelectCard={setSelectCard}
-            setHoveredCard={setHoveredCard}
-            currentPlayerIndex={currentPlayerIndex}
-            playingAs={playingAs}
-          />
-          <ScoreComponent redScore={redScore} blueScore={blueScore} greenScore={greenScore} targetSequences={targetGoal} />
-          <PlayerTurn
-            players={playersList}
-            currentPlayerIndex={currentPlayerIndex}
-            playingAs={playingAs}
-          />
-        </div>
-      </>
-    );
-  }
+      </div>
+    </>
+  );
 }
