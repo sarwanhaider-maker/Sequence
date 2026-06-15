@@ -227,18 +227,109 @@
     }
 
     @media (max-width: 768px) {
-      .board-grid {
-        grid-template-columns: repeat(10, 8.5vw);
-        grid-template-rows: repeat(10, 11.9vw); /* 8.5vw * 1.4 = 11.9vw */
-        gap: 3px;
+      body {
+        padding: 4px;
+        justify-content: center;
       }
+
+      #game-screen {
+        padding: 0 4px;
+        height: 100vh;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+      }
+
+      /* Show mobile header */
+      #mobile-header {
+        display: flex !important;
+      }
+
+      .game-layout {
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+      }
+
+      /* Scale board container for mobile screen width */
       .board-container {
-        padding: 8px 10px;
+        padding: 4px 6px;
+        gap: 4px;
+        width: 100%;
+        max-width: 420px;
+        justify-content: center;
+      }
+
+      .board-grid {
+        grid-template-columns: repeat(10, min(38px, calc((90vw - 32px) / 10)));
+        grid-template-rows: repeat(10, min(53.2px, calc(((90vw - 32px) / 10) * 1.4)));
+        gap: 2px;
+        max-width: 100%;
+      }
+
+      .board-border-text {
+        font-size: 0.5rem;
+        letter-spacing: 0.5px;
+      }
+
+      /* Hide Score Board Panel and Game Log Panel on mobile */
+      .score-status-panel,
+      .game-log-panel {
+        display: none !important;
+      }
+
+      .side-panels {
+        max-width: 420px;
+        width: 100%;
+        height: auto;
         gap: 6px;
       }
-      .board-border-text {
-        font-size: 0.6rem;
-        letter-spacing: 1px;
+
+      /* Style the hand container as a clean row at the bottom */
+      .hand-container {
+        padding: 4px 6px;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      }
+
+      .hand-title {
+        font-size: 0.75rem;
+        margin-bottom: 4px;
+      }
+
+      .hand-cards {
+        max-width: 100%;
+        gap: 4px;
+        justify-content: center;
+        flex-wrap: nowrap;
+      }
+
+      .hand-card, .hand-cards img {
+        width: min(45px, calc((100vw - 48px) / 7)) !important;
+        height: min(63px, calc(((100vw - 48px) / 7) * 1.4)) !important;
+      }
+
+      .hand-card:hover {
+        transform: translateY(-4px);
+      }
+
+      .hand-card.selected {
+        transform: translateY(-6px);
+      }
+
+      /* Make exit buttons sleeker at the bottom */
+      .action-buttons-row {
+        margin-top: 4px !important;
+        gap: 6px !important;
+      }
+
+      .action-buttons-row button {
+        padding: 6px !important;
+        font-size: 0.75rem !important;
+        border-radius: 6px !important;
       }
     }
 
@@ -681,6 +772,31 @@
 
   <!-- SCREEN 2: Game Screen -->
   <div id="game-screen" class="screen">
+    
+    <!-- Mobile-only compact header -->
+    <div id="mobile-header" style="display: none; justify-content: space-between; align-items: center; width: 100%; max-width: 420px; padding: 6px 12px; background: var(--panel-bg); backdrop-filter: blur(15px); border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); flex-shrink: 0; box-sizing: border-box;">
+      <!-- Player 1 Profile -->
+      <div id="mobile-player-1" style="display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 8px; border: 1px solid transparent; transition: all 0.3s;">
+        <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--blue-chip); border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 2px 5px rgba(0,0,0,0.5);"></div>
+        <div style="display: flex; flex-direction: column;">
+          <span id="mobile-p1-name" style="font-size: 0.75rem; font-weight: 700; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Player 1</span>
+          <span style="font-size: 0.8rem; font-weight: 800; color: var(--accent-gold);">Score: <span id="mobile-p1-score">0</span></span>
+        </div>
+      </div>
+
+      <!-- VS Sign -->
+      <div style="font-family: 'Cinzel', serif; font-size: 0.95rem; font-weight: 800; color: #b0a9c9; text-shadow: 0 0 5px rgba(255,255,255,0.2);">VS</div>
+
+      <!-- Player 2 / Bot Profile -->
+      <div id="mobile-player-2" style="display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 8px; border: 1px solid transparent; transition: all 0.3s; flex-direction: row-reverse; text-align: right;">
+        <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--red-chip); border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 2px 5px rgba(0,0,0,0.5);"></div>
+        <div style="display: flex; flex-direction: column;">
+          <span id="mobile-p2-name" style="font-size: 0.75rem; font-weight: 700; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Bot</span>
+          <span style="font-size: 0.8rem; font-weight: 800; color: var(--accent-gold);">Score: <span id="mobile-p2-score">0</span></span>
+        </div>
+      </div>
+    </div>
+
     <div class="game-layout">
       <!-- Left: Board -->
       <div class="board-container">
@@ -694,7 +810,7 @@
       <!-- Right: Control/Info Panel -->
       <div class="side-panels">
         <!-- Score & Status Panel (Combined) -->
-        <div class="panel">
+        <div class="panel score-status-panel">
           <div class="info-title" style="margin-bottom: 6px; display: flex; justify-content: space-between; font-size: 0.85rem;">
             <span>SCORE BOARD</span>
             <span class="goal-text">GOAL: <span id="goal-val">2</span> SEQ</span>
@@ -716,7 +832,7 @@
         </div>
 
         <!-- Game Log Panel -->
-        <div class="panel" style="flex: 1; min-height: 80px; max-height: 100px; display: flex; flex-direction: column;">
+        <div class="panel game-log-panel" style="flex: 1; min-height: 80px; max-height: 100px; display: flex; flex-direction: column;">
           <div class="info-title" style="margin-bottom: 4px; font-size: 0.8rem;">
             <span>Game Log</span>
           </div>
@@ -733,7 +849,7 @@
           </div>
         </div>
 
-        <div style="display: flex; gap: 8px; margin-top: auto; flex-shrink: 0;">
+        <div class="action-buttons-row" style="display: flex; gap: 8px; margin-top: auto; flex-shrink: 0;">
           <button id="btn-how-to-play-game" style="flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: #b0a9c9; padding: 8px; font-size: 0.85rem; font-weight: 500; border-radius: 8px; cursor: pointer; transition: all 0.3s;">How to Play</button>
           <button id="btn-quit" class="btn-quit" style="flex: 1; margin-top: 0; padding: 8px; font-size: 0.85rem;">Exit Game</button>
         </div>
@@ -982,31 +1098,74 @@
       
       // Turn Display
       const turnDisplay = document.getElementById('turn-display');
-      turnDisplay.textContent = activePlayer.name + "'s Turn";
-      turnDisplay.className = 'turn-alert turn-' + activePlayer.team;
+      if (turnDisplay) {
+        turnDisplay.textContent = activePlayer.name + "'s Turn";
+        turnDisplay.className = 'turn-alert turn-' + activePlayer.team;
+      }
 
       // Goals info
-      document.getElementById('goal-val').textContent = gameState.targetSequences;
-      document.getElementById('deck-remaining-val').textContent = gameState.shuffledDeck.length;
+      const goalVal = document.getElementById('goal-val');
+      if (goalVal) goalVal.textContent = gameState.targetSequences;
+      
+      const deckRemainingVal = document.getElementById('deck-remaining-val');
+      if (deckRemainingVal) deckRemainingVal.textContent = gameState.shuffledDeck.length;
 
       // Score list
       const scoreList = document.getElementById('scores');
-      scoreList.innerHTML = `
-        <div class="score-item blue ${gameState.currentPlayerIndex === 0 ? 'active' : ''}">
-          <div style="display:flex; align-items:center;">
-            <span class="score-dot blue"></span>
-            <span>${gameState.players[0].name}</span>
+      if (scoreList) {
+        scoreList.innerHTML = `
+          <div class="score-item blue ${gameState.currentPlayerIndex === 0 ? 'active' : ''}">
+            <div style="display:flex; align-items:center;">
+              <span class="score-dot blue"></span>
+              <span>${gameState.players[0].name}</span>
+            </div>
+            <span class="score-value">${gameState.scores.blue}</span>
           </div>
-          <span class="score-value">${gameState.scores.blue}</span>
-        </div>
-        <div class="score-item red ${gameState.currentPlayerIndex === 1 ? 'active' : ''}">
-          <div style="display:flex; align-items:center;">
-            <span class="score-dot red"></span>
-            <span>${gameState.players[1].name}</span>
+          <div class="score-item red ${gameState.currentPlayerIndex === 1 ? 'active' : ''}">
+            <div style="display:flex; align-items:center;">
+              <span class="score-dot red"></span>
+              <span>${gameState.players[1].name}</span>
+            </div>
+            <span class="score-value">${gameState.scores.red}</span>
           </div>
-          <span class="score-value">${gameState.scores.red}</span>
-        </div>
-      `;
+        `;
+      }
+
+      // Update Mobile Header info
+      const mobileP1Name = document.getElementById('mobile-p1-name');
+      const mobileP1Score = document.getElementById('mobile-p1-score');
+      const mobileP2Name = document.getElementById('mobile-p2-name');
+      const mobileP2Score = document.getElementById('mobile-p2-score');
+
+      if (mobileP1Name && mobileP1Score && mobileP2Name && mobileP2Score) {
+        mobileP1Name.textContent = gameState.players[0].name;
+        mobileP1Score.textContent = gameState.scores.blue;
+        mobileP2Name.textContent = gameState.players[1].name;
+        mobileP2Score.textContent = gameState.scores.red;
+
+        // Active player turn indicator highlight on mobile
+        const mobP1 = document.getElementById('mobile-player-1');
+        const mobP2 = document.getElementById('mobile-player-2');
+        if (mobP1 && mobP2) {
+          if (gameState.currentPlayerIndex === 0) {
+            mobP1.style.borderColor = 'var(--accent-cyan)';
+            mobP1.style.background = 'rgba(0, 116, 217, 0.15)';
+            mobP1.style.boxShadow = '0 0 8px rgba(16, 217, 210, 0.3)';
+            
+            mobP2.style.borderColor = 'transparent';
+            mobP2.style.background = 'transparent';
+            mobP2.style.boxShadow = 'none';
+          } else {
+            mobP2.style.borderColor = 'var(--accent-cyan)';
+            mobP2.style.background = 'rgba(255, 65, 54, 0.15)';
+            mobP2.style.boxShadow = '0 0 8px rgba(16, 217, 210, 0.3)';
+            
+            mobP1.style.borderColor = 'transparent';
+            mobP1.style.background = 'transparent';
+            mobP1.style.boxShadow = 'none';
+          }
+        }
+      }
 
       // Render Active Player hand
       renderHand();
