@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sequence - Play Offline</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Cinzel:wght@600;800&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-color: #0f0b1e;
+      --panel-bg: rgba(30, 25, 50, 0.65);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --accent-cyan: #10d9d2;
+      --accent-gold: #e4ca56;
+      --blue-chip: radial-gradient(circle, #0074d9 0%, #001f3f 100%);
+      --red-chip: radial-gradient(circle, #ff4136 0%, #850000 100%);
+      --green-chip: radial-gradient(circle, #2ecc40 0%, #155010 100%);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--bg-color);
+      background-image: radial-gradient(circle at 50% 50%, #1a123a 0%, #0f0b1e 100%);
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      overflow-x: hidden;
+      padding-bottom: 20px;
+    }
+
+    h1 {
+      font-family: 'Cinzel', serif;
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: white;
+      text-shadow: 0 0 10px rgba(16, 217, 210, 0.4);
+      margin: 20px 0;
+      letter-spacing: 2px;
+    }
+
+    /* Screen manager */
+    .screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 1200px;
+      padding: 20px;
+      animation: fadeIn 0.5s ease-in-out forwards;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Setup Panel */
+    .setup-container {
+      background: var(--panel-bg);
+      backdrop-filter: blur(15px);
+      border: 1px solid var(--border-color);
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      text-align: center;
+      max-width: 500px;
+      width: 100%;
+      margin-top: 10vh;
+    }
+
+    .setup-container h2 {
+      font-size: 1.8rem;
+      margin-bottom: 30px;
+      color: var(--accent-cyan);
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 15px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 15px;
+      outline: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-cyan), #0bb5ae);
+      color: #0f0b1e;
+      box-shadow: 0 5px 15px rgba(16, 217, 210, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(16, 217, 210, 0.5);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, var(--accent-gold), #cbb13c);
+      color: #0f0b1e;
+      box-shadow: 0 5px 15px rgba(228, 202, 86, 0.3);
+    }
+
+    .btn-secondary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(228, 202, 86, 0.5);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #b0a9c9;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: white;
+      font-family: inherit;
+      font-size: 1rem;
+      outline: none;
+      transition: border 0.3s;
+    }
+
+    .form-group input:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    /* Game Layout */
+    .game-layout {
+      display: flex;
+      flex-direction: row;
+      gap: 30px;
+      width: 100%;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    @media (max-width: 1024px) {
+      .game-layout {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+
+    /* Left Side: Game Board */
+    .board-container {
+      background: #3e2a20; /* Wood style board border */
+      padding: 15px;
+      border-radius: 12px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+      border: 4px solid #291a13;
+    }
+
+    .board-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 70px);
+      grid-template-rows: repeat(10, 70px);
+      gap: 5px;
+    }
+
+    @media (max-width: 768px) {
+      .board-grid {
+        grid-template-columns: repeat(10, 8.5vw);
+        grid-template-rows: repeat(10, 8.5vw);
+        gap: 3px;
+      }
+      .board-container {
+        padding: 8px;
+      }
+    }
+
+    /* Card Cell styles */
+    .cell {
+      background-color: white;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+
+    .cell:hover {
+      transform: scale(1.05);
+      z-index: 10;
+    }
+
+    .cell.corner {
+      background: radial-gradient(circle, #533b30 0%, #1e110b 100%);
+      color: var(--accent-gold);
+      font-size: 1.5rem;
+      border: 2px solid var(--accent-gold);
+    }
+
+    .cell.highlighted {
+      box-shadow: 0 0 10px 4px var(--accent-gold);
+      transform: scale(1.08);
+      z-index: 15;
+    }
+
+    .card-rank {
+      font-size: 1.1rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .card-suit {
+      font-size: 1.3rem;
+      line-height: 1;
+    }
+
+    .suit-red {
+      color: #ff4136;
+    }
+
+    .suit-black {
+      color: #111;
+    }
+
+    /* Chips */
+    .chip {
+      width: 75%;
+      height: 75%;
+      border-radius: 50%;
+      position: absolute;
+      border: 3px dashed rgba(255, 255, 255, 0.8);
+      z-index: 5;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.3);
+      animation: dropChip 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    @keyframes dropChip {
+      from { transform: scale(1.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .chip-blue {
+      background: var(--blue-chip);
+    }
+
+    .chip-red {
+      background: var(--red-chip);
+    }
+
+    .chip-green {
+      background: var(--green-chip);
+    }
+
+    .cell.seq-protected::after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border: 2px solid #ffd700;
+      border-radius: 6px;
+      box-shadow: 0 0 8px #ffd700;
+      z-index: 6;
+      pointer-events: none;
+    }
+
+    /* Right Side: Game Panels */
+    .side-panels {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-width: 320px;
+      width: 100%;
+      max-width: 350px;
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      backdrop-filter: blur(15px);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+
+    /* Info Panel */
+    .info-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #b0a9c9;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 8px;
+      margin-bottom: 15px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .goal-text {
+      color: var(--accent-gold);
+      font-weight: 700;
+    }
+
+    .score-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .score-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 8px;
+      border-left: 5px solid transparent;
+    }
+
+    .score-item.active {
+      background: rgba(255,255,255,0.08);
+      box-shadow: 0 0 10px rgba(16, 217, 210, 0.1);
+    }
+
+    .score-item.blue { border-left-color: #0074d9; }
+    .score-item.red { border-left-color: #ff4136; }
+    .score-item.green { border-left-color: #2ecc40; }
+
+    .score-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 8px;
+    }
+
+    .score-dot.blue { background-color: #0074d9; }
+    .score-dot.red { background-color: #ff4136; }
+    .score-dot.green { background-color: #2ecc40; }
+
+    .score-value {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    /* Turn display */
+    .turn-alert {
+      text-align: center;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-weight: 600;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.9; }
+      50% { opacity: 0.6; }
+    }
+
+    .turn-blue { background: rgba(0, 116, 217, 0.25); color: #7fdbff; border: 1px solid #0074d9; }
+    .turn-red { background: rgba(255, 65, 54, 0.25); color: #ff851b; border: 1px solid #ff4136; }
+    .turn-green { background: rgba(46, 204, 64, 0.25); color: #2ecc40; border: 1px solid #2ecc40; }
+
+    /* Player Deck (Cards in Hand) */
+    .hand-container {
+      width: 100%;
+      background: var(--panel-bg);
+      backdrop-filter: blur(15px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px;
+      margin-top: 25px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .hand-title {
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin-bottom: 15px;
+      letter-spacing: 1px;
+    }
+
+    .hand-cards {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .hand-cards img {
+      width: 75px;
+      height: 110px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .hand-card {
+      width: 75px;
+      height: 110px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 10px;
+      user-select: none;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .hand-card:hover {
+      transform: translateY(-12px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+    }
+
+    .hand-card.selected {
+      transform: translateY(-18px);
+      box-shadow: 0 0 12px 3px var(--accent-gold);
+      border: 2px solid var(--accent-gold);
+    }
+
+    .card-corner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      line-height: 1;
+    }
+
+    .card-corner-rank {
+      font-size: 1rem;
+      font-weight: 800;
+    }
+
+    .card-corner-suit {
+      font-size: 1.1rem;
+    }
+
+    .card-center-suit {
+      align-self: center;
+      font-size: 2.2rem;
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+
+    .card-corner-bottom {
+      transform: rotate(180deg);
+    }
+
+    /* Reset button */
+    .btn-quit {
+      margin-top: auto;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border-color);
+      color: #b0a9c9;
+      padding: 10px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-quit:hover {
+      background: rgba(255, 65, 54, 0.15);
+      color: #ff4136;
+      border-color: #ff4136;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>SEQUENCE</h1>
+
+  <!-- SCREEN 1: Setup Screen -->
+  <div id="setup-screen" class="screen active">
+    <div class="setup-container">
+      <h2>Offline Game Settings</h2>
+      
+      <div class="form-group">
+        <label for="player-name">Your Name</label>
+        <input type="text" id="player-name" value="Player 1" placeholder="Enter name">
+      </div>
+
+      <button id="btn-bot-1" class="btn btn-primary">Play vs. Bot (1 vs 1)</button>
+      <button id="btn-local-2" class="btn btn-secondary">Local Pass & Play (2 Players)</button>
+    </div>
+  </div>
+
+  <!-- SCREEN 2: Game Screen -->
+  <div id="game-screen" class="screen">
+    <div class="game-layout">
+      <!-- Left: Board -->
+      <div class="board-container">
+        <div id="board" class="board-grid">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- Right: Control/Info Panel -->
+      <div class="side-panels">
+        <!-- Turn Panel -->
+        <div id="turn-display" class="turn-alert turn-blue">
+          Your Turn
+        </div>
+
+        <!-- Score panel -->
+        <div class="panel">
+          <div class="info-title">
+            <span>Score Board</span>
+            <span class="goal-text">Goal: <span id="goal-val">2</span> Seq</span>
+          </div>
+          <div id="scores" class="score-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Deck count info -->
+        <div class="panel" style="display:flex; justify-content: space-between; align-items:center;">
+          <span style="font-weight: 600; color:#b0a9c9; font-size:0.9rem; text-transform:uppercase;">Deck Remaining:</span>
+          <span id="deck-remaining-val" style="font-size:1.2rem; font-weight:700; color:var(--accent-cyan);">104</span>
+        </div>
+
+        <button id="btn-quit" class="btn-quit">Exit Game</button>
+      </div>
+    </div>
+
+    <!-- Hand Container at bottom -->
+    <div class="hand-container">
+      <div class="hand-title">YOUR HAND</div>
+      <div id="player-hand" class="hand-cards">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript logic -->
+  <script>
+    // Audio Synthesizer helper using Web Audio API
+    class SoundEffects {
+      constructor() {
+        this.ctx = null;
+      }
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+      }
+      playSelect() {
+        this.init();
+        if (!this.ctx) return;
+        let osc = this.ctx.createOscillator();
+        let gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.1);
+      }
+      playPlace() {
+        this.init();
+        if (!this.ctx) return;
+        let osc = this.ctx.createOscillator();
+        let gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.2);
+      }
+      playWin() {
+        this.init();
+        if (!this.ctx) return;
+        let now = this.ctx.currentTime;
+        let playNote = (freq, time, dur) => {
+          let osc = this.ctx.createOscillator();
+          let gain = this.ctx.createGain();
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.frequency.setValueAtTime(freq, time);
+          gain.gain.setValueAtTime(0.15, time);
+          gain.gain.exponentialRampToValueAtTime(0.01, time + dur);
+          osc.start(time);
+          osc.stop(time + dur);
+        };
+        playNote(261.63, now, 0.15); // C4
+        playNote(329.63, now + 0.15, 0.15); // E4
+        playNote(392.00, now + 0.3, 0.15); // G4
+        playNote(523.25, now + 0.45, 0.5); // C5
+      }
+    }
+
+    const sound = new SoundEffects();
+
+    // Cards representation details
+    const SUITS = { 'S': '♠', 'C': '♣', 'D': '♦', 'H': '♥' };
+    const SUIT_NAMES = { 'S': 'Spades', 'C': 'Clubs', 'D': 'Diamonds', 'H': 'Hearts' };
+    const RANKS = { '2': '2', '3': '3', '4': '4', '5': '5', '6': '6', '7': '7', '8': '8', '9': '9', 'T': '10', 'Q': 'Q', 'K': 'K', 'A': 'A' };
+
+    // The sequence board setup 10x10 mapping
+    const BOARD_LAYOUT = [
+      ["Free", "6C", "7C", "8C", "9C", "10C", "QC", "KC", "AC", "Free"],
+      ["5C", "4C", "3C", "2C", "AH", "KH", "QH", "10H", "9H", "10S"],
+      ["6C", "AS", "2D", "3D", "4D", "5D", "6D", "7D", "8H", "QS"],
+      ["7C", "KS", "6C", "5C", "4C", "3C", "2C", "8D", "7H", "KS"],
+      ["8C", "QS", "7C", "AS", "2D", "3D", "4D", "9D", "6H", "AS"],
+      ["9C", "10S", "8C", "KS", "6C", "5C", "4C", "10D", "5H", "2D"],
+      ["10C", "9S", "9C", "QS", "7C", "AS", "2D", "QD", "4H", "3D"],
+      ["QC", "8S", "10C", "10S", "8C", "KS", "AS", "KD", "3H", "4D"],
+      ["KC", "7S", "QC", "9S", "9C", "8C", "7C", "AD", "2H", "5D"],
+      ["Free", "6S", "5S", "4S", "3S", "2S", "2H", "3H", "5D", "Free"]
+    ];
+
+    // Helper: find all matches for a given card on the 10x10 board (returns 0-indexed [r, c] pairs)
+    function findBoardMatches(cardCode) {
+      if (cardCode.startsWith('J')) return []; // Jacks are wild/removal and don't appear on the board
+      let matches = [];
+      for (let r = 0; r < 10; r++) {
+        for (let c = 0; c < 10; c++) {
+          if (BOARD_LAYOUT[r][c] === cardCode) {
+            matches.push([r, c]);
+          }
+        }
+      }
+      return matches;
+    }
+
+    // State Variables
+    let gameState = {
+      isBotMode: false,
+      playerName: "Player 1",
+      playerLimit: 2,
+      gameMode: "2_players",
+      scores: { blue: 0, red: 0 },
+      targetSequences: 2,
+      currentPlayerIndex: 0, // 0 = Player 1 (Blue), 1 = Bot/Player 2 (Red)
+      players: [
+        { name: "Player 1", team: "blue", hand: [] },
+        { name: "Bot", team: "red", hand: [] }
+      ],
+      shuffledDeck: [],
+      boardState: Array(10).fill(null).map(() => Array(10).fill(null)), // holds "blue" or "red"
+      protectedPatterns: [], // list of lists of coordinate strings e.g. ["2,3", "3,3", ...]
+      selectedHandCardIndex: null
+    };
+
+    // Initialize Card Deck (two standard 52-card decks, no Jokers = 104 cards)
+    function createDoubleDeck() {
+      let deck = [];
+      const suits = ['S', 'C', 'D', 'H'];
+      const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
+      
+      // We push two copies of each card (104 total)
+      for (let copy = 0; copy < 2; copy++) {
+        for (let s of suits) {
+          for (let r of ranks) {
+            deck.push(r + s);
+          }
+        }
+      }
+      return deck;
+    }
+
+    function shuffle(deck) {
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+    }
+
+    // Start offline game session
+    function startNewGame(isBot, player1Name) {
+      gameState.isBotMode = isBot;
+      gameState.playerName = player1Name || "Player 1";
+      gameState.targetSequences = 2;
+      gameState.currentPlayerIndex = 0;
+      
+      gameState.players = [
+        { name: gameState.playerName, team: "blue", hand: [] },
+        { name: isBot ? "Sequence Bot" : "Player 2", team: "red", hand: [] }
+      ];
+
+      gameState.scores = { blue: 0, red: 0 };
+      gameState.protectedPatterns = [];
+      gameState.selectedHandCardIndex = null;
+
+      // Reset board State
+      gameState.boardState = Array(10).fill(null).map(() => Array(10).fill(null));
+
+      // Prep deck
+      gameState.shuffledDeck = createDoubleDeck();
+      shuffle(gameState.shuffledDeck);
+
+      // Deal hands: 7 cards each for a 2 player game
+      const handSize = 7;
+      for (let p = 0; p < 2; p++) {
+        gameState.players[p].hand = [];
+        for (let h = 0; h < handSize; h++) {
+          gameState.players[p].hand.push(gameState.shuffledDeck.pop());
+        }
+      }
+
+      // Draw initial Board
+      renderBoard();
+      updateUI();
+
+      // Change Screens
+      document.getElementById('setup-screen').classList.remove('active');
+      document.getElementById('game-screen').classList.add('active');
+    }
+
+    // Render the 10x10 Sequence board
+    function renderBoard() {
+      const boardEl = document.getElementById('board');
+      boardEl.innerHTML = '';
+
+      for (let r = 0; r < 10; r++) {
+        for (let c = 0; c < 10; c++) {
+          const cardCode = BOARD_LAYOUT[r][c];
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+
+          if (cardCode === "Free") {
+            cell.classList.add('corner');
+            cell.innerHTML = '★';
+          } else {
+            const rank = cardCode.substring(0, cardCode.length - 1);
+            const suit = cardCode.substring(cardCode.length - 1);
+            const suitSymbol = SUITS[suit];
+            const isRed = (suit === 'D' || suit === 'H');
+
+            cell.innerHTML = `
+              <span class="card-rank ${isRed ? 'suit-red' : 'suit-black'}">${RANKS[rank]}</span>
+              <span class="card-suit ${isRed ? 'suit-red' : 'suit-black'}">${suitSymbol}</span>
+            `;
+          }
+
+          cell.addEventListener('click', () => handleCellClick(r, c));
+          boardEl.appendChild(cell);
+        }
+      }
+    }
+
+    // Update Scores, turns, hands, and deck count
+    function updateUI() {
+      const activePlayer = gameState.players[gameState.currentPlayerIndex];
+      
+      // Turn Display
+      const turnDisplay = document.getElementById('turn-display');
+      turnDisplay.textContent = activePlayer.name + "'s Turn";
+      turnDisplay.className = 'turn-alert turn-' + activePlayer.team;
+
+      // Goals info
+      document.getElementById('goal-val').textContent = gameState.targetSequences;
+      document.getElementById('deck-remaining-val').textContent = gameState.shuffledDeck.length;
+
+      // Score list
+      const scoreList = document.getElementById('scores');
+      scoreList.innerHTML = `
+        <div class="score-item blue ${gameState.currentPlayerIndex === 0 ? 'active' : ''}">
+          <div style="display:flex; align-items:center;">
+            <span class="score-dot blue"></span>
+            <span>${gameState.players[0].name}</span>
+          </div>
+          <span class="score-value">${gameState.scores.blue}</span>
+        </div>
+        <div class="score-item red ${gameState.currentPlayerIndex === 1 ? 'active' : ''}">
+          <div style="display:flex; align-items:center;">
+            <span class="score-dot red"></span>
+            <span>${gameState.players[1].name}</span>
+          </div>
+          <span class="score-value">${gameState.scores.red}</span>
+        </div>
+      `;
+
+      // Render Active Player hand
+      renderHand();
+
+      // Highlight matching coordinates of selected card
+      clearBoardHighlights();
+      if (gameState.selectedHandCardIndex !== null) {
+        const selectedCard = activePlayer.hand[gameState.selectedHandCardIndex];
+        const matches = findBoardMatches(selectedCard);
+
+        matches.forEach(([r, c]) => {
+          const cell = document.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+          if (cell && !gameState.boardState[r][c]) {
+            cell.classList.add('highlighted');
+          }
+        });
+      }
+    }
+
+    // Render active player's hand cards
+    function renderHand() {
+      const handEl = document.getElementById('player-hand');
+      handEl.innerHTML = '';
+
+      // Don't show Bot cards to the human player!
+      if (gameState.isBotMode && gameState.currentPlayerIndex === 1) {
+        handEl.innerHTML = '<p style="color:#b0a9c9; font-style:italic;">Sequence Bot is thinking...</p>';
+        return;
+      }
+
+      const activePlayer = gameState.players[gameState.currentPlayerIndex];
+      activePlayer.hand.forEach((card, idx) => {
+        const rank = card.substring(0, card.length - 1);
+        const suit = card.substring(card.length - 1);
+        const suitSymbol = SUITS[suit];
+        const isRed = (suit === 'D' || suit === 'H');
+
+        const cardDiv = document.createElement('div');
+        cardDiv.className = `hand-card ${gameState.selectedHandCardIndex === idx ? 'selected' : ''}`;
+        
+        cardDiv.innerHTML = `
+          <div class="card-corner ${isRed ? 'suit-red' : 'suit-black'}">
+            <span class="card-corner-rank">${RANKS[rank] || rank}</span>
+            <span class="card-corner-suit">${suitSymbol}</span>
+          </div>
+          <div class="card-center-suit ${isRed ? 'suit-red' : 'suit-black'}">${suitSymbol}</div>
+          <div class="card-corner card-corner-bottom ${isRed ? 'suit-red' : 'suit-black'}">
+            <span class="card-corner-rank">${RANKS[rank] || rank}</span>
+            <span class="card-corner-suit">${suitSymbol}</span>
+          </div>
+        `;
+
+        cardDiv.addEventListener('click', () => {
+          sound.playSelect();
+          gameState.selectedHandCardIndex = (gameState.selectedHandCardIndex === idx) ? null : idx;
+          updateUI();
+        });
+
+        handEl.appendChild(cardDiv);
+      });
+    }
+
+    function clearBoardHighlights() {
+      document.querySelectorAll('.cell.highlighted').forEach(cell => {
+        cell.classList.remove('highlighted');
+      });
+    }
+
+    // Click handler for board cells
+    function handleCellClick(row, col) {
+      if (gameState.selectedHandCardIndex === null) return;
+      
+      const activePlayer = gameState.players[gameState.currentPlayerIndex];
+      const selectedCard = activePlayer.hand[gameState.selectedHandCardIndex];
+
+      let success = makeMove(row, col, selectedCard, activePlayer);
+      if (success) {
+        sound.playPlace();
+        
+        // Remove card from hand and draw new one
+        activePlayer.hand.splice(gameState.selectedHandCardIndex, 1);
+        if (gameState.shuffledDeck.length > 0) {
+          activePlayer.hand.push(gameState.shuffledDeck.pop());
+        }
+
+        // Check for completed sequences
+        checkBoardPatterns();
+
+        // Check for winner
+        let winner = checkForWinner();
+        if (winner) {
+          sound.playWin();
+          setTimeout(() => {
+            Swal.fire({
+              title: `${winner.name} wins!`,
+              text: 'Congratulations on completing 2 sequences!',
+              icon: 'success',
+              confirmButtonText: 'Great!'
+            }).then(() => {
+              exitGame();
+            });
+          }, 300);
+          return;
+        }
+
+        // Shift turn
+        gameState.currentPlayerIndex = (gameState.currentPlayerIndex === 0) ? 1 : 0;
+        gameState.selectedHandCardIndex = null;
+        updateUI();
+
+        // If next player is Bot, trigger bot play after brief delay
+        if (gameState.isBotMode && gameState.currentPlayerIndex === 1) {
+          setTimeout(triggerBotTurn, 800);
+        }
+      }
+    }
+
+    // Move placement logic (returns true if successful)
+    function makeMove(row, col, card, player) {
+      // 1. Two-Eyed Jacks: Wild card (JC, JD)
+      if (card === "JC" || card === "JD") {
+        if (gameState.boardState[row][col] === null && !isCorner(row, col)) {
+          placeChip(row, col, player.team);
+          return true;
+        }
+        return false;
+      }
+      
+      // 2. One-Eyed Jacks: Removal card (JS, JH)
+      if (card === "JS" || card === "JH") {
+        if (gameState.boardState[row][col] !== null && gameState.boardState[row][col] !== player.team) {
+          if (!isCellProtected(row, col)) {
+            removeChip(row, col);
+            return true;
+          } else {
+            alert("This chip is protected by a completed sequence!");
+          }
+        }
+        return false;
+      }
+
+      // 3. Standard card matching
+      const targetCard = BOARD_LAYOUT[row][col];
+      if (targetCard === card && gameState.boardState[row][col] === null) {
+        placeChip(row, col, player.team);
+        return true;
+      }
+
+      return false;
+    }
+
+    function isCorner(r, c) {
+      return (r === 0 || r === 9) && (c === 0 || c === 9);
+    }
+
+    function placeChip(r, c, team) {
+      gameState.boardState[r][c] = team;
+      const cell = document.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+      if (cell) {
+        const chip = document.createElement('div');
+        chip.className = 'chip chip-' + team;
+        cell.appendChild(chip);
+      }
+    }
+
+    function removeChip(r, c) {
+      gameState.boardState[r][c] = null;
+      const cell = document.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+      if (cell) {
+        const chip = cell.querySelector('.chip');
+        if (chip) chip.remove();
+      }
+    }
+
+    function isCellProtected(r, c) {
+      const coordStr = `${r},${c}`;
+      return gameState.protectedPatterns.some(pattern => pattern.includes(coordStr));
+    }
+
+    // Pattern Checking (horizontal, vertical, diagonal)
+    function checkBoardPatterns() {
+      const teams = ["blue", "red"];
+      const cornerCoords = ["0,0", "0,9", "9,0", "9,9"];
+
+      teams.forEach(team => {
+        let owned = [];
+        for (let r = 0; r < 10; r++) {
+          for (let c = 0; c < 10; c++) {
+            if (gameState.boardState[r][c] === team || isCorner(r, c)) {
+              owned.push(`${r},${c}`);
+            }
+          }
+        }
+
+        const isPatternNew = (pattern) => {
+          let isNew = !gameState.protectedPatterns.some(p => 
+            pattern.every(coord => p.includes(coord))
+          );
+          let validOverlap = gameState.protectedPatterns.map(p =>
+            pattern.filter(coord => p.includes(coord)).length
+          ).every(count => count <= 1);
+          
+          return isNew && validOverlap;
+        };
+
+        const checkLine = (coords) => {
+          if (coords.length >= 5) {
+            for (let i = 0; i <= coords.length - 5; i++) {
+              let slice = coords.slice(i, i + 5);
+              if (slice.every(c => owned.includes(c)) && isPatternNew(slice)) {
+                gameState.protectedPatterns.push(slice);
+                gameState.scores[team === "blue" ? "blue" : "red"] += 1;
+                
+                slice.forEach(coord => {
+                  let [r, c] = coord.split(',').map(Number);
+                  const cell = document.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+                  if (cell) cell.classList.add('seq-protected');
+                });
+              }
+            }
+          }
+        };
+
+        // 1. Horizontal
+        for (let r = 0; r < 10; r++) {
+          let line = [];
+          for (let c = 0; c < 10; c++) line.push(`${r},${c}`);
+          checkLine(line);
+        }
+
+        // 2. Vertical
+        for (let c = 0; c < 10; c++) {
+          let line = [];
+          for (let r = 0; r < 10; r++) line.push(`${r},${c}`);
+          checkLine(line);
+        }
+
+        // 3. Diagonals Down-Right
+        for (let startRow = 0; startRow < 6; startRow++) {
+          for (let startCol = 0; startCol < 6; startCol++) {
+            let line = [];
+            for (let i = 0; startRow + i < 10 && startCol + i < 10; i++) {
+              line.push(`${startRow + i},${startCol + i}`);
+            }
+            checkLine(line);
+          }
+        }
+
+        // 4. Diagonals Up-Right
+        for (let startRow = 4; startRow < 10; startRow++) {
+          for (let startCol = 0; startCol < 6; startCol++) {
+            let line = [];
+            for (let i = 0; startRow - i >= 0 && startCol + i < 10; i++) {
+              line.push(`${startRow - i},${startCol + i}`);
+            }
+            checkLine(line);
+          }
+        }
+      });
+    }
+
+    function checkForWinner() {
+      if (gameState.scores.blue >= gameState.targetSequences) return gameState.players[0];
+      if (gameState.scores.red >= gameState.targetSequences) return gameState.players[1];
+      return null;
+    }
+
+    function exitGame() {
+      document.getElementById('game-screen').classList.remove('active');
+      document.getElementById('setup-screen').classList.add('active');
+    }
+
+    // Smart Sequence Heuristic Bot Player Logic
+    function triggerBotTurn() {
+      const bot = gameState.players[1];
+      const player = gameState.players[0];
+      
+      let bestMove = null;
+      let highestScore = -Infinity;
+
+      const evaluateCoord = (r, c, card) => {
+        if (gameState.boardState[r][c] !== null) return -999;
+        
+        let score = 0;
+        
+        if (isCorner(r, c)) score += 80;
+
+        const checkDirections = () => {
+          let maxTeammateCount = 0;
+          let maxOpponentCount = 0;
+
+          const dirs = [
+            [0, 1],
+            [1, 0],
+            [1, 1],
+            [-1, 1]
+          ];
+
+          dirs.forEach(([dr, dc]) => {
+            let teamCount = 0;
+            let oppCount = 0;
+
+            for (let i = -4; i <= 4; i++) {
+              if (i === 0) continue;
+              let nr = r + dr * i;
+              let nc = c + dc * i;
+              if (nr >= 0 && nr < 10 && nc >= 0 && nc < 10) {
+                if (gameState.boardState[nr][nc] === bot.team) teamCount++;
+                if (gameState.boardState[nr][nc] === player.team) oppCount++;
+              }
+            }
+
+            maxTeammateCount = Math.max(maxTeammateCount, teamCount);
+            maxOpponentCount = Math.max(maxOpponentCount, oppCount);
+          });
+
+          return { teammate: maxTeammateCount, opponent: maxOpponentCount };
+        };
+
+        let counts = checkDirections();
+        score += counts.teammate * 15;
+        score += counts.opponent * 10;
+
+        return score;
+      };
+
+      bot.hand.forEach((card, handIdx) => {
+        if (card === "JC" || card === "JD") {
+          for (let r = 0; r < 10; r++) {
+            for (let c = 0; c < 10; c++) {
+              if (gameState.boardState[r][c] === null && !isCorner(r, c)) {
+                let score = evaluateCoord(r, c, card) + 100;
+                if (score > highestScore) {
+                  highestScore = score;
+                  bestMove = { handIdx, r, c, type: 'place' };
+                }
+              }
+            }
+          }
+        }
+        else if (card === "JS" || card === "JH") {
+          for (let r = 0; r < 10; r++) {
+            for (let c = 0; c < 10; c++) {
+              if (gameState.boardState[r][c] === player.team && !isCellProtected(r, c)) {
+                let score = 90;
+                if (score > highestScore) {
+                  highestScore = score;
+                  bestMove = { handIdx, r, c, type: 'remove' };
+                }
+              }
+            }
+          }
+        }
+        else {
+          let matches = findBoardMatches(card);
+          matches.forEach(([r, c]) => {
+            if (gameState.boardState[r][c] === null) {
+              let score = evaluateCoord(r, c, card);
+              if (score > highestScore) {
+                highestScore = score;
+                bestMove = { handIdx, r, c, type: 'place' };
+              }
+            }
+          });
+        }
+      });
+
+      if (!bestMove) {
+        for (let handIdx = 0; handIdx < bot.hand.length; handIdx++) {
+          let card = bot.hand[handIdx];
+          if (card.startsWith('J')) continue;
+          let matches = findBoardMatches(card);
+          let openMatch = matches.find(([r, c]) => gameState.boardState[r][c] === null);
+          if (openMatch) {
+            bestMove = { handIdx, r: openMatch[0], c: openMatch[1], type: 'place' };
+            break;
+          }
+        }
+      }
+
+      if (bestMove) {
+        const card = bot.hand[bestMove.handIdx];
+        if (bestMove.type === 'place') {
+          placeChip(bestMove.r, bestMove.c, bot.team);
+          sound.playPlace();
+        } else {
+          removeChip(bestMove.r, bestMove.c);
+          sound.playPlace();
+        }
+
+        bot.hand.splice(bestMove.handIdx, 1);
+        if (gameState.shuffledDeck.length > 0) {
+          bot.hand.push(gameState.shuffledDeck.pop());
+        }
+
+        checkBoardPatterns();
+
+        let winner = checkForWinner();
+        if (winner) {
+          sound.playWin();
+          setTimeout(() => {
+            Swal.fire({
+              title: `${winner.name} wins!`,
+              text: 'The Bot managed to complete 2 sequences!',
+              icon: 'error',
+              confirmButtonText: 'Try Again'
+            }).then(() => {
+              exitGame();
+            });
+          }, 300);
+          return;
+        }
+
+        gameState.currentPlayerIndex = 0;
+        gameState.selectedHandCardIndex = null;
+        updateUI();
+      } else {
+        gameState.currentPlayerIndex = 0;
+        gameState.selectedHandCardIndex = null;
+        updateUI();
+      }
+    }
+
+    document.getElementById('btn-bot-1').addEventListener('click', () => {
+      sound.init();
+      const pName = document.getElementById('player-name').value || "Player 1";
+      startNewGame(true, pName);
+    });
+
+    document.getElementById('btn-local-2').addEventListener('click', () => {
+      sound.init();
+      const pName = document.getElementById('player-name').value || "Player 1";
+      startNewGame(false, pName);
+    });
+
+    document.getElementById('btn-quit').addEventListener('click', () => {
+      Swal.fire({
+        title: 'Are you sure?',
+        text: "Your current game progress will be lost!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, Quit!'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          exitGame();
+        }
+      });
+    });
+  </script>
+  <!-- Swal (SweetAlert2) CDN library for clean UI dialog alerts -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</body>
+</html>
