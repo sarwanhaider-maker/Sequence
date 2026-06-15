@@ -1,5 +1,5 @@
 # Use the official Node.js image as a base
-FROM node:14
+FROM node:20
 
 # Set the working directory
 WORKDIR /usr/src/app
@@ -17,4 +17,4 @@ COPY . .
 EXPOSE 3000
 
 # Start the application
-CMD ["npx", "nodemon", "server.js"]
+CMD ["node", "server.js"]
