@@ -49,6 +49,7 @@
       text-shadow: 0 0 10px rgba(16, 217, 210, 0.4);
       margin: 5px 0 10px 0;
       letter-spacing: 2px;
+      flex-shrink: 0;
     }
 
     /* Screen manager */
@@ -59,7 +60,7 @@
       width: 100%;
       max-width: 1200px;
       padding: 0 10px;
-      height: calc(100vh - 50px);
+      flex: 1;
       min-height: 0;
       animation: fadeIn 0.5s ease-in-out forwards;
     }
@@ -166,7 +167,7 @@
       gap: 20px;
       width: 100%;
       justify-content: center;
-      align-items: flex-start;
+      align-items: center;
       flex: 1;
       min-height: 0;
     }
@@ -190,18 +191,20 @@
       align-items: center;
       justify-content: center;
       gap: 12px;
+      max-height: 100%;
+      box-sizing: border-box;
     }
 
     .board-grid {
       display: grid;
-      grid-template-columns: repeat(10, min(50px, 5.2vh));
-      grid-template-rows: repeat(10, min(70px, 7.28vh)); /* 5:7 playing card aspect ratio */
+      grid-template-columns: repeat(10, min(48px, calc(7.14vh - 20px)));
+      grid-template-rows: repeat(10, min(68px, calc(10vh - 28px))); /* 5:7 playing card aspect ratio */
       gap: 4px;
     }
 
     .board-border-text {
       font-family: 'Cinzel', serif;
-      font-size: min(0.8rem, 1.6vh);
+      font-size: min(0.8rem, calc(1.6vh - 2px));
       font-weight: 700;
       color: var(--accent-gold);
       letter-spacing: 2px;
@@ -340,6 +343,8 @@
       min-width: 260px;
       width: 100%;
       max-width: 280px;
+      height: 100%;
+      max-height: 100%;
     }
 
     .panel {
@@ -347,7 +352,7 @@
       backdrop-filter: blur(15px);
       border: 1px solid var(--border-color);
       border-radius: 12px;
-      padding: 12px 15px;
+      padding: 10px 12px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.3);
     }
 
@@ -438,18 +443,19 @@
       backdrop-filter: blur(15px);
       border: 1px solid var(--border-color);
       border-radius: 16px;
-      padding: 10px 15px;
+      padding: 8px 12px;
       margin-top: 10px;
       box-shadow: 0 15px 35px rgba(0,0,0,0.4);
       display: flex;
       flex-direction: column;
       align-items: center;
+      flex-shrink: 0;
     }
 
     .hand-title {
       font-weight: 700;
-      font-size: 0.95rem;
-      margin-bottom: 8px;
+      font-size: 0.9rem;
+      margin-bottom: 6px;
       letter-spacing: 1px;
     }
 
@@ -461,17 +467,17 @@
     }
 
     .hand-cards img {
-      width: min(65px, 8.5vh);
-      height: min(95px, 12.5vh);
-      border-radius: 8px;
+      width: min(60px, 8vh);
+      height: min(84px, 11.2vh);
+      border-radius: 6px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.3);
       cursor: pointer;
       transition: all 0.2s ease;
     }
 
     .hand-card {
-      width: min(65px, 8.5vh);
-      height: min(95px, 12.5vh);
+      width: min(60px, 8vh);
+      height: min(84px, 11.2vh);
       border-radius: 6px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.3);
       cursor: pointer;
@@ -545,9 +551,112 @@
       background: rgba(255, 255, 255, 0.15);
       border-radius: 2px;
     }
+    
+    /* Wizard & Splash styling */
+    @keyframes scaleIn {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    
+    .wizard-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.25);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .wizard-dot.active {
+      background: var(--accent-cyan);
+      transform: scale(1.2);
+      box-shadow: 0 0 8px var(--accent-cyan);
+    }
   </style>
 </head>
 <body>
+
+  <!-- SPLASH SCREEN -->
+  <div id="splash-screen" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0f0b1e; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; transition: opacity 0.5s ease, visibility 0.5s ease;">
+    <div style="text-align: center; animation: scaleIn 1.0s ease forwards;">
+      <img src="frontend/public/assests/zaesar_logo.png" alt="Zaesar Games Logo" style="max-width: 240px; height: auto; margin-bottom: 1.5rem; filter: drop-shadow(0 10px 20px rgba(16, 217, 210, 0.3)); border-radius: 16px;">
+      <div style="font-family: 'Cinzel', serif; font-weight: 800; font-size: 1.2rem; color: var(--accent-cyan); letter-spacing: 4px; text-transform: uppercase; animation: pulse 1.5s infinite alternate; margin-top: 0.5rem;">
+        Loading Sequence...
+      </div>
+    </div>
+  </div>
+
+  <!-- WIZARD OVERLAY -->
+  <div id="wizard-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(10, 7, 20, 0.85); backdrop-filter: blur(8px); display: none; justify-content: center; align-items: center; z-index: 9998; transition: opacity 0.3s ease;">
+    <div class="wizard-card" style="background: rgba(25, 20, 45, 0.95); border: 2px solid var(--border-color); border-radius: 20px; width: 90%; max-width: 480px; padding: 25px; box-shadow: 0 20px 50px rgba(0,0,0,0.6); display: flex; flex-direction: column; align-items: center; position: relative;">
+      
+      <!-- Logo in wizard -->
+      <img src="frontend/public/assests/zaesar_logo.png" alt="Zaesar Games" style="max-width: 110px; height: auto; margin-bottom: 15px; border-radius: 8px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));">
+      
+      <!-- Close button / Skip -->
+      <button id="btn-wizard-skip" style="position: absolute; top: 15px; right: 20px; background: none; border: none; color: #b0a9c9; font-size: 0.85rem; font-weight: 600; cursor: pointer; text-transform: uppercase; letter-spacing: 1px;">Skip</button>
+
+      <!-- Wizard Steps -->
+      <div id="wizard-steps-container" style="width: 100%; min-height: 220px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+        
+        <!-- Step 1: Welcome -->
+        <div class="wizard-step" data-step="1" style="display: block;">
+          <h3 style="font-family: 'Cinzel', serif; font-size: 1.4rem; color: var(--accent-gold); margin-bottom: 12px; letter-spacing: 1px;">Welcome to Sequence</h3>
+          <p style="color: #d1cde3; font-size: 0.95rem; line-height: 1.5; margin-bottom: 15px;">
+            A classic board game combining card strategy and chip placement. The objective is to form continuous rows of 5 chips of your color on the board.
+          </p>
+          <div style="font-size: 3rem; margin-bottom: 10px;">🏆</div>
+        </div>
+
+        <!-- Step 2: Basic Turn -->
+        <div class="wizard-step" data-step="2" style="display: none;">
+          <h3 style="font-family: 'Cinzel', serif; font-size: 1.3rem; color: var(--accent-cyan); margin-bottom: 12px; letter-spacing: 1px;">Playing a Turn</h3>
+          <p style="color: #d1cde3; font-size: 0.95rem; line-height: 1.5; margin-bottom: 15px;">
+            Select a card from **YOUR HAND** at the bottom of the screen. Matching board cells will highlight in gold. Click a highlighted cell to place a chip and end your turn.
+          </p>
+          <div style="font-size: 3rem; margin-bottom: 10px;">🃏</div>
+        </div>
+
+        <!-- Step 3: Jacks Power -->
+        <div class="wizard-step" data-step="3" style="display: none;">
+          <h3 style="font-family: 'Cinzel', serif; font-size: 1.3rem; color: var(--accent-gold); margin-bottom: 12px; letter-spacing: 1px;">Jack Cards Rule</h3>
+          <p style="color: #d1cde3; font-size: 0.9rem; line-height: 1.4; margin-bottom: 10px; text-align: left;">
+            👑 **Two-Eyed Jacks (Clubs ♣ / Diamonds ♦)**: Wild! Place a chip on any empty space on the board.
+          </p>
+          <p style="color: #d1cde3; font-size: 0.9rem; line-height: 1.4; margin-bottom: 15px; text-align: left;">
+            👁️ **One-Eyed Jacks (Spades ♠ / Hearts ♥)**: Removal! Remove any of your opponent's chips (unless protected).
+          </p>
+        </div>
+
+        <!-- Step 4: Corner & Victory -->
+        <div class="wizard-step" data-step="4" style="display: none;">
+          <h3 style="font-family: 'Cinzel', serif; font-size: 1.3rem; color: var(--accent-cyan); margin-bottom: 12px; letter-spacing: 1px;">Free Corners & Frozen Sequences</h3>
+          <p style="color: #d1cde3; font-size: 0.9rem; line-height: 1.4; margin-bottom: 10px; text-align: left;">
+            ⭐ **Corner Cells**: The 4 corners are wild for everyone. You only need 4 chips to form a sequence using a corner.
+          </p>
+          <p style="color: #d1cde3; font-size: 0.9rem; line-height: 1.4; margin-bottom: 15px; text-align: left;">
+            ❄️ **Frozen Sequences**: Once a sequence of 5 is completed, it is frozen. Its chips cannot be removed. Form **2 sequences** to win!
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Dot Indicators -->
+      <div style="display: flex; gap: 8px; margin: 15px 0;">
+        <span class="wizard-dot active" data-step="1"></span>
+        <span class="wizard-dot" data-step="2"></span>
+        <span class="wizard-dot" data-step="3"></span>
+        <span class="wizard-dot" data-step="4"></span>
+      </div>
+
+      <!-- Controls -->
+      <div style="display: flex; gap: 15px; width: 100%; margin-top: 10px;">
+        <button id="btn-wizard-prev" class="btn" style="flex: 1; margin: 0; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: #fff; display: none; padding: 12px; font-size: 0.95rem; border-radius: 10px; font-weight: 600; cursor: pointer;">Previous</button>
+        <button id="btn-wizard-next" class="btn btn-primary" style="flex: 1; margin: 0; padding: 12px; font-size: 0.95rem; border-radius: 10px;">Next</button>
+      </div>
+
+    </div>
+  </div>
 
   <h1>SEQUENCE</h1>
 
@@ -563,6 +672,7 @@
 
       <button id="btn-bot-1" class="btn btn-primary">Play vs. Bot (1 vs 1)</button>
       <button id="btn-local-2" class="btn btn-secondary">Local Pass & Play (2 Players)</button>
+      <button id="btn-how-to-play" class="btn" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: #b0a9c9;">How to Play</button>
     </div>
   </div>
 
@@ -603,16 +713,19 @@
         </div>
 
         <!-- Game Log Panel -->
-        <div class="panel" style="flex: 1; min-height: 120px; display: flex; flex-direction: column;">
+        <div class="panel" style="flex: 1; min-height: 100px; max-height: 120px; display: flex; flex-direction: column;">
           <div class="info-title" style="margin-bottom: 8px;">
             <span>Game Log</span>
           </div>
-          <div id="game-log" style="flex: 1; overflow-y: auto; font-size: 0.8rem; color: #b0a9c9; max-height: 150px; scrollbar-width: thin; padding-right: 5px;">
+          <div id="game-log" style="flex: 1; overflow-y: auto; font-size: 0.8rem; color: #b0a9c9; max-height: 120px; scrollbar-width: thin; padding-right: 5px;">
             <div style="color: var(--accent-cyan); font-style: italic;">Game started. Good luck!</div>
           </div>
         </div>
 
-        <button id="btn-quit" class="btn-quit">Exit Game</button>
+        <div style="display: flex; gap: 10px; margin-top: auto; flex-shrink: 0;">
+          <button id="btn-how-to-play-game" style="flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: #b0a9c9; padding: 10px; font-size: 0.9rem; font-weight: 500; border-radius: 8px; cursor: pointer; transition: all 0.3s;">How to Play</button>
+          <button id="btn-quit" class="btn-quit" style="flex: 1; margin-top: 0;">Exit Game</button>
+        </div>
       </div>
     </div>
 
@@ -1377,6 +1490,101 @@
         }
       });
     });
+
+    // Splash screen fadeout and auto-show wizard
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const splash = document.getElementById('splash-screen');
+        if (splash) {
+          splash.style.opacity = '0';
+          splash.style.visibility = 'hidden';
+          setTimeout(() => splash.remove(), 500);
+        }
+        
+        // Show wizard if it's the first time
+        if (!localStorage.getItem('sequence_wizard_seen')) {
+          showWizard();
+        }
+      }, 1500);
+    });
+
+    let currentWizardStep = 1;
+    const totalWizardSteps = 4;
+
+    function showWizard() {
+      currentWizardStep = 1;
+      updateWizardUI();
+      document.getElementById('wizard-overlay').style.display = 'flex';
+    }
+
+    function hideWizard() {
+      document.getElementById('wizard-overlay').style.display = 'none';
+      localStorage.setItem('sequence_wizard_seen', 'true');
+    }
+
+    function updateWizardUI() {
+      // Hide all steps
+      document.querySelectorAll('.wizard-step').forEach(step => {
+        step.style.display = 'none';
+      });
+      // Show current step
+      document.querySelector(`.wizard-step[data-step="${currentWizardStep}"]`).style.display = 'block';
+
+      // Update dots
+      document.querySelectorAll('.wizard-dot').forEach((dot, idx) => {
+        if (idx + 1 === currentWizardStep) {
+          dot.classList.add('active');
+        } else {
+          dot.classList.remove('active');
+        }
+      });
+
+      // Update buttons
+      const prevBtn = document.getElementById('btn-wizard-prev');
+      const nextBtn = document.getElementById('btn-wizard-next');
+
+      if (currentWizardStep === 1) {
+        prevBtn.style.display = 'none';
+      } else {
+        prevBtn.style.display = 'block';
+      }
+
+      if (currentWizardStep === totalWizardSteps) {
+        nextBtn.textContent = "Got it!";
+      } else {
+        nextBtn.textContent = "Next";
+      }
+    }
+
+    // Wizard Event Listeners
+    document.getElementById('btn-wizard-next').addEventListener('click', () => {
+      if (currentWizardStep < totalWizardSteps) {
+        currentWizardStep++;
+        updateWizardUI();
+      } else {
+        hideWizard();
+      }
+    });
+
+    document.getElementById('btn-wizard-prev').addEventListener('click', () => {
+      if (currentWizardStep > 1) {
+        currentWizardStep--;
+        updateWizardUI();
+      }
+    });
+
+    document.getElementById('btn-wizard-skip').addEventListener('click', hideWizard);
+
+    // Allow clicking dots to navigate
+    document.querySelectorAll('.wizard-dot').forEach(dot => {
+      dot.addEventListener('click', () => {
+        currentWizardStep = parseInt(dot.getAttribute('data-step'));
+        updateWizardUI();
+      });
+    });
+
+    document.getElementById('btn-how-to-play').addEventListener('click', showWizard);
+    document.getElementById('btn-how-to-play-game').addEventListener('click', showWizard);
   </script>
   <!-- Swal (SweetAlert2) CDN library for clean UI dialog alerts -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
