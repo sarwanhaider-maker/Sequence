@@ -166,6 +166,11 @@ export default function Boards() {
   const [isConnected, setIsConnected] = useState(false);
   const [connectError, setConnectError] = useState(null);
 
+  // Game-over banner state
+  const [gameOverData, setGameOverData] = useState(null);  // { winner, isWin }
+  const [countdown, setCountdown] = useState(0);
+  const countdownRef = useRef(null);
+
   // Refs for tracking live state inside socket events
   const playingAsRef = useRef(playingAs);
   const playersListRef = useRef(playersList);
@@ -346,33 +351,54 @@ export default function Boards() {
     socket.on("gameOver", (data) => {
       const isHost = connectedPlayersRef.current[0] === playerNameRef.current;
       const myTeam = playersListRef.current[playingAsRef.current]?.team || "unknown";
+      const isWin = data.winner === myTeam;
 
-      if (data.winner === myTeam) {
+      if (isWin) {
         GameSounds.playWin();
       } else {
         GameSounds.playLose();
       }
 
-      Swal.fire({
-        title: `${data.winner.toUpperCase()} Won the game!`,
-        text: data.winner === myTeam ? "Congratulations! Your team won!" : "Better luck next time!",
-        icon: data.winner === myTeam ? "success" : "error",
-        showCancelButton: true,
-        confirmButtonText: isHost ? "Play Again" : "Wait for Host",
-        cancelButtonText: "Exit to Lobby",
-        allowOutsideClick: false
-      }).then((result) => {
-        if (result.isConfirmed) {
-          if (isHost) {
-            socket.emit("play_again", { roomId: roomRef.current });
-          } else {
-            Swal.fire("Please wait", "Waiting for the host to restart the game...", "info");
-          }
-        } else {
-          socket.emit("leave_room");
-          window.location.href = "/";
+      // Show the board + winner banner for 5 seconds before the popup
+      const BANNER_DURATION = 5;
+      setGameOverData({ winner: data.winner, isWin, isHost });
+      setCountdown(BANNER_DURATION);
+
+      // Clear any existing timer
+      if (countdownRef.current) clearInterval(countdownRef.current);
+
+      let remaining = BANNER_DURATION;
+      countdownRef.current = setInterval(() => {
+        remaining -= 1;
+        setCountdown(remaining);
+        if (remaining <= 0) {
+          clearInterval(countdownRef.current);
+          countdownRef.current = null;
+          setGameOverData(null);
+          setCountdown(0);
+
+          Swal.fire({
+            title: `${data.winner.toUpperCase()} Won the game!`,
+            text: isWin ? "Congratulations! Your team won!" : "Better luck next time!",
+            icon: isWin ? "success" : "error",
+            showCancelButton: true,
+            confirmButtonText: isHost ? "Play Again" : "Wait for Host",
+            cancelButtonText: "Exit to Lobby",
+            allowOutsideClick: false
+          }).then((result) => {
+            if (result.isConfirmed) {
+              if (isHost) {
+                socket.emit("play_again", { roomId: roomRef.current });
+              } else {
+                Swal.fire("Please wait", "Waiting for the host to restart the game...", "info");
+              }
+            } else {
+              socket.emit("leave_room");
+              window.location.href = "/";
+            }
+          });
         }
-      });
+      }, 1000);
     });
     socket.on("game_reset_to_lobby", () => {
       setCards([]);
@@ -908,10 +934,78 @@ export default function Boards() {
     targetGoal = 1;
   }
 
+  const renderWinnerBanner = () => {
+    if (!gameOverData) return null;
+    const { winner, isWin } = gameOverData;
+    const teamColor = winner === "blue" ? "#3b82f6" : winner === "red" ? "#ef4444" : "#22c55e";
+    const teamGlow = winner === "blue" ? "rgba(59,130,246,0.5)" : winner === "red" ? "rgba(239,68,68,0.5)" : "rgba(34,197,94,0.5)";
+    const bgGradient = winner === "blue"
+      ? "linear-gradient(135deg, rgba(30,58,138,0.97) 0%, rgba(37,99,235,0.97) 100%)"
+      : winner === "red"
+      ? "linear-gradient(135deg, rgba(127,29,29,0.97) 0%, rgba(220,38,38,0.97) 100%)"
+      : "linear-gradient(135deg, rgba(20,83,45,0.97) 0%, rgba(22,163,74,0.97) 100%)";
+
+    return (
+      <div style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 9000,
+        background: bgGradient,
+        backdropFilter: "blur(12px)",
+        borderBottom: `3px solid ${teamColor}`,
+        boxShadow: `0 4px 30px ${teamGlow}`,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "12px 20px",
+        animation: "slideDownBanner 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards"
+      }}>
+        {/* Left: Trophy + winner text */}
+        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+          <span style={{ fontSize: "2.2rem", filter: "drop-shadow(0 0 8px gold)" }}>
+            {isWin ? "🏆" : "😔"}
+          </span>
+          <div>
+            <div style={{
+              fontFamily: "'Cinzel', serif",
+              fontWeight: "900",
+              fontSize: "clamp(1rem, 3vw, 1.5rem)",
+              color: "white",
+              textShadow: `0 0 12px ${teamColor}`,
+              letterSpacing: "2px",
+              textTransform: "uppercase"
+            }}>
+              {winner.toUpperCase()} TEAM WINS!
+            </div>
+            <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.75)", marginTop: "2px", fontWeight: "500" }}>
+              {isWin ? "🎉 Congratulations! Look at your winning sequences below!" : "Study the winning sequences on the board..."}
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Countdown ring */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+          <div style={{
+            width: "52px", height: "52px",
+            borderRadius: "50%",
+            border: `3px solid ${teamColor}`,
+            boxShadow: `0 0 12px ${teamGlow}, inset 0 0 8px ${teamGlow}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(0,0,0,0.3)"
+          }}>
+            <span style={{ fontFamily: "'Cinzel', serif", fontWeight: "900", fontSize: "1.4rem", color: "white" }}>
+              {countdown}
+            </span>
+          </div>
+          <span style={{ fontSize: "0.6rem", color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "1px" }}>
+            seconds
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       {renderWizard()}
-      <div id="game-screen" style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", flex: 1, minHeight: 0 }}>
+      {renderWinnerBanner()}
+      <div id="game-screen" style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", flex: 1, minHeight: 0, paddingTop: gameOverData ? "80px" : "0", transition: "padding-top 0.4s ease" }}>
         {renderMobileHeader()}
         
         <div className="game-layout">

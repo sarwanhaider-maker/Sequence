@@ -49,6 +49,20 @@ body {
   to { transform: scale(1); opacity: 1; }
 }
 
+@keyframes slideDownBanner {
+  from { transform: translateY(-110%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+@keyframes blink-turn {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.blink-turn {
+  animation: blink-turn 1s ease-in-out infinite;
+}
+
 /* Board Container & Sizing */
 .board-container {
   background: #3e2a20; /* Wood style board border */
