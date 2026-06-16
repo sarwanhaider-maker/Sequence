@@ -7,6 +7,8 @@ class RoomController {
     this.io = io;
     this.initializeGameForRoom = initializeGameForRoom;
     this.startGameForRoom = startGameForRoom;
+    // Map of socketId -> timer handle for deferred room cleanup
+    this.disconnectTimers = new Map();
     this.registerEvents();
   }
   
@@ -240,38 +242,67 @@ class RoomController {
     });
   }
 
-  async cleanUpSocketRoom(socket) {
+  async cleanUpSocketRoom(socket, immediate = false) {
     try {
       const room = await Room.findOne({ players: socket.id });
       if (!room) return;
 
-      console.log(`Cleaning up room ${room.roomId} for socket ${socket.id}`);
+      const roomId = room.roomId;
+      console.log(`Player disconnected from room ${roomId} (socket ${socket.id}). Grace period started.`);
 
-      const playerIndex = room.players.indexOf(socket.id);
-      if (playerIndex > -1) {
-        room.players.splice(playerIndex, 1);
-        room.playersName.splice(playerIndex, 1);
+      // Cancel any existing cleanup timer for this socket
+      if (this.disconnectTimers.has(socket.id)) {
+        clearTimeout(this.disconnectTimers.get(socket.id));
+        this.disconnectTimers.delete(socket.id);
       }
 
-      const activeGame = await Game.findOne({ roomId: room.roomId });
-      if (activeGame) {
-        await Game.deleteOne({ roomId: room.roomId });
-        console.log(`Deleted active game for room ${room.roomId} because player disconnected/left.`);
-        this.io.to(room.roomId).emit("game_reset_to_lobby");
-      }
+      const GRACE_PERIOD_MS = immediate ? 0 : 90 * 1000; // 90 seconds grace period
 
-      if (room.players.length === 0) {
-        await Room.deleteOne({ roomId: room.roomId });
-        console.log(`Deleted empty room ${room.roomId}`);
+      const doCleanup = async () => {
+        this.disconnectTimers.delete(socket.id);
+        try {
+          // Re-fetch room in case it was updated during the grace period
+          const freshRoom = await Room.findOne({ players: socket.id });
+          if (!freshRoom) return; // Player already rejoined with a new socket (handled in join)
+
+          console.log(`Grace period expired for socket ${socket.id} in room ${roomId}. Cleaning up...`);
+
+          const playerIndex = freshRoom.players.indexOf(socket.id);
+          if (playerIndex > -1) {
+            freshRoom.players.splice(playerIndex, 1);
+            freshRoom.playersName.splice(playerIndex, 1);
+          }
+
+          const activeGame = await Game.findOne({ roomId: freshRoom.roomId });
+          if (activeGame) {
+            await Game.deleteOne({ roomId: freshRoom.roomId });
+            console.log(`Deleted active game for room ${freshRoom.roomId} — player did not reconnect.`);
+            this.io.to(freshRoom.roomId).emit("game_reset_to_lobby");
+          }
+
+          if (freshRoom.players.length === 0) {
+            await Room.deleteOne({ roomId: freshRoom.roomId });
+            console.log(`Deleted empty room ${freshRoom.roomId}`);
+          } else {
+            freshRoom.empty = true;
+            await freshRoom.save();
+            this.io.to(freshRoom.roomId).emit("room_update", {
+              players: freshRoom.playersName,
+              playerLimit: freshRoom.playerLimit,
+              gameMode: freshRoom.gameMode
+            });
+          }
+        } catch (err) {
+          console.error("Error in deferred cleanup:", err);
+        }
+      };
+
+      if (GRACE_PERIOD_MS === 0) {
+        await doCleanup();
       } else {
-        room.empty = true;
-        await room.save();
-
-        this.io.to(room.roomId).emit("room_update", {
-          players: room.playersName,
-          playerLimit: room.playerLimit,
-          gameMode: room.gameMode
-        });
+        const timer = setTimeout(doCleanup, GRACE_PERIOD_MS);
+        this.disconnectTimers.set(socket.id, timer);
+        console.log(`Room ${roomId} will be cleaned up in ${GRACE_PERIOD_MS / 1000}s if player doesn't reconnect.`);
       }
     } catch (err) {
       console.error("Error in cleanUpSocketRoom:", err);
@@ -303,10 +334,16 @@ class RoomController {
       this.handlePlayAgain(socket);
 
       socket.on("disconnect", () => {
-        this.cleanUpSocketRoom(socket);
+        // Unexpected disconnect — use grace period so player can reconnect
+        this.cleanUpSocketRoom(socket, false);
       });
       socket.on("leave_room", () => {
-        this.cleanUpSocketRoom(socket);
+        // Deliberate exit — clean up immediately, cancel any pending grace timer
+        if (this.disconnectTimers.has(socket.id)) {
+          clearTimeout(this.disconnectTimers.get(socket.id));
+          this.disconnectTimers.delete(socket.id);
+        }
+        this.cleanUpSocketRoom(socket, true);
       });
     });
   }
