@@ -15,7 +15,7 @@ class RoomController {
     let isUnique = false;
   
     while (!isUnique) {
-      roomId = Math.random().toString(36).substring(2, 9);
+      roomId = Math.floor(100000 + Math.random() * 900000).toString();
       const existingRoom = await Room.findOne({ roomId: roomId });
       isUnique = !existingRoom;
     }
@@ -64,12 +64,41 @@ class RoomController {
       try {
         const room = await Room.findOne({ roomId: roomId });
 
-        if (room && room.players.length < room.playerLimit) {
+        if (!room) {
+          const errMsg = "Room not found. The room ID may be incorrect or the room was closed.";
+          if (typeof callback === 'function') callback({ success: false, message: errMsg });
+          else socket.emit("room_join_error", errMsg);
+          return;
+        }
+
+        // Check if a game is already actively running for this room
+        const activeGame = await Game.findOne({ roomId: roomId });
+        if (activeGame) {
+          const errMsg = "A game is already in progress in this room. Please wait for it to finish or ask the host to restart.";
+          if (typeof callback === 'function') callback({ success: false, message: errMsg });
+          else socket.emit("room_join_error", errMsg);
+          return;
+        }
+
+        // Prevent a socket from joining the same room twice
+        if (room.players.includes(socket.id)) {
+          socket.join(roomId);
+          if (typeof callback === 'function') {
+            callback({ success: true, playerLimit: room.playerLimit, playersCount: room.players.length });
+          }
+          this.io.to(roomId).emit("room_update", {
+            players: room.playersName,
+            playerLimit: room.playerLimit,
+            gameMode: room.gameMode
+          });
+          return;
+        }
+
+        // Allow joining if there is still space (playerLimit is the original capacity)
+        if (room.players.length < room.playerLimit) {
           room.players.push(socket.id);
           room.playersName.push(playerName);
-          if (room.players.length === room.playerLimit) {
-            room.empty = false;
-          }
+          room.empty = true; // Still waiting for more players or host to start
           await room.save();
 
           socket.join(roomId);
@@ -77,21 +106,27 @@ class RoomController {
             callback({ success: true, playerLimit: room.playerLimit, playersCount: room.players.length });
           }
 
+          // Notify all players in the room of the updated player list
+          this.io.to(roomId).emit("room_update", {
+            players: room.playersName,
+            playerLimit: room.playerLimit,
+            gameMode: room.gameMode
+          });
+
+          // Auto-start only if we've hit the exact playerLimit
           if (room.players.length === room.playerLimit) {
             await this.startGameForRoom(roomId, room.players, room.playersName, room.gameMode);
-          } else {
-            this.io.to(roomId).emit("room_update", {
-              players: room.playersName,
-              playerLimit: room.playerLimit,
-              gameMode: room.gameMode
-            });
           }
         } else {
-          socket.emit("room_join_error", "Room is full or does not exist.");
+          const errMsg = `Room is full (${room.players.length}/${room.playerLimit} players).`;
+          if (typeof callback === 'function') callback({ success: false, message: errMsg });
+          else socket.emit("room_join_error", errMsg);
         }
       } catch (err) {
         console.error("Error joining custom room:", err);
-        socket.emit("room_join_error", "Failed to join the room.");
+        const errMsg = "Failed to join the room due to a server error.";
+        if (typeof callback === 'function') callback({ success: false, message: errMsg });
+        else socket.emit("room_join_error", errMsg);
       }
     });
   }
@@ -189,7 +224,8 @@ class RoomController {
           finalMode = "8_players";
         }
         
-        room.playerLimit = actualLimit;
+        // DO NOT overwrite playerLimit — preserve the original capacity so
+        // friends can still join after a game resets to lobby
         room.gameMode = finalMode;
         room.empty = false;
         await room.save();

@@ -2,7 +2,7 @@ import React from 'react';
 
 export default function PlayerTurn({ players = [], currentPlayerIndex, playingAs }) {
   return (
-    <div className="panel" style={{ display: "flex", flexDirection: "column", minHeight: "120px", flexShrink: 0 }}>
+    <div className="panel player-turn-panel" style={{ display: "flex", flexDirection: "column", minHeight: "120px", flexShrink: 0 }}>
       <div className="info-title" style={{ marginBottom: "6px", fontSize: "0.85rem" }}>
         <span>ACTIVE PLAYERS</span>
       </div>

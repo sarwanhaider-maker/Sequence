@@ -529,8 +529,17 @@ body {
 
   .score-status-panel,
   .game-log-panel,
-  .side-panels .panel:not(.hand-container) {
+  .side-panels .panel:not(.hand-container):not(.player-turn-panel) {
     display: none !important;
+  }
+
+  .player-turn-panel {
+    display: flex !important;
+    order: 3;
+    width: 100%;
+    margin-top: 10px;
+    max-width: 420px;
+    box-sizing: border-box;
   }
 
   .side-panels {
@@ -544,6 +553,7 @@ body {
     padding: 4px 6px;
     border-radius: 8px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    order: 1;
   }
 
   .hand-title {
@@ -576,6 +586,7 @@ body {
     gap: 6px !important;
     display: flex;
     width: 100%;
+    order: 2;
   }
 
   .action-buttons-row button {
