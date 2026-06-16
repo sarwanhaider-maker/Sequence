@@ -309,6 +309,83 @@ class RoomController {
     }
   }
 
+  handleRejoinRoom(socket) {
+    socket.on("rejoin_room", async ({ roomId, playerName }) => {
+      try {
+        const room = await Room.findOne({ roomId: roomId, playersName: playerName });
+        if (!room) {
+          console.log(`Rejoin failed: room ${roomId} not found for player ${playerName}`);
+          return;
+        }
+
+        const playerIndex = room.playersName.indexOf(playerName);
+        if (playerIndex === -1) return;
+
+        const oldSocketId = room.players[playerIndex];
+        console.log(`Player ${playerName} rejoining room ${roomId}. Old socket: ${oldSocketId}, New socket: ${socket.id}`);
+
+        // Cancel any pending cleanup timer for the old socket ID
+        if (oldSocketId && this.disconnectTimers.has(oldSocketId)) {
+          clearTimeout(this.disconnectTimers.get(oldSocketId));
+          this.disconnectTimers.delete(oldSocketId);
+          console.log(`Cancelled cleanup timer for old socket ${oldSocketId}`);
+        }
+
+        // Update the socket ID in the Room document
+        room.players[playerIndex] = socket.id;
+        room.markModified('players');
+        await room.save();
+
+        // Re-join the Socket.IO room so future events reach this socket
+        socket.join(roomId);
+
+        // Check if a game is in progress
+        const activeGame = await Game.findOne({ roomId: roomId });
+        if (activeGame) {
+          // Update socket ID in the Game document too
+          const gamePIdx = activeGame.players.findIndex(p => p.index === playerIndex);
+          if (gamePIdx > -1) {
+            activeGame.players[gamePIdx].socketId = socket.id;
+            activeGame.markModified('players');
+            await activeGame.save();
+          }
+
+          const myPlayer = activeGame.players.find(p => p.index === playerIndex);
+          socket.emit("rejoin_room_success", {
+            gameInProgress: true,
+            roomId: roomId,
+            playingAs: playerIndex,
+            yourHand: myPlayer ? myPlayer.hand : [],
+            deckCount: activeGame.shuffledDeck.length,
+            cards: activeGame.cards,
+            players: activeGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+            currentPlayerIndex: activeGame.players.findIndex(p => p.isTurn),
+            protectedPatterns: activeGame.protectedPatterns || []
+          });
+          console.log(`Sent active game state to rejoining player ${playerName}`);
+        } else {
+          // Game not started yet — restore lobby
+          socket.emit("rejoin_room_success", {
+            gameInProgress: false,
+            roomId: roomId,
+            players: room.playersName,
+            playerLimit: room.playerLimit,
+            gameMode: room.gameMode
+          });
+          // Refresh lobby list for everyone
+          this.io.to(roomId).emit("room_update", {
+            players: room.playersName,
+            playerLimit: room.playerLimit,
+            gameMode: room.gameMode
+          });
+          console.log(`Restored lobby state for rejoining player ${playerName}`);
+        }
+      } catch (err) {
+        console.error("Error handling rejoin_room:", err);
+      }
+    });
+  }
+
   handlePlayAgain(socket) {
     socket.on("play_again", async (data) => {
       const { roomId } = data || {};
@@ -332,6 +409,7 @@ class RoomController {
       this.handleStartCustomGame(socket);
       this.handleDisconnection(socket);
       this.handlePlayAgain(socket);
+      this.handleRejoinRoom(socket);
 
       socket.on("disconnect", () => {
         // Unexpected disconnect — use grace period so player can reconnect

@@ -202,16 +202,37 @@ export default function Boards() {
   const [showWizard, setShowWizard] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
 
-  // Initialize Socket
+  // Initialize Socket with persistent session ID for reconnection
   useEffect(() => {
     if (!socket) {
-      const newSocket = io(SERVER_URL, { autoConnect: true });
+      // Store a persistent session ID so the server can reconnect us if we lose connection
+      let sessionId = localStorage.getItem("sequence_session_id");
+      if (!sessionId) {
+        sessionId = `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem("sequence_session_id", sessionId);
+      }
+
+      const newSocket = io(SERVER_URL, {
+        autoConnect: true,
+        query: { sessionId },
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+      });
       setSocket(newSocket);
 
       newSocket.on("connect", () => {
         setSocketStatus("connected");
         setIsConnected(true);
         setConnectError(null);
+        // On reconnect: if we were in a room, re-join automatically
+        const savedRoom = roomRef.current;
+        const savedName = playerNameRef.current;
+        if (savedRoom && savedName) {
+          console.log(`Reconnected — re-joining room ${savedRoom} as ${savedName}`);
+          newSocket.emit("rejoin_room", { roomId: savedRoom, playerName: savedName });
+        }
       });
       newSocket.on("disconnect", () => {
         setSocketStatus("disconnected");
@@ -388,6 +409,39 @@ export default function Boards() {
       setGameMode(data.gameMode);
     });
 
+    // Handle successful rejoin after reconnect — server sends game state back
+    socket.on("rejoin_room_success", (data) => {
+      console.log("Rejoined room successfully after reconnect", data);
+      if (data.gameInProgress) {
+        // Game is running — restore full game state
+        Swal.close();
+        prevChipsCount.current = countChips(data.cards);
+        setPlayOnline(true);
+        setInCustomGame(true);
+        setRoom(data.roomId);
+        setCustomRoomId(data.roomId);
+        setPlayingAs(data.playingAs);
+        setYourHand(data.yourHand);
+        setDeckCount(data.deckCount);
+        setCards(data.cards);
+        setPlayersList(data.players || []);
+        setCurrentPlayerIndex(data.currentPlayerIndex || 0);
+        setProtectedPatterns(data.protectedPatterns || []);
+        if (data.playingAs === (data.currentPlayerIndex || 0)) {
+          GameSounds.playTurnAlert();
+        }
+      } else {
+        // Game not yet started — restore lobby state
+        setPlayOnline(true);
+        setInCustomGame(true);
+        setRoom(data.roomId);
+        setCustomRoomId(data.roomId);
+        setConnectedPlayers(data.players || []);
+        setPlayerLimit(data.playerLimit || 8);
+        setGameMode(data.gameMode || "8_players");
+      }
+    });
+
     return () => {
       socket.off("connect");
       socket.off("OpponentNotFound");
@@ -399,6 +453,7 @@ export default function Boards() {
       socket.off("room_join_error");
       socket.off("room_creation_error");
       socket.off("room_update");
+      socket.off("rejoin_room_success");
     };
   }, [socket]);
 
