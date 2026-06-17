@@ -6,7 +6,9 @@ const dotenv = require('dotenv');
 const allCards = require('./data/allCards.js');
 const gameController = require('./controllers/gameController');
 const RoomController = require('./controllers/roomController');
+const { getBotMove, isBot } = require('./controllers/botController');
 const Game = require('./models/Game');
+const Room = require('./models/room');
 const Session = require('./models/session');
 const config = require('./config/config');
 
@@ -24,6 +26,9 @@ mongoose.connect(config.MONGO_URL)
   .catch(err => console.error('MongoDB connection error:', err));
 
 const activeSockets = new Map();
+
+// Map of roomId -> bot difficulty for ongoing bot games
+const botDifficultyMap = new Map();
 
 function deepClone() {
     let filteredCards = allCards.filter(card => card.id <= 100);
@@ -63,11 +68,13 @@ async function initializeGameForRoom(roomId, playerName, playerId) {
 
 async function startGameForRoom(roomId, playerSockets, playerNames, gameMode) {
     try {
-        // Create session for each player
+        // Create session for each human player only
         for (let i = 0; i < playerSockets.length; i++) {
             const playerId = playerSockets[i];
-            await createSession(playerId, roomId, i.toString());
-            await joinRoom(playerId, roomId);
+            if (!isBot(playerId)) {
+                await createSession(playerId, roomId, i.toString());
+                await joinRoom(playerId, roomId);
+            }
         }
 
         await Game.deleteMany({ roomId: roomId });
@@ -87,22 +94,114 @@ async function startGameForRoom(roomId, playerSockets, playerNames, gameMode) {
         console.log(`Game started in room ${roomId}. Players count: ${playerSockets.length}, mode: ${gameMode}`);
 
         newGame.players.forEach(player => {
-            io.to(player.socketId).emit('OpponentFound', {
-                yourHand: player.hand,
-                playingAs: player.index,
-                deckCount: newGame.shuffledDeck.length,
-                cards: newGame.cards,
-                players: newGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
-                currentPlayerIndex: 0,
-                protectedPatterns: newGame.protectedPatterns || []
-            });
+            if (!isBot(player.socketId)) {
+                io.to(player.socketId).emit('OpponentFound', {
+                    yourHand: player.hand,
+                    playingAs: player.index,
+                    deckCount: newGame.shuffledDeck.length,
+                    cards: newGame.cards,
+                    players: newGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                    currentPlayerIndex: 0,
+                    protectedPatterns: newGame.protectedPatterns || []
+                });
+            }
         });
+
+        // If first player is a bot, trigger its turn
+        const firstPlayer = newGame.players[0];
+        if (isBot(firstPlayer.socketId)) {
+            const difficulty = botDifficultyMap.get(roomId) || 'medium';
+            setTimeout(() => triggerBotTurn(roomId, firstPlayer.socketId, difficulty), 1500);
+        }
     } catch (err) {
         console.error(`Error starting game for room ${roomId}:`, err);
     }
 }
 
 const roomController = new RoomController(io, initializeGameForRoom, startGameForRoom);
+
+/**
+ * Trigger a bot's turn automatically.
+ */
+async function triggerBotTurn(roomId, botSocketId, difficulty) {
+    try {
+        let game = await Game.findOne({ roomId });
+        if (!game) return;
+
+        // Verify it's still this bot's turn
+        const currentPlayer = game.players.find(p => p.isTurn);
+        if (!currentPlayer || currentPlayer.socketId !== botSocketId) return;
+
+        const move = getBotMove(game, game.cards, difficulty, botSocketId);
+        if (!move) {
+            console.log(`Bot ${botSocketId} has no valid move — skipping turn.`);
+            // Force advance turn
+            const idx = game.players.findIndex(p => p.socketId === botSocketId);
+            game.players[idx].isTurn = false;
+            game.players[(idx + 1) % game.players.length].isTurn = true;
+            await game.save();
+        } else {
+            const result = gameController.handleCardSelection(
+                game, move.cardId, game.shuffledDeck, game.cards, botSocketId, move.selectedCard
+            );
+            if (!result.success) {
+                console.error(`Bot move failed: ${result.message}`);
+                return;
+            }
+
+            await Game.updateOne({ roomId }, { $set: {
+                players: result.game.players,
+                shuffledDeck: result.game.shuffledDeck,
+                cards: result.game.cards
+            }});
+        }
+
+        let latestGame = await Game.findOne({ roomId });
+        if (!latestGame) return;
+
+        let patternResult = gameController.Pattern(latestGame, latestGame.cards);
+        if (patternResult.game) {
+            await Game.updateOne({ roomId }, { $set: {
+                scores: patternResult.game.scores,
+                protectedPatterns: patternResult.game.protectedPatterns
+            }});
+            latestGame = await Game.findOne({ roomId });
+        }
+
+        const target = latestGame.targetSequences || 2;
+        const winner = Object.keys(latestGame.scores || {}).find(c => latestGame.scores[c] >= target);
+
+        if (winner || patternResult.winner) {
+            const finalWinner = winner || patternResult.winner;
+            io.to(roomId).emit('gameOver', { winner: finalWinner });
+            botDifficultyMap.delete(roomId);
+            return;
+        }
+
+        // Send updated state to all human players
+        latestGame.players.forEach(player => {
+            if (!isBot(player.socketId)) {
+                io.to(player.socketId).emit('updateGameState', {
+                    deckCount: latestGame.shuffledDeck.length,
+                    score: latestGame.scores,
+                    cards: latestGame.cards,
+                    currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
+                    players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                    playerHand: player.hand,
+                    protectedPatterns: latestGame.protectedPatterns || []
+                });
+            }
+        });
+
+        // Chain: if next player is also a bot, trigger again after delay
+        const nextPlayer = latestGame.players.find(p => p.isTurn);
+        if (nextPlayer && isBot(nextPlayer.socketId)) {
+            setTimeout(() => triggerBotTurn(roomId, nextPlayer.socketId, difficulty), 1200);
+        }
+    } catch (err) {
+        console.error(`Error in triggerBotTurn for room ${roomId}:`, err);
+    }
+}
 
 io.on("connection", async (socket) => {
     let sessionID = socket.handshake.query.sessionId;
@@ -190,6 +289,7 @@ io.on("connection", async (socket) => {
             let patternResult = gameController.Pattern(latestGame, latestGame.cards);
             if (patternResult.winner) {
                 io.to(roomId).emit('gameOver', { winner: patternResult.winner });
+                botDifficultyMap.delete(roomId);
             } else {
                 if (patternResult.game) {
                     await Game.updateOne({ roomId: roomId }, { $set: {
@@ -204,22 +304,87 @@ io.on("connection", async (socket) => {
                 let finalWinner = Object.keys(latestGame.scores || {}).find(color => latestGame.scores[color] >= target) || null;
                 if (finalWinner) {
                     io.to(roomId).emit('gameOver', { winner: finalWinner });
+                    botDifficultyMap.delete(roomId);
                 } else {
+                    // Send state only to human players
                     latestGame.players.forEach(player => {
-                        io.to(player.socketId).emit('updateGameState', {
-                            deckCount: latestGame.shuffledDeck.length,
-                            score: latestGame.scores,
-                            cards: latestGame.cards,
-                            currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
-                            players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
-                            playerHand: player.hand,
-                            protectedPatterns: latestGame.protectedPatterns || []
-                        });
+                        if (!isBot(player.socketId)) {
+                            io.to(player.socketId).emit('updateGameState', {
+                                deckCount: latestGame.shuffledDeck.length,
+                                score: latestGame.scores,
+                                cards: latestGame.cards,
+                                currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
+                                players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                                playerHand: player.hand,
+                                protectedPatterns: latestGame.protectedPatterns || []
+                            });
+                        }
                     });
+
+                    // If next player is a bot, trigger its turn
+                    const nextPlayer = latestGame.players.find(p => p.isTurn);
+                    if (nextPlayer && isBot(nextPlayer.socketId)) {
+                        const difficulty = botDifficultyMap.get(roomId) || 'medium';
+                        setTimeout(() => triggerBotTurn(roomId, nextPlayer.socketId, difficulty), 1200);
+                    }
                 }
             }
         } catch (err) {
             console.error('Error processing Boardcardclicked:', err);
+        }
+    });
+
+    // Handle bot game start
+    socket.on('start_bot_game', async (data, callback) => {
+        const { playerName, numBots = 1, difficulty = 'medium' } = data || {};
+        if (!playerName) {
+            if (typeof callback === 'function') callback({ success: false, message: 'Player name required.' });
+            return;
+        }
+
+        try {
+            // Generate unique room ID
+            let roomId;
+            let isUnique = false;
+            while (!isUnique) {
+                roomId = Math.floor(100000 + Math.random() * 900000).toString();
+                const existing = await Room.findOne({ roomId });
+                isUnique = !existing;
+            }
+
+            const clampedBots = Math.max(1, Math.min(3, numBots));
+            const totalPlayers = 1 + clampedBots;
+            let gameMode = totalPlayers === 2 ? '2_players' : totalPlayers === 3 ? '3_players' : '4_players';
+
+            // Build player lists: human first, then bots
+            const playerSockets = [socket.id];
+            const playerNames = [playerName];
+            for (let i = 0; i < clampedBots; i++) {
+                playerSockets.push(`bot_${roomId}_${i}`);
+                playerNames.push(`Bot ${i + 1}`);
+            }
+
+            // Persist the room
+            const newRoom = new Room({
+                roomId,
+                players: playerSockets,
+                isCustom: true,
+                empty: false,
+                playersName: playerNames,
+                playerLimit: totalPlayers,
+                gameMode
+            });
+            await newRoom.save();
+
+            socket.join(roomId);
+            botDifficultyMap.set(roomId, difficulty);
+
+            if (typeof callback === 'function') callback({ success: true, roomId });
+
+            await startGameForRoom(roomId, playerSockets, playerNames, gameMode);
+        } catch (err) {
+            console.error('Error starting bot game:', err);
+            if (typeof callback === 'function') callback({ success: false, message: 'Server error.' });
         }
     });
 
