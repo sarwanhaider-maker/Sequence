@@ -71,7 +71,7 @@ export default function BotGame() {
 
       {/* Full-screen offline game iframe */}
       <iframe
-        src="https://sarwanhaider-maker.github.io/Sequence/sequence_online.html"
+        src="https://sarwanhaider-maker.github.io/Sequence/sequence_offline.html"
         title="Sequence vs Bot"
         style={{
           flex: 1,
