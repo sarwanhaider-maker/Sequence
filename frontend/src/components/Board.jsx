@@ -589,68 +589,9 @@ export default function Boards() {
     });
   };
 
-  const startBotGame = useCallback(async () => {
-    if (!socket || !socket.connected) {
-      Swal.fire("Connection Error", "Not connected to server.", "error");
-      return;
-    }
-    if (!playerName.trim()) {
-      Swal.fire("Error", "Please enter your name first!", "error");
-      return;
-    }
-
-    // Show bot setup dialog
-    const { value: formValues } = await Swal.fire({
-      title: '🤖 Play vs Bot',
-      html: `
-        <div style="text-align:left; font-family:'Outfit',sans-serif;">
-          <label style="display:block; margin-bottom:6px; font-weight:600; color:#b0a9c9; font-size:0.85rem;">NUMBER OF BOTS</label>
-          <select id="swal-bots" style="width:100%; padding:10px 12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:white; font-size:0.95rem; margin-bottom:14px;">
-            <option value="1">1 Bot (You vs Bot)</option>
-            <option value="2">2 Bots (You + 2 Bots)</option>
-            <option value="3">3 Bots (You + 3 Bots)</option>
-          </select>
-          <label style="display:block; margin-bottom:6px; font-weight:600; color:#b0a9c9; font-size:0.85rem;">DIFFICULTY</label>
-          <select id="swal-diff" style="width:100%; padding:10px 12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:white; font-size:0.95rem;">
-            <option value="easy">🎲 Easy — Random moves</option>
-            <option value="medium" selected>⚔️ Medium — Strategic play</option>
-            <option value="hard">🔥 Hard — Highly competitive</option>
-          </select>
-        </div>
-      `,
-      background: '#13102a',
-      color: '#e0d9f5',
-      confirmButtonText: '▶ Start Game',
-      confirmButtonColor: '#7c3aed',
-      showCancelButton: true,
-      cancelButtonText: 'Cancel',
-      preConfirm: () => ({
-        numBots: parseInt(document.getElementById('swal-bots').value),
-        difficulty: document.getElementById('swal-diff').value
-      })
-    });
-
-    if (!formValues) return;
-
-    Swal.fire({ title: 'Starting game...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-    socket.emit('start_bot_game', {
-      playerName: playerName.trim(),
-      numBots: formValues.numBots,
-      difficulty: formValues.difficulty
-    }, (response) => {
-      Swal.close();
-      if (response && response.success) {
-        setRoom(response.roomId);
-        setCustomRoomId(response.roomId);
-        setInCustomGame(true);
-        setPlayOnline(true);
-        navigate(`/room/${response.roomId}`);
-      } else {
-        Swal.fire('Error', (response && response.message) || 'Failed to start bot game.', 'error');
-      }
-    });
-  }, [socket, playerName, navigate]);
+  const startBotGame = useCallback(() => {
+    navigate("/bot");
+  }, [navigate]);
 
   const handleExitRoom = () => {
     Swal.fire({
