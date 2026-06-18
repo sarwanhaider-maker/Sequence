@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Outfit:wght@300;400;600;700;800&display=swap');
+
 /* Ensure the base Tailwind styles are imported once at the root of your project */
 @import "tailwindcss/base";
 @import "tailwindcss/components";
@@ -609,3 +611,112 @@ body {
     border-radius: 6px !important;
   }
 }
+
+/* --- Phase 1: High-Graphics Redesign Styles --- */
+
+/* Suit pattern repeating background */
+.lobby-suit-bg {
+  background-color: #0c0821;
+  background-image: 
+    radial-gradient(circle at 50% 30%, #1e1346 0%, #070514 100%);
+  position: relative;
+  overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+}
+.lobby-suit-bg::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.lobby-suit-bg::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  opacity: 0.025;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='%23ffffff'%3E%3Cpath d='M40 0 L48 12 L60 20 L48 28 L40 40 L32 28 L20 20 L32 12 Z'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 80px 80px;
+}
+
+/* Glassmorphism Panels */
+.glass-panel {
+  background: rgba(28, 19, 58, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Premium Gold and Cyan buttons */
+.btn-gold-glow {
+  background: linear-gradient(135deg, #e4ca56 0%, #b89c2c 100%);
+  color: #0c0821;
+  font-weight: 800;
+  box-shadow: 0 4px 15px rgba(228, 202, 86, 0.35);
+  transition: all 0.25s ease;
+}
+.btn-gold-glow:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 20px rgba(228, 202, 86, 0.55);
+}
+
+.btn-cyan-glow {
+  background: linear-gradient(135deg, #10d9d2 0%, #0aa8a3 100%);
+  color: #0c0821;
+  font-weight: 800;
+  box-shadow: 0 4px 15px rgba(16, 217, 210, 0.35);
+  transition: all 0.25s ease;
+}
+.btn-cyan-glow:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 20px rgba(16, 217, 210, 0.55);
+}
+
+/* Bottom Nav highlight */
+.nav-tab-active {
+  background: rgba(16, 217, 210, 0.08);
+  border-top: 2px solid #10d9d2;
+  color: #10d9d2 !important;
+}
+
+/* Active Game Board Dimming and Highlight */
+.board-grid.dimmed-active .card {
+  opacity: 0.22 !important;
+  filter: grayscale(60%) brightness(40%) !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none; /* Prevent clicking non-valid ones */
+}
+
+.board-grid.dimmed-active .card.valid-highlight {
+  opacity: 1 !important;
+  filter: none !important;
+  box-shadow: 0 0 20px 8px #10d9d2, inset 0 0 10px rgba(255,255,255,0.7) !important;
+  transform: scale(1.08) !important;
+  z-index: 30 !important;
+  border: 2px solid #10d9d2 !important;
+  pointer-events: auto !important; /* Allow clicking */
+}
+
+/* Glow animation for valid card highlights */
+@keyframes valid-pulse {
+  0%, 100% { box-shadow: 0 0 15px 5px rgba(16, 217, 210, 0.8); }
+  50% { box-shadow: 0 0 25px 10px rgba(16, 217, 210, 0.95); }
+}
+
+.board-grid.dimmed-active .card.valid-highlight {
+  animation: valid-pulse 1.5s infinite alternate;
+}
+

@@ -7,6 +7,17 @@ import { io } from "socket.io-client";
 import PlayerTurn from "./PlayerTurn";
 import Swal from "sweetalert2";
 
+// Import modular Lobby UI components
+import LobbyHeader from "./LobbyHeader";
+import LobbyBottomNav from "./LobbyBottomNav";
+import LobbyHome from "./LobbyHome";
+import SettingsModal from "./SettingsModal";
+import ProfileModal from "./ProfileModal";
+import DailyTasks from "./DailyTasks";
+import DailyBonus from "./DailyBonus";
+import Store from "./Store";
+import StakesCarousel from "./StakesCarousel";
+
 const SERVER_URL = import.meta.env.VITE_API_URL || (
   window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://localhost:8000"
@@ -137,6 +148,98 @@ const countChips = (boardCards) => {
 export default function Boards() {
   const { roomId: urlRoomId } = useParams();
   const navigate = useNavigate();
+
+  // Profile, Coins & Local Persistence
+  const [profile, setProfile] = useState(() => {
+    let savedPname = localStorage.getItem("seq_pname");
+    if (!savedPname) {
+      savedPname = `Guest_${Math.floor(1000 + Math.random() * 9000)}`;
+      localStorage.setItem("seq_pname", savedPname);
+    }
+    const savedAvatar = parseInt(localStorage.getItem("seq_avatar")) || 0;
+    let savedId = localStorage.getItem("seq_id");
+    if (!savedId) {
+      savedId = Math.floor(100000 + Math.random() * 900000).toString();
+      localStorage.setItem("seq_id", savedId);
+    }
+    const savedLevel = parseInt(localStorage.getItem("seq_level")) || 1;
+    const savedCoins = localStorage.getItem("seq_coins") !== null ? parseInt(localStorage.getItem("seq_coins")) : 75000;
+    
+    return { name: savedPname, avatarId: savedAvatar, id: savedId, level: savedLevel, coins: savedCoins };
+  });
+
+  // Statistics
+  const [stats, setStats] = useState(() => {
+    const defaultStats = { gamesPlayed: 0, gamesWon: 0, sequencesMade: 0, winnings: 0, winStreak: 0 };
+    const saved = localStorage.getItem("seq_stats");
+    return saved ? JSON.parse(saved) : defaultStats;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("seq_stats", JSON.stringify(stats));
+  }, [stats]);
+
+  // Daily Tasks
+  const [tasks, setTasks] = useState(() => {
+    const defaultTasks = [
+      { id: 1, text: "Play 5 Games in Online Multiplayer Mode", reward: 1000, current: 0, target: 5, claimed: false },
+      { id: 2, text: "Win 3 Games in Online Multiplayer Mode", reward: 1000, current: 0, target: 3, claimed: false },
+      { id: 3, text: "Win 10,000 Coins in Play With Friends Mode", reward: 10000, current: 0, target: 10000, claimed: false },
+      { id: 4, text: "Win 3 Games in Play With Friends Mode", reward: 1000, current: 0, target: 3, claimed: false },
+      { id: 5, text: "Win 10,000 Coins in Online Multiplayer Mode", reward: 10000, current: 0, target: 10000, claimed: false }
+    ];
+    const saved = localStorage.getItem("seq_tasks");
+    return saved ? JSON.parse(saved) : defaultTasks;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("seq_tasks", JSON.stringify(tasks));
+  }, [tasks]);
+
+  // Daily Bonus / Login claim state
+  const [claimedDays, setClaimedDays] = useState(() => {
+    const saved = localStorage.getItem("seq_claimed_days");
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [lastClaimTime, setLastClaimTime] = useState(() => {
+    return parseInt(localStorage.getItem("seq_last_claim_time")) || 0;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("seq_claimed_days", JSON.stringify(claimedDays));
+  }, [claimedDays]);
+  useEffect(() => {
+    localStorage.setItem("seq_last_claim_time", lastClaimTime.toString());
+  }, [lastClaimTime]);
+
+  // Settings
+  const [gameSettings, setGameSettings] = useState(() => {
+    const defaultSettings = { music: true, sound: true, vibration: true };
+    const saved = localStorage.getItem("seq_settings");
+    return saved ? JSON.parse(saved) : defaultSettings;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("seq_settings", JSON.stringify(gameSettings));
+  }, [gameSettings]);
+
+  // Lobby navigation and modal states
+  const [activeTab, setActiveTab] = useState("HOME");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [stakesOpen, setStakesOpen] = useState(false);
+  const [activeStake, setActiveStake] = useState(null);
+
+  // Hovered card ID state for card-specific board dimming
+  const [hoveredCardId, setHoveredCardId] = useState(null);
+
+  const updateCoins = (amount) => {
+    setProfile(prev => {
+      const newCoins = Math.max(0, prev.coins + amount);
+      localStorage.setItem("seq_coins", newCoins.toString());
+      return { ...prev, coins: newCoins };
+    });
+  };
 
   const [cards, setCards] = useState([]);
   const [hoveredCard, setHoveredCard] = useState([]);
@@ -353,8 +456,58 @@ export default function Boards() {
       const myTeam = playersListRef.current[playingAsRef.current]?.team || "unknown";
       const isWin = data.winner === myTeam;
 
+      // Update statistics and task progress locally
+      setStats(prev => {
+        const nextStats = {
+          ...prev,
+          gamesPlayed: prev.gamesPlayed + 1,
+          gamesWon: prev.gamesWon + (isWin ? 1 : 0),
+          winnings: prev.winnings + (isWin ? (activeStake?.reward || 100) : 0),
+          winStreak: isWin ? prev.winStreak + 1 : 0
+        };
+        // Auto-level profile based on games played
+        setProfile(p => {
+          const nextLvl = Math.floor(nextStats.gamesPlayed / 3) + 1;
+          localStorage.setItem("seq_level", nextLvl.toString());
+          return { ...p, level: nextLvl };
+        });
+        return nextStats;
+      });
+
+      // Update daily tasks progress
+      setTasks(prevTasks => {
+        return prevTasks.map(t => {
+          if (inCustomGame) {
+            if (t.id === 3 && isWin) { // Earn 10,000 coins in Friends
+              return { ...t, current: Math.min(t.target, t.current + 500) };
+            }
+            if (t.id === 4 && isWin) { // Win 3 games in Friends
+              return { ...t, current: Math.min(t.target, t.current + 1) };
+            }
+          } else {
+            if (t.id === 1) { // Play 5 games online
+              return { ...t, current: Math.min(t.target, t.current + 1) };
+            }
+            if (t.id === 2 && isWin) { // Win 3 games online
+              return { ...t, current: Math.min(t.target, t.current + 1) };
+            }
+            if (t.id === 5 && isWin) { // Earn 10,000 coins online
+              const wonAmount = activeStake?.reward || 100;
+              return { ...t, current: Math.min(t.target, t.current + wonAmount) };
+            }
+          }
+          return t;
+        });
+      });
+
       if (isWin) {
         GameSounds.playWin();
+        // Credit the reward coins
+        if (activeStake) {
+          updateCoins(activeStake.reward);
+        } else if (inCustomGame) {
+          updateCoins(500); // 500 coins for winning custom friend match
+        }
       } else {
         GameSounds.playLose();
       }
@@ -797,100 +950,287 @@ export default function Boards() {
     );
   }
 
-  // 2. Setup Screen / Lobby Choice
+  // 2. Setup Screen / Lobby Choice (High-Graphics Purple Redesign)
   if (!playOnline && !inCustomGame) {
+    const handleSaveProfile = (newProfile) => {
+      setProfile(prev => {
+        const updated = { ...prev, name: newProfile.name, avatarId: newProfile.avatarId };
+        localStorage.setItem("seq_pname", updated.name);
+        localStorage.setItem("seq_avatar", updated.avatarId.toString());
+        return updated;
+      });
+    };
+
+    const handleToggleSetting = (key) => {
+      setGameSettings(prev => {
+        const updated = { ...prev, [key]: !prev[key] };
+        localStorage.setItem("seq_settings", JSON.stringify(updated));
+        return updated;
+      });
+    };
+
+    const handleClaimBonus = (amount) => {
+      updateCoins(amount);
+      const now = Date.now();
+      setClaimedDays(prev => {
+        const nextDay = Object.keys(prev).length + 1;
+        const updated = { ...prev, [nextDay]: true };
+        return updated;
+      });
+      setLastClaimTime(now);
+    };
+
+    const handleClaimTask = (taskId, reward) => {
+      updateCoins(reward);
+      setTasks(prev => {
+        const updated = prev.map(t => t.id === taskId ? { ...t, claimed: true } : t);
+        return updated;
+      });
+      Swal.fire("Reward Claimed!", `You received +${reward} coins!`, "success");
+    };
+
+    const handleWatchAdProgress = (taskId) => {
+      setTasks(prev => {
+        return prev.map(t => {
+          if (t.id === taskId) {
+            const increment = t.target >= 10 ? Math.floor(t.target / 5) : 1;
+            return { ...t, current: Math.min(t.target, t.current + increment) };
+          }
+          return t;
+        });
+      });
+      updateCoins(100); // 100 bonus coins for watching ad
+    };
+
+    const handleSelectStakeMatch = (stake) => {
+      updateCoins(-stake.fee);
+      setActiveStake(stake);
+      setStakesOpen(false);
+      onlineButton();
+    };
+
+    const totalUnclaimedTasks = tasks.filter(t => t.current >= t.target && !t.claimed).length;
+    const canClaimDailyBonus = !lastClaimTime || (Date.now() - lastClaimTime) >= 24 * 60 * 60 * 1000;
+    const activeBonusBadge = canClaimDailyBonus ? 1 : 0;
+
     return (
-      <>
+      <div 
+        className="lobby-suit-bg w-full min-h-screen flex flex-col justify-between"
+        style={{
+          maxWidth: "420px",
+          margin: "0 auto",
+          boxShadow: "0 0 40px rgba(0,0,0,0.8)",
+          borderRadius: "24px",
+          border: "2px solid rgba(255, 255, 255, 0.05)",
+          boxSizing: "border-box"
+        }}
+      >
         {renderWizard()}
-        <div className="flex flex-col items-center justify-center min-h-[85vh] w-full" style={{ animation: "fadeIn 0.5s ease-out" }}>
-          <h1 style={{ fontFamily: "'Cinzel', serif", fontSize: "2.2rem", fontWeight: "800", color: "white", textShadow: "0 0 15px rgba(16, 217, 210, 0.5)", margin: "0 0 10px 0", letterSpacing: "6px", textAlign: "center" }}>SEQUENCE</h1>
-          
-          <div className="setup-container">
-            <h2>Online Multiplayer Lobby</h2>
-            <div style={{ fontSize: "0.85rem", marginBottom: "15px", opacity: 0.85 }}>
-              Server: <span style={{ color: socketStatus === "connected" ? "#4ade80" : "#f87171", fontWeight: "bold" }}>
-                {socketStatus === "connected" ? "Connected" : socketStatus === "error" ? "Connection Error" : "Connecting..."}
-              </span>
-              {connectError && <div style={{ color: "#f87171", fontSize: "0.75rem", marginTop: "4px", fontWeight: "bold" }}>Error: {connectError}</div>}
-              <div style={{ fontSize: "0.75rem", opacity: 0.6, marginTop: "2px" }}>({SERVER_URL})</div>
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="pname">Your Name</label>
-              <input
-                type="text"
-                id="pname"
-                placeholder="Enter name"
-                value={playerName}
-                onChange={(e) => setPlayerName(e.target.value)}
-              />
-            </div>
 
-            <div className="form-group">
-              <label htmlFor="gmode">Select Game Mode</label>
-              <select
-                id="gmode"
-                value={gameMode}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setGameMode(val);
-                  if (val === '2_players') setPlayerLimit(2);
-                  else if (val === '3_players') setPlayerLimit(3);
-                  else if (val === '4_players') setPlayerLimit(4);
-                  else if (val === '6_players_3_teams') setPlayerLimit(6);
-                  else if (val === '6_players_2_teams') setPlayerLimit(6);
-                  else if (val === '8_players') setPlayerLimit(8);
-                }}
-              >
-                <option value="2_players">2 Players (2 Teams of 1, Goal: 2 seq)</option>
-                <option value="3_players">3 Players (3 Independent, Goal: 1 seq)</option>
-                <option value="4_players">4 Players (2 Teams of 2, Goal: 2 seq)</option>
-                <option value="6_players_3_teams">6 Players (3 Teams of 2, Goal: 1 seq)</option>
-                <option value="6_players_2_teams">6 Players (2 Teams of 3, Goal: 2 seq)</option>
-                <option value="8_players">8 Players (2 Teams of 4, Goal: 2 seq)</option>
-              </select>
-            </div>
+        {/* Top Header */}
+        <LobbyHeader 
+          profile={profile}
+          onAvatarClick={() => setProfileOpen(true)}
+          onSettingsClick={() => setSettingsOpen(true)}
+          onChatClick={() => setActiveTab("STORE")}
+        />
 
-            <button onClick={onlineButton} className="btn-setup btn-setup-primary">
-              Quick Match (Play Online)
-            </button>
+        {/* Scrollable Center Content */}
+        <div style={{ flex: 1, overflowY: "auto", width: "100%", paddingBottom: "10px" }}>
+          {stakesOpen ? (
+            <StakesCarousel 
+              coins={profile.coins}
+              onBack={() => setStakesOpen(false)}
+              onSelectStake={handleSelectStakeMatch}
+            />
+          ) : (
+            <>
+              {activeTab === "HOME" && (
+                <LobbyHome 
+                  onPlayOnline={(val) => {
+                    if (typeof val === 'number') {
+                      updateCoins(val);
+                    } else {
+                      setStakesOpen(true);
+                    }
+                  }}
+                  onPlayFriends={() => setActiveTab("FRIENDS")}
+                  onPractice={startBotGame}
+                />
+              )}
 
-            <button
-              onClick={startBotGame}
-              className="btn-setup"
-              style={{
-                background: "linear-gradient(135deg, #4c1d95, #7c3aed)",
-                border: "1px solid #7c3aed",
-                color: "white",
-                boxShadow: "0 0 16px rgba(124,58,237,0.4)",
-                fontWeight: "700"
-              }}
-            >
-              🤖 Play vs Bot
-            </button>
-            
-            <button onClick={createCustomRoom} className="btn-setup btn-setup-secondary">
-              Create Custom Room (Play with Friends)
-            </button>
+              {activeTab === "FRIENDS" && (
+                <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "18px", animation: "fadeIn 0.35s ease" }}>
+                  <div style={{ textAlign: "center", marginBottom: "4px" }}>
+                    <h2 style={{ fontFamily: "'Cinzel', serif", fontSize: "1.6rem", fontWeight: "900", color: "#e4ca56", margin: 0, letterSpacing: "2.5px" }}>PLAY WITH FRIENDS</h2>
+                    <p style={{ color: "#b0a9c9", fontSize: "0.85rem", fontWeight: "600", margin: "4px 0 0 0" }}>
+                      Create private rooms and play together!
+                    </p>
+                  </div>
 
-            <button onClick={() => joinCustomRoom()} className="btn-setup" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid var(--border-color)", color: "#b0a9c9" }}>
-              Join Custom Room
-            </button>
+                  <div className="glass-panel" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+                    <h3 style={{ fontFamily: "'Cinzel', serif", fontSize: "1.05rem", fontWeight: "800", color: "#10d9d2", margin: "0 0 4px 0", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "6px" }}>
+                      CREATE PRIVATE ROOM
+                    </h3>
+                    
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ fontSize: "0.78rem", fontWeight: "800", color: "#b0a9c9" }}>SELECT GAME MODE</label>
+                      <select
+                        value={gameMode}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setGameMode(val);
+                          if (val === '2_players') setPlayerLimit(2);
+                          else if (val === '3_players') setPlayerLimit(3);
+                          else if (val === '4_players') setPlayerLimit(4);
+                          else if (val === '6_players_3_teams') setPlayerLimit(6);
+                          else if (val === '6_players_2_teams') setPlayerLimit(6);
+                          else if (val === '8_players') setPlayerLimit(8);
+                        }}
+                        style={{
+                          background: "rgba(0,0,0,0.3)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: "10px",
+                          padding: "10px",
+                          color: "white",
+                          fontWeight: "700",
+                          outline: "none"
+                        }}
+                      >
+                        <option value="2_players">2 Players (Goal: 2 seq)</option>
+                        <option value="3_players">3 Players (Goal: 1 seq)</option>
+                        <option value="4_players">4 Players (Goal: 2 seq)</option>
+                        <option value="6_players_3_teams">6 Players / 3 Teams (Goal: 1 seq)</option>
+                        <option value="6_players_2_teams">6 Players / 2 Teams (Goal: 2 seq)</option>
+                        <option value="8_players">8 Players (Goal: 2 seq)</option>
+                      </select>
+                    </div>
 
-            <button onClick={() => setShowWizard(true)} className="btn-setup" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid var(--border-color)", color: "#b0a9c9" }}>
-              How to Play
-            </button>
-          </div>
+                    <button 
+                      onClick={createCustomRoom} 
+                      className="btn-gold-glow"
+                      style={{ padding: "12px", borderRadius: "30px", border: "none", fontSize: "0.95rem", cursor: "pointer", marginTop: "6px" }}
+                    >
+                      CREATE ROOM
+                    </button>
+                  </div>
+
+                  <div className="glass-panel" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <h3 style={{ fontFamily: "'Cinzel', serif", fontSize: "1.05rem", fontWeight: "800", color: "#ecc94b", margin: "0 0 4px 0", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "6px" }}>
+                      JOIN PRIVATE ROOM
+                    </h3>
+                    <p style={{ color: "#c3bee0", fontSize: "0.75rem", margin: "0 0 4px 0", fontWeight: "600", lineHeight: "1.3" }}>
+                      Have a Room ID from a friend? Tap below to enter and join their lobby.
+                    </p>
+                    <button 
+                      onClick={() => joinCustomRoom()} 
+                      className="btn-cyan-glow"
+                      style={{ padding: "12px", borderRadius: "30px", border: "none", fontSize: "0.95rem", cursor: "pointer" }}
+                    >
+                      ENTER ROOM ID
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "DAILY_BONUS" && (
+                <DailyBonus 
+                  claimedDays={claimedDays}
+                  lastClaimTime={lastClaimTime}
+                  onClaim={handleClaimBonus}
+                />
+              )}
+
+              {activeTab === "DAILY_TASK" && (
+                <DailyTasks 
+                  tasks={tasks}
+                  onClaimTask={handleClaimTask}
+                  onWatchAd={handleWatchAdProgress}
+                />
+              )}
+
+              {activeTab === "STORE" && (
+                <Store 
+                  onBuyCoins={updateCoins}
+                />
+              )}
+            </>
+          )}
         </div>
-      </>
+
+        {/* Bottom Nav Bar */}
+        <LobbyBottomNav 
+          activeTab={activeTab}
+          onTabChange={(tab) => {
+            setStakesOpen(false);
+            setActiveTab(tab);
+          }}
+          badges={{ bonus: activeBonusBadge, tasks: totalUnclaimedTasks }}
+        />
+
+        {/* Overlays / Modals */}
+        <SettingsModal 
+          isOpen={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          settings={gameSettings}
+          onToggleSetting={handleToggleSetting}
+          onQuit={() => Swal.fire({
+            title: "Quit Game",
+            text: "Are you sure you want to exit?",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Yes"
+          }).then(res => {
+            if (res.isConfirmed) {
+              window.close();
+            }
+          })}
+        />
+
+        <ProfileModal 
+          isOpen={profileOpen}
+          onClose={() => setProfileOpen(false)}
+          profile={profile}
+          onSaveProfile={handleSaveProfile}
+          stats={stats}
+        />
+      </div>
     );
   }
 
   // 3. Waiting for Quick Match
   if (playOnline && playersList.length === 0 && !inCustomGame && isWaitingForMatch) {
     return (
-      <div className="waiting text-white">
-        <p>Waiting for an opponent...</p>
+      <div className="lobby-suit-bg w-full min-h-screen flex flex-col items-center justify-center text-white" style={{ maxWidth: "420px", margin: "0 auto", borderRadius: "24px" }}>
+        <div className="glass-panel" style={{ padding: "40px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", maxWidth: "300px", textAlign: "center" }}>
+          <div style={{ fontSize: "3rem", animation: "pulse 1.5s infinite" }}>🌐</div>
+          <h3 style={{ fontFamily: "'Cinzel', serif", fontSize: "1.25rem", color: "#e4ca56", margin: 0, fontWeight: "900", letterSpacing: "1px" }}>MATCHMAKING</h3>
+          <p style={{ color: "#c3bee0", fontSize: "0.85rem", margin: 0, lineHeight: "1.4", fontWeight: "600" }}>
+            Searching for active players...
+          </p>
+          <div style={{ fontSize: "0.72rem", color: "#10d9d2", fontWeight: "800", animation: "blink-turn 1s infinite" }}>
+            WAITING FOR OPPONENT...
+          </div>
+          <button 
+            onClick={() => {
+              if (socket) socket.emit("leave_room");
+              window.location.href = "/";
+            }}
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.15)",
+              color: "#e53e3e",
+              padding: "8px 20px",
+              borderRadius: "20px",
+              fontSize: "0.8rem",
+              fontWeight: "800",
+              cursor: "pointer",
+              marginTop: "8px"
+            }}
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     );
   }
@@ -901,46 +1241,96 @@ export default function Boards() {
     const isHost = connectedPlayers[0] === playerName;
 
     return (
-      <div className="customGameWaiting flex flex-col items-center justify-center min-h-[85vh] w-full text-center text-white p-8 animate-[fadeIn_0.5s_ease-out]">
-        <p className="mb-4 text-3xl font-bold text-cyan-400">Room ID: {customRoomId}</p>
-        <p className="text-xl mb-6">Waiting for friends ({connectedPlayers.length} / {playerLimit} connected)...</p>
-        
-        <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(inviteLink);
-              Swal.fire("Copied!", "Invite link copied to clipboard.", "success");
-            }}
-            className="btn-setup btn-setup-primary"
-            style={{ padding: "8px 16px", fontSize: "0.9rem", width: "auto", margin: 0 }}
-          >
-            Copy Invite Link
-          </button>
+      <div className="lobby-suit-bg w-full min-h-screen flex flex-col items-center justify-center text-white p-6" style={{ maxWidth: "420px", margin: "0 auto", borderRadius: "24px" }}>
+        <div className="glass-panel w-full" style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "16px", textAlign: "center" }}>
+          <h3 style={{ fontFamily: "'Cinzel', serif", fontSize: "1.3rem", color: "#ecc94b", margin: 0, fontWeight: "900", letterSpacing: "1px" }}>
+            PRIVATE LOBBY
+          </h3>
+          <p style={{ fontSize: "0.8rem", color: "#c3bee0", margin: 0, fontWeight: "600", lineHeight: "1.3" }}>
+            Share this ID or link to invite your friends to join:
+          </p>
           
-          {isHost && connectedPlayers.length >= 2 && (
+          <div style={{
+            background: "rgba(0,0,0,0.25)",
+            border: "1px solid rgba(16, 217, 210, 0.4)",
+            borderRadius: "12px",
+            padding: "10px",
+            fontSize: "1.35rem",
+            fontWeight: "900",
+            color: "#10d9d2",
+            letterSpacing: "1px"
+          }}>
+            ROOM ID: {customRoomId}
+          </div>
+
+          <div style={{ display: "flex", gap: "8px" }}>
             <button
               onClick={() => {
-                socket.emit("start_custom_game", { roomId: customRoomId }, (res) => {
-                  if (!res.success) {
-                    Swal.fire("Error", res.message || "Failed to start game.", "error");
-                  }
-                });
+                navigator.clipboard.writeText(inviteLink);
+                Swal.fire("Copied!", "Invite link copied to clipboard.", "success");
               }}
-              className="btn-setup btn-setup-secondary"
-              style={{ padding: "8px 16px", fontSize: "0.9rem", width: "auto", margin: 0 }}
+              className="btn-cyan-glow"
+              style={{ flex: 1, padding: "10px 0", borderRadius: "20px", border: "none", fontSize: "0.82rem", cursor: "pointer" }}
             >
-              Start Game
+              Copy Link
             </button>
-          )}
-        </div>
+            
+            {isHost && connectedPlayers.length >= 2 && (
+              <button
+                onClick={() => {
+                  socket.emit("start_custom_game", { roomId: customRoomId }, (res) => {
+                    if (!res.success) {
+                      Swal.fire("Error", res.message || "Failed to start game.", "error");
+                    }
+                  });
+                }}
+                className="btn-gold-glow"
+                style={{ flex: 1, padding: "10px 0", borderRadius: "20px", border: "none", fontSize: "0.82rem", cursor: "pointer" }}
+              >
+                Start Game
+              </button>
+            )}
+          </div>
 
-        <div className="bg-gray-800/80 backdrop-blur-md p-6 rounded-lg max-w-md mx-auto text-left border border-cyan-500/30 shadow-xl w-full">
-          <h3 className="text-lg font-bold border-b border-gray-600 pb-2 mb-3 text-cyan-400">Connected Players</h3>
-          <ul className="list-disc list-inside space-y-2">
-            {connectedPlayers.map((player, idx) => (
-              <li key={idx} className="text-white font-medium">{player} {idx === 0 ? "(Host)" : ""}</li>
-            ))}
-          </ul>
+          <div style={{
+            background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: "14px",
+            padding: "16px",
+            textAlign: "left"
+          }}>
+            <h4 style={{ margin: "0 0 8px 0", fontSize: "0.85rem", color: "#ecc94b", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "4px" }}>
+              CONNECTED ({connectedPlayers.length} / {playerLimit})
+            </h4>
+            <ul style={{ listStyleType: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
+              {connectedPlayers.map((player, idx) => (
+                <li style={{ fontSize: "0.85rem", fontWeight: "700", color: "#e2e8f0", display: "flex", justifyContent: "space-between" }} key={idx}>
+                  <span>👤 {player}</span>
+                  {idx === 0 && <span style={{ fontSize: "0.65rem", color: "#ecc94b", border: "1px solid #ecc94b", padding: "1px 6px", borderRadius: "8px" }}>HOST</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <button 
+            onClick={() => {
+              if (socket) socket.emit("leave_room");
+              window.location.href = "/";
+            }}
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: "#b0a9c9",
+              padding: "8px",
+              borderRadius: "20px",
+              fontSize: "0.78rem",
+              fontWeight: "700",
+              cursor: "pointer",
+              marginTop: "4px"
+            }}
+          >
+            Leave Lobby
+          </button>
         </div>
       </div>
     );
@@ -1037,6 +1427,7 @@ export default function Boards() {
             currentPlayerIndex={currentPlayerIndex}
             playingAs={playingAs}
             protectedPatterns={protectedPatterns}
+            hoveredCardId={hoveredCardId}
           />
 
           {/* Right: Info & Decks Sidebar */}
@@ -1076,6 +1467,7 @@ export default function Boards() {
               setHoveredCard={setHoveredCard}
               currentPlayerIndex={currentPlayerIndex}
               playingAs={playingAs}
+              setHoveredCardId={setHoveredCardId}
             />
 
             {/* Quit & Rules Buttons Row */}

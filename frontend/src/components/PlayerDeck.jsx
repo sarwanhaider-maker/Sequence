@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const PlayerDeck = ({ socket, playerHand, setSelectCard, setHoveredCard, playingAs, currentPlayerIndex }) => {
+const PlayerDeck = ({ socket, playerHand, setSelectCard, setHoveredCard, playingAs, currentPlayerIndex, setHoveredCardId }) => {
 
   const [selectedCardId, setSelectedCardId] = useState(null);
   
@@ -10,12 +10,18 @@ const PlayerDeck = ({ socket, playerHand, setSelectCard, setHoveredCard, playing
       setSelectCard(isSelected ? null : card.id);
   };
 
-  const handleMouseEnter = (matches) => {
-    setHoveredCard(matches);
+  const handleMouseEnter = (card) => {
+    setHoveredCard(card.matches || []);
+    if (setHoveredCardId) {
+      setHoveredCardId(card.id);
+    }
   };
 
   const handleMouseLeave = () => {
     setHoveredCard([]);
+    if (setHoveredCardId) {
+      setHoveredCardId(null);
+    }
   };
 
   return (
@@ -29,7 +35,7 @@ const PlayerDeck = ({ socket, playerHand, setSelectCard, setHoveredCard, playing
             alt={`Card ${card.id}`}
             className={`hand-card ${selectedCardId === card.id ? 'selected' : ''}`}
             onClick={() => playingAs === currentPlayerIndex && handleCardClick(card)}
-            onMouseEnter={() => handleMouseEnter(card.matches || [])}
+            onMouseEnter={() => handleMouseEnter(card)}
             onMouseLeave={handleMouseLeave} 
           />
         ))}

@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function Cards({ roomId, socket, selectCard, cards, hoveredCard, playingAs, currentPlayerIndex, protectedPatterns }) {
+export default function Cards({ roomId, socket, selectCard, cards, hoveredCard, playingAs, currentPlayerIndex, protectedPatterns, hoveredCardId }) {
 
     function handleClick(cardId, selectCard, socket, card) {
         let card_matches = card.matches;
@@ -31,18 +31,38 @@ export default function Cards({ roomId, socket, selectCard, cards, hoveredCard, 
     const isProtected = (id) => {
         return (protectedPatterns || []).some(pattern => pattern.includes(id));
     };
+
+    const isMyTurn = playingAs === currentPlayerIndex;
+    const activeCardId = selectCard || hoveredCardId;
+    const shouldDim = isMyTurn && activeCardId !== null;
+
+    const checkIsValidTarget = (card) => {
+        if (!activeCardId) return false;
+        
+        // Two-eyed Jack (Wild) - ID 101 to 104
+        if (activeCardId > 100 && activeCardId <= 104) {
+            return ![1, 10, 91, 100].includes(card.id) && !card.selected;
+        }
+        // One-eyed Jack (Remove) - ID 105 to 108
+        if (activeCardId > 104 && activeCardId <= 108) {
+            return card.selected && card.selected === "True" && !isProtected(card.id);
+        }
+        // Standard card
+        return card.matches && card.matches.includes(activeCardId) && !card.selected;
+    };
       
     return (
         <div className="board-container">
             <div className="board-border-text left-border-text">ONE-EYED JACKS: REMOVE CHIP</div>
-            <div className="board-grid">
+            <div className={`board-grid ${shouldDim ? 'dimmed-active' : ''}`}>
                  {cards.map((card) => {
                      const protectedClass = isProtected(card.id) ? "seq-protected" : "";
                      const isCorner = [1, 10, 91, 100].includes(card.id);
+                     const isValid = checkIsValidTarget(card);
                      return (
                         <div 
                             key={card.id} 
-                            className={`card ${isCorner ? 'corner' : ''} ${protectedClass} ${hoveredCard.includes(card.id) ? 'highlighted' : ''}`} 
+                            className={`card ${isCorner ? 'corner' : ''} ${protectedClass} ${isValid ? 'valid-highlight' : ''}`} 
                             onClick={() => handleClick(card.id, selectCard, socket, card)}
                         >
                             {card.img && (
