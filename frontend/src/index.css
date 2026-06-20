@@ -774,3 +774,36 @@ body.theme-classic .lobby-suit-bg {
 }
 
 
+/* --- Micro-Animations for UI Icons --- */
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+@keyframes pulse-cyan-soft {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 3px rgba(16, 217, 210, 0.3)); }
+  50% { transform: scale(1.06); filter: drop-shadow(0 0 10px rgba(16, 217, 210, 0.75)); }
+}
+@keyframes pulse-gold-soft {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 3px rgba(228, 202, 86, 0.3)); }
+  50% { transform: scale(1.06); filter: drop-shadow(0 0 10px rgba(228, 202, 86, 0.75)); }
+}
+@keyframes pulse-green-soft {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 3px rgba(72, 187, 120, 0.3)); }
+  50% { transform: scale(1.06); filter: drop-shadow(0 0 10px rgba(72, 187, 120, 0.75)); }
+}
+
+.animate-float {
+  animation: float-slow 4s ease-in-out infinite;
+}
+.animate-pulse-cyan {
+  animation: pulse-cyan-soft 2.5s ease-in-out infinite;
+}
+.animate-pulse-gold {
+  animation: pulse-gold-soft 2.5s ease-in-out infinite;
+}
+.animate-pulse-green {
+  animation: pulse-green-soft 2.5s ease-in-out infinite;
+}
+
+
+

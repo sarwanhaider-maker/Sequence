@@ -65,6 +65,7 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
                 iconColor: '#10d9d2'
               });
             }}
+            className="animate-pulse-cyan"
             style={{
               width: "42px",
               height: "42px",
@@ -93,6 +94,7 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
               color: '#fff',
               confirmButtonColor: "var(--accent-cyan)"
             })}
+            className="animate-pulse-gold"
             style={{
               width: "42px",
               height: "42px",
@@ -216,6 +218,7 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
         {/* Right Side icon: Watch Ad */}
         <button 
           onClick={handleAdsClick}
+          className="animate-pulse-green"
           style={{
             display: "flex",
             flexDirection: "column",

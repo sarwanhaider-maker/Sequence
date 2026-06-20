@@ -311,6 +311,7 @@ export default function Boards() {
   const prevChipsCount = useRef(0);
   const currentPlayerIndexRef = useRef(currentPlayerIndex);
   const customRoomIdRef = useRef(customRoomId);
+  const touchStartX = useRef(null);
 
   useEffect(() => { playingAsRef.current = playingAs; }, [playingAs]);
   useEffect(() => { playersListRef.current = playersList; }, [playersList]);
@@ -969,6 +970,33 @@ export default function Boards() {
     });
   };
 
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diffX = touchStartX.current - touchEndX;
+    const swipeThreshold = 60; // minimum pixels to trigger a tab swipe
+
+    if (Math.abs(diffX) > swipeThreshold) {
+      const tabsOrder = ["FRIENDS", "DAILY_BONUS", "HOME", "DAILY_TASK", "STORE"];
+      const currentIndex = tabsOrder.indexOf(activeTab);
+
+      if (diffX > 0 && currentIndex < tabsOrder.length - 1) {
+        // Swiped Left -> Move to next tab
+        setStakesOpen(false);
+        setActiveTab(tabsOrder[currentIndex + 1]);
+      } else if (diffX < 0 && currentIndex > 0) {
+        // Swiped Right -> Move to previous tab
+        setStakesOpen(false);
+        setActiveTab(tabsOrder[currentIndex - 1]);
+      }
+    }
+    touchStartX.current = null;
+  };
+
   const renderMobileHeader = () => {
     if (playersList.length === 0) return null;
     const activeTeam = playersList[currentPlayerIndex]?.team || "blue";
@@ -1220,6 +1248,8 @@ export default function Boards() {
     return (
       <div 
         className="lobby-suit-bg w-full min-h-screen flex flex-col justify-between"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
         style={{
           maxWidth: "420px",
           margin: "0 auto",
