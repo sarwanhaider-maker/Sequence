@@ -215,14 +215,32 @@ export default function Boards() {
 
   // Settings
   const [gameSettings, setGameSettings] = useState(() => {
-    const defaultSettings = { music: true, sound: true, vibration: true };
+    const defaultSettings = { music: true, sound: true, vibration: true, theme: "classic" };
     const saved = localStorage.getItem("seq_settings");
-    return saved ? JSON.parse(saved) : defaultSettings;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return { ...defaultSettings, ...parsed };
+      } catch (e) {
+        return defaultSettings;
+      }
+    }
+    return defaultSettings;
   });
 
   useEffect(() => {
     localStorage.setItem("seq_settings", JSON.stringify(gameSettings));
   }, [gameSettings]);
+
+  // Synchronize active theme to the document body class
+  useEffect(() => {
+    document.body.className = document.body.className
+      .split(' ')
+      .filter(c => !c.startsWith('theme-'))
+      .join(' ');
+    const currentTheme = gameSettings.theme || "classic";
+    document.body.classList.add(`theme-${currentTheme}`);
+  }, [gameSettings.theme]);
 
   // Lobby navigation and modal states
   const [activeTab, setActiveTab] = useState("HOME");
@@ -1147,9 +1165,9 @@ export default function Boards() {
       });
     };
 
-    const handleToggleSetting = (key) => {
+    const handleToggleSetting = (key, value = null) => {
       setGameSettings(prev => {
-        const updated = { ...prev, [key]: !prev[key] };
+        const updated = { ...prev, [key]: value !== null ? value : !prev[key] };
         localStorage.setItem("seq_settings", JSON.stringify(updated));
         return updated;
       });

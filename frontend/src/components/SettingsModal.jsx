@@ -95,6 +95,43 @@ export default function SettingsModal({ isOpen, onClose, settings = { music: tru
           );
         })}
 
+        {/* Theme Selector */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "4px", marginBottom: "4px" }}>
+          <label style={{ fontSize: "0.78rem", fontWeight: "800", color: "#b0a9c9", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "left" }}>
+            Select Theme
+          </label>
+          <div style={{ display: "flex", gap: "8px" }}>
+            {[
+              { id: "classic", label: "Classic", color: "#1a123a", border: "#10d9d2" },
+              { id: "aurora", label: "Aurora 🌌", color: "#0d2830", border: "#10d9d2" },
+              { id: "cosmos", label: "Cosmos ✨", color: "#050212", border: "#e4ca56" }
+            ].map(t => {
+              const isActive = (settings.theme || "classic") === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => onToggleSetting("theme", t.id)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 4px",
+                    borderRadius: "15px",
+                    background: t.color,
+                    border: isActive ? `2px solid ${t.border}` : "2px solid rgba(255,255,255,0.15)",
+                    color: "white",
+                    fontWeight: "800",
+                    fontSize: "0.8rem",
+                    cursor: "pointer",
+                    boxShadow: isActive ? `0 0 12px ${t.border}` : "none",
+                    transition: "all 0.25s ease"
+                  }}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Support, Tutorial, etc. */}
         <button style={{
           background: "linear-gradient(90deg, #4c1d95 0%, #31105e 100%)",
