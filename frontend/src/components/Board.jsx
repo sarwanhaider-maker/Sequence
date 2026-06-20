@@ -536,10 +536,10 @@ export default function Boards() {
           setCountdown(0);
 
           const shareText = isWin
-            ? `I just won a match of Sequence Battle! Can you beat me? Play now: https://sequence-game-81720.netlify.app`
-            : `I just played a match of Sequence Battle! Try it here: https://sequence-game-81720.netlify.app`;
+            ? `I just won a match of Sequence Battle! Can you beat me? Play now: https://sequence-liard-theta.vercel.app`
+            : `I just played a match of Sequence Battle! Try it here: https://sequence-liard-theta.vercel.app`;
           const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
-          const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent("https://sequence-game-81720.netlify.app")}&text=${encodeURIComponent(shareText)}`;
+          const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent("https://sequence-liard-theta.vercel.app")}&text=${encodeURIComponent(shareText)}`;
           const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
 
           Swal.fire({

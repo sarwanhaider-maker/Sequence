@@ -51,7 +51,7 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
           {/* Share */}
           <button 
             onClick={() => {
-              navigator.clipboard.writeText("https://sequence-game-81720.netlify.app");
+              navigator.clipboard.writeText("https://sequence-liard-theta.vercel.app");
               Swal.fire({
                 toast: true,
                 position: 'top',

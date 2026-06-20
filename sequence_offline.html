@@ -1391,10 +1391,10 @@
       sound.playWin();
       const isPlayerWin = (winner.team === 'blue');
       const shareText = isPlayerWin
-        ? `I just beat the Sequence Battle Bot! Can you beat my score? Play now: https://sequence-game-81720.netlify.app`
-        : `I just played a match of Sequence Battle! Check it out here: https://sequence-game-81720.netlify.app`;
+        ? `I just beat the Sequence Battle Bot! Can you beat my score? Play now: https://sequence-liard-theta.vercel.app`
+        : `I just played a match of Sequence Battle! Check it out here: https://sequence-liard-theta.vercel.app`;
       const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
-      const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent("https://sequence-game-81720.netlify.app")}&text=${encodeURIComponent(shareText)}`;
+      const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent("https://sequence-liard-theta.vercel.app")}&text=${encodeURIComponent(shareText)}`;
       const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
 
       Swal.fire({
