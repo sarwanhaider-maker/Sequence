@@ -1,6 +1,10 @@
 const { Server } = require("socket.io");
 const Room = require('../models/room');
 const Game = require('../models/Game');
+const { RtcTokenBuilder, RtcRole } = require('agora-token');
+
+const AGORA_APP_ID = process.env.AGORA_APP_ID;
+const AGORA_APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE;
 
 class RoomController {
   constructor(io, initializeGameForRoom, startGameForRoom) {
@@ -27,7 +31,7 @@ class RoomController {
 
   async handleCreateCustomRoom(socket) {
     socket.on("create_custom_room", async (data, callback) => {
-      const { playerName, playerLimit, gameMode } = data || {};
+      const { playerName, playerLimit, gameMode, voiceChatEnabled } = data || {};
       const roomId = await this.generateUniqueRoomId();
       try {
         const newRoom = new Room({
@@ -37,7 +41,8 @@ class RoomController {
           empty: true,
           playersName: [playerName],
           playerLimit: playerLimit || 8,
-          gameMode: gameMode || "8_players"
+          gameMode: gameMode || "8_players",
+          voiceChatEnabled: !!voiceChatEnabled
         });
         await newRoom.save();
 
@@ -45,13 +50,14 @@ class RoomController {
         if (typeof callback === 'function') {
           callback({ roomId });
         }
-        console.log(`Room created with ID: ${roomId}, by player: ${playerName}, limit: ${newRoom.playerLimit}, mode: ${newRoom.gameMode}`);
+        console.log(`Room created with ID: ${roomId}, by player: ${playerName}, limit: ${newRoom.playerLimit}, mode: ${newRoom.gameMode}, voiceChat: ${newRoom.voiceChatEnabled}`);
         
         socket.emit("custom_room_created", { roomId });
         this.io.to(roomId).emit("room_update", {
           players: [playerName],
           playerLimit: newRoom.playerLimit,
-          gameMode: newRoom.gameMode
+          gameMode: newRoom.gameMode,
+          voiceChatEnabled: newRoom.voiceChatEnabled
         });
       } catch (err) {
         console.error('Error saving room to MongoDB:', err);
@@ -91,7 +97,8 @@ class RoomController {
           this.io.to(roomId).emit("room_update", {
             players: room.playersName,
             playerLimit: room.playerLimit,
-            gameMode: room.gameMode
+            gameMode: room.gameMode,
+            voiceChatEnabled: room.voiceChatEnabled
           });
           return;
         }
@@ -112,7 +119,8 @@ class RoomController {
           this.io.to(roomId).emit("room_update", {
             players: room.playersName,
             playerLimit: room.playerLimit,
-            gameMode: room.gameMode
+            gameMode: room.gameMode,
+            voiceChatEnabled: room.voiceChatEnabled
           });
 
           // Auto-start only if we've hit the exact playerLimit
@@ -289,7 +297,8 @@ class RoomController {
             this.io.to(freshRoom.roomId).emit("room_update", {
               players: freshRoom.playersName,
               playerLimit: freshRoom.playerLimit,
-              gameMode: freshRoom.gameMode
+              gameMode: freshRoom.gameMode,
+              voiceChatEnabled: freshRoom.voiceChatEnabled
             });
           }
         } catch (err) {
@@ -360,7 +369,8 @@ class RoomController {
             cards: activeGame.cards,
             players: activeGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
             currentPlayerIndex: activeGame.players.findIndex(p => p.isTurn),
-            protectedPatterns: activeGame.protectedPatterns || []
+            protectedPatterns: activeGame.protectedPatterns || [],
+            voiceChatEnabled: room.voiceChatEnabled
           });
           console.log(`Sent active game state to rejoining player ${playerName}`);
         } else {
@@ -370,13 +380,15 @@ class RoomController {
             roomId: roomId,
             players: room.playersName,
             playerLimit: room.playerLimit,
-            gameMode: room.gameMode
+            gameMode: room.gameMode,
+            voiceChatEnabled: room.voiceChatEnabled
           });
           // Refresh lobby list for everyone
           this.io.to(roomId).emit("room_update", {
             players: room.playersName,
             playerLimit: room.playerLimit,
-            gameMode: room.gameMode
+            gameMode: room.gameMode,
+            voiceChatEnabled: room.voiceChatEnabled
           });
           console.log(`Restored lobby state for rejoining player ${playerName}`);
         }
@@ -410,6 +422,42 @@ class RoomController {
       this.handleDisconnection(socket);
       this.handlePlayAgain(socket);
       this.handleRejoinRoom(socket);
+
+      socket.on("get_voice_token", async (data, callback) => {
+        const { roomId } = data || {};
+        if (!AGORA_APP_ID || !AGORA_APP_CERTIFICATE) {
+          console.warn("Agora credentials are not configured on the backend server.");
+          if (typeof callback === 'function') callback({ success: false, error: "Not configured" });
+          return;
+        }
+
+        try {
+          const room = await Room.findOne({ roomId: roomId });
+          if (!room || !room.players.includes(socket.id)) {
+            if (typeof callback === 'function') callback({ success: false, error: "Access denied" });
+            return;
+          }
+
+          const expirationTimeInSeconds = 3600 * 2; // 2 hours
+          const currentTimestamp = Math.floor(Date.now() / 1000);
+          const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
+
+          // Generate dynamic RTC token using RtcTokenBuilder (UID 0 allows dynamic client UID allocation)
+          const token = RtcTokenBuilder.buildTokenWithUid(
+            AGORA_APP_ID,
+            AGORA_APP_CERTIFICATE,
+            roomId,
+            0,
+            RtcRole.PUBLISHER,
+            privilegeExpiredTs
+          );
+
+          if (typeof callback === 'function') callback({ success: true, token });
+        } catch (err) {
+          console.error("Error generating voice token:", err);
+          if (typeof callback === 'function') callback({ success: false, error: "Failed to generate token" });
+        }
+      });
 
       socket.on("disconnect", () => {
         // Unexpected disconnect — use grace period so player can reconnect

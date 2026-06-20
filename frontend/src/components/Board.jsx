@@ -17,6 +17,7 @@ import DailyTasks from "./DailyTasks";
 import DailyBonus from "./DailyBonus";
 import Store from "./Store";
 import StakesCarousel from "./StakesCarousel";
+import { useVoiceChat, VoiceChatControls } from "./VoiceChatManager";
 
 const SERVER_URL = import.meta.env.VITE_API_URL || (
   window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
@@ -257,6 +258,8 @@ export default function Boards() {
   const [inCustomGame, setInCustomGame] = useState(false);
   const [isWaitingForMatch, setIsWaitingForMatch] = useState(false);
   const [room, setRoom] = useState("");
+  const [voiceChatEnabled, setVoiceChatEnabled] = useState(false);
+  const [lobbyVoiceChat, setLobbyVoiceChat] = useState(false);
   
   // Lobby and turn states
   const [playersList, setPlayersList] = useState([]);
@@ -268,6 +271,13 @@ export default function Boards() {
   const [socketStatus, setSocketStatus] = useState("connecting");
   const [isConnected, setIsConnected] = useState(false);
   const [connectError, setConnectError] = useState(null);
+
+  const { connected: voiceConnected, muted: voiceMuted, toggleMute: toggleVoiceMute, error: voiceError } = useVoiceChat(
+    room,
+    playerName,
+    voiceChatEnabled,
+    socket
+  );
 
   // Game-over banner state
   const [gameOverData, setGameOverData] = useState(null);  // { winner, isWin }
@@ -759,11 +769,13 @@ export default function Boards() {
       setConnectedPlayers(data.players);
       setPlayerLimit(data.playerLimit);
       setGameMode(data.gameMode);
+      setVoiceChatEnabled(!!data.voiceChatEnabled);
     });
 
     // Handle successful rejoin after reconnect — server sends game state back
     socket.on("rejoin_room_success", (data) => {
       console.log("Rejoined room successfully after reconnect", data);
+      setVoiceChatEnabled(!!data.voiceChatEnabled);
       if (data.gameInProgress) {
         // Game is running — restore full game state
         Swal.close();
@@ -840,19 +852,20 @@ export default function Boards() {
       Swal.fire("Error", "Please enter your name first!", "error");
       return;
     }
-    socket.emit("create_custom_room", { playerName, playerLimit, gameMode }, (response) => {
+    socket.emit("create_custom_room", { playerName, playerLimit, gameMode, voiceChatEnabled: lobbyVoiceChat }, (response) => {
       if (response && response.roomId) {
         setInCustomGame(true);
         setCustomRoomId(response.roomId);
         setPlayOnline(true);
         setRoom(`${response.roomId}`);
+        setVoiceChatEnabled(lobbyVoiceChat);
         navigate(`/room/${response.roomId}`);
       } else {
         console.error("Failed to create custom room.");
         Swal.fire("Error", "Server failed to respond with room ID. Please try again or check the backend server logs.", "error");
       }
     });
-  }, [socket, isConnected, navigate, playerName, playerLimit, gameMode]);
+  }, [socket, isConnected, navigate, playerName, playerLimit, gameMode, lobbyVoiceChat]);
 
   const joinCustomRoom = useCallback(async (forcedRoomCode = null) => {
     if (!socket || !socket.connected) {
@@ -1279,6 +1292,24 @@ export default function Boards() {
                       </select>
                     </div>
 
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "4px 0" }}>
+                      <input
+                        type="checkbox"
+                        id="voice-chat-checkbox"
+                        checked={lobbyVoiceChat}
+                        onChange={(e) => setLobbyVoiceChat(e.target.checked)}
+                        style={{
+                          width: "18px",
+                          height: "18px",
+                          accentColor: "#10d9d2",
+                          cursor: "pointer"
+                        }}
+                      />
+                      <label htmlFor="voice-chat-checkbox" style={{ fontSize: "0.85rem", fontWeight: "700", color: "#e2e8f0", cursor: "pointer" }}>
+                        Enable Voice Chat (Agora)
+                      </label>
+                    </div>
+
                     <button 
                       onClick={createCustomRoom} 
                       className="btn-gold-glow"
@@ -1496,6 +1527,16 @@ export default function Boards() {
             </ul>
           </div>
 
+          {voiceChatEnabled && (
+            <VoiceChatControls
+              connected={voiceConnected}
+              muted={voiceMuted}
+              toggleMute={toggleVoiceMute}
+              error={voiceError}
+              isLobby={true}
+            />
+          )}
+
           <button 
             onClick={() => {
               if (socket) socket.emit("leave_room");
@@ -1678,6 +1719,15 @@ export default function Boards() {
           </div>
         </div>
       </div>
+      {voiceChatEnabled && playersList.length > 0 && (
+        <VoiceChatControls
+          connected={voiceConnected}
+          muted={voiceMuted}
+          toggleMute={toggleVoiceMute}
+          error={voiceError}
+          isLobby={false}
+        />
+      )}
     </>
   );
 }

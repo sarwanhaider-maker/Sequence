@@ -27,6 +27,10 @@ const RoomSchema = new mongoose.Schema({
   gameMode: {
     type: String,
     default: "8_players"
+  },
+  voiceChatEnabled: {
+    type: Boolean,
+    default: false
   }
 }, { timestamps: true });
 
