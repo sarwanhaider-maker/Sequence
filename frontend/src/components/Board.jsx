@@ -248,7 +248,7 @@ export default function Boards() {
   const [greenScore, setGreenScore] = useState(undefined);
   const [playOnline, setPlayOnline] = useState(false);
   const [socket, setSocket] = useState(null);
-  const [playerName, setPlayerName] = useState("");
+  const [playerName, setPlayerName] = useState(profile.name);
   const [playingAs, setPlayingAs] = useState(null);
   const [yourHand, setYourHand] = useState(null);
   const [deckCount, setDeckCount] = useState(null);
@@ -289,6 +289,7 @@ export default function Boards() {
   useEffect(() => { roomRef.current = room; }, [room]);
   useEffect(() => { connectedPlayersRef.current = connectedPlayers; }, [connectedPlayers]);
   useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
+  useEffect(() => { setPlayerName(profile.name); }, [profile.name]);
   useEffect(() => { currentPlayerIndexRef.current = currentPlayerIndex; }, [currentPlayerIndex]);
   useEffect(() => { customRoomIdRef.current = customRoomId; }, [customRoomId]);
 
@@ -408,6 +409,8 @@ export default function Boards() {
         if (gameState.score.green !== undefined) {
           setGreenScore(gameState.score.green);
         }
+        setSelectCard(null);
+        setHoveredCard([]);
       });
       return () => {
         socket.off("updateGameState");
@@ -445,6 +448,8 @@ export default function Boards() {
       setPlayersList(data.players || []);
       setCurrentPlayerIndex(data.currentPlayerIndex || 0);
       setProtectedPatterns(data.protectedPatterns || []);
+      setSelectCard(null);
+      setHoveredCard([]);
 
       // If it is our turn on start, play turn alert
       if (data.playingAs === (data.currentPlayerIndex || 0)) {
@@ -530,20 +535,143 @@ export default function Boards() {
           setGameOverData(null);
           setCountdown(0);
 
+          const shareText = isWin
+            ? `I just won a match of Sequence Battle! Can you beat me? Play now: https://sequence-game-81720.netlify.app`
+            : `I just played a match of Sequence Battle! Try it here: https://sequence-game-81720.netlify.app`;
+          const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+          const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent("https://sequence-game-81720.netlify.app")}&text=${encodeURIComponent(shareText)}`;
+          const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+
           Swal.fire({
             title: `${data.winner.toUpperCase()} Won the game!`,
-            text: isWin ? "Congratulations! Your team won!" : "Better luck next time!",
+            html: `
+              <div style="color: #d1cde3; margin-bottom: 15px; font-size: 1.05rem;">
+                ${isWin ? "Congratulations! Your team won!" : "Better luck next time!"}
+              </div>
+              <div style="font-weight: 600; color: var(--accent-gold); margin-bottom: 10px; font-size: 0.9rem;">
+                Share your result:
+              </div>
+              <div style="display: flex; gap: 8px; justify-content: center; margin-top: 10px; flex-wrap: wrap;">
+                <a href="${whatsappUrl}" target="_blank" style="background:#25d366; color:white; padding:8px 14px; border-radius:8px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; box-shadow: 0 4px 10px rgba(37,211,102,0.2);">
+                  WhatsApp
+                </a>
+                <a href="${telegramUrl}" target="_blank" style="background:#0088cc; color:white; padding:8px 14px; border-radius:8px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; box-shadow: 0 4px 10px rgba(0,136,204,0.2);">
+                  Telegram
+                </a>
+                <a href="${twitterUrl}" target="_blank" style="background:#111; border:1px solid #333; color:white; padding:8px 14px; border-radius:8px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+                  Twitter (X)
+                </a>
+              </div>
+              <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px; align-items: center;">
+                <button id="swal-share-board-btn" class="swal2-confirm swal2-styled" style="background: linear-gradient(135deg, #00f2fe, #4facfe); border: none; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 242, 254, 0.4); font-size: 0.9rem; display: inline-flex; align-items: center; gap: 8px; margin: 0;">
+                  📸 Share Board Screenshot
+                </button>
+                <button id="swal-inspect-btn" class="swal2-cancel swal2-styled" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #d1cde3; padding: 8px 16px; border-radius: 8px; font-weight: 500; cursor: pointer; font-size: 0.8rem; margin: 0;">
+                  👀 Inspect Board
+                </button>
+              </div>
+            `,
             icon: isWin ? "success" : "error",
+            background: '#1a123a',
+            color: '#fff',
             showCancelButton: true,
             confirmButtonText: isHost ? "Play Again" : "Wait for Host",
+            confirmButtonColor: "var(--accent-cyan)",
             cancelButtonText: "Exit to Lobby",
-            allowOutsideClick: false
+            cancelButtonColor: "rgba(255,255,255,0.1)",
+            allowOutsideClick: false,
+            didOpen: () => {
+              const shareBtn = Swal.getHtmlContainer().querySelector('#swal-share-board-btn');
+              if (shareBtn) {
+                shareBtn.addEventListener('click', () => {
+                  const boardContainer = document.querySelector('.board-container');
+                  if (!boardContainer) return;
+                  const h2c = window.html2canvas;
+                  if (!h2c) {
+                    Swal.fire('Error', 'html2canvas not loaded yet', 'error');
+                    return;
+                  }
+                  h2c(boardContainer, {
+                    useCORS: true,
+                    scale: 2,
+                    backgroundColor: '#0c071e'
+                  }).then(canvas => {
+                    canvas.toBlob(blob => {
+                      if (!blob) return;
+                      const file = new File([blob], `sequence_board.png`, { type: 'image/png' });
+                      const downloadBlob = (b, fn) => {
+                        const url = URL.createObjectURL(b);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = fn;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                      };
+                      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        navigator.share({
+                          files: [file],
+                          title: 'Sequence Battle Match Result',
+                          text: shareText
+                        }).catch(err => {
+                          console.error('Share failed:', err);
+                          downloadBlob(blob, `sequence_board.png`);
+                        });
+                      } else {
+                        downloadBlob(blob, `sequence_board.png`);
+                        Swal.fire({
+                          title: 'Screenshot Saved!',
+                          text: 'The screenshot has been downloaded. You can now share it with your friends!',
+                          icon: 'success',
+                          background: '#1a123a',
+                          color: '#fff',
+                          confirmButtonColor: 'var(--accent-cyan)'
+                        });
+                      }
+                    }, 'image/png');
+                  });
+                });
+              }
+
+              const inspectBtn = Swal.getHtmlContainer().querySelector('#swal-inspect-btn');
+              if (inspectBtn) {
+                inspectBtn.addEventListener('click', () => {
+                  const container = Swal.getContainer();
+                  if (container) {
+                    container.style.opacity = '0';
+                    container.style.pointerEvents = 'none';
+
+                    const restoreBtn = document.createElement('button');
+                    restoreBtn.id = 'swal-restore-btn';
+                    restoreBtn.innerHTML = '🏆 Show Game Over Menu';
+                    restoreBtn.style.cssText = 'position: fixed; bottom: 20px; right: 20px; z-index: 10000; background: linear-gradient(135deg, #7c3aed, #5b21b6); color: white; border: none; padding: 12px 20px; border-radius: 30px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 15px rgba(124, 58, 237, 0.5); font-size: 0.9rem; transition: all 0.3s;';
+                    restoreBtn.addEventListener('click', () => {
+                      container.style.opacity = '1';
+                      container.style.pointerEvents = 'auto';
+                      restoreBtn.remove();
+                    });
+                    document.body.appendChild(restoreBtn);
+                  }
+                });
+              }
+            }
           }).then((result) => {
+            const restoreBtn = document.getElementById('swal-restore-btn');
+            if (restoreBtn) restoreBtn.remove();
+            
             if (result.isConfirmed) {
               if (isHost) {
                 socket.emit("play_again", { roomId: roomRef.current });
               } else {
-                Swal.fire("Please wait", "Waiting for the host to restart the game...", "info");
+                Swal.fire({
+                  title: "Please wait",
+                  text: "Waiting for the host to restart the game...",
+                  icon: "info",
+                  background: '#1a123a',
+                  color: '#fff',
+                  confirmButtonColor: "var(--accent-cyan)"
+                });
               }
             } else {
               socket.emit("leave_room");
@@ -561,26 +689,71 @@ export default function Boards() {
       Swal.close();
       if (customRoomIdRef.current) {
         setInCustomGame(true);
-        Swal.fire("Game Stopped", "A player left the game lobby. Returning to waiting lobby...", "info");
+        Swal.fire({
+          title: "Game Stopped",
+          text: "A player left the game lobby. Returning to waiting lobby...",
+          icon: "info",
+          background: '#1a123a',
+          color: '#fff',
+          confirmButtonColor: "var(--accent-cyan)"
+        });
       } else {
         setInCustomGame(false);
-        Swal.fire("Game Stopped", "A player left the game lobby. Returning to main menu...", "info");
+        Swal.fire({
+          title: "Game Stopped",
+          text: "A player left the game lobby. Returning to main menu...",
+          icon: "info",
+          background: '#1a123a',
+          color: '#fff',
+          confirmButtonColor: "var(--accent-cyan)"
+        });
       }
     });
     socket.on("custom_room_created", (data) => {
       setInCustomGame(true);
       setCustomRoomId(data.roomId);
-      Swal.fire(`Room created successfully. Room ID: ${data.roomId}`);
+      Swal.fire({
+        title: "Room Created",
+        text: `Room created successfully. Room ID: ${data.roomId}`,
+        icon: "success",
+        background: '#1a123a',
+        color: '#fff',
+        confirmButtonColor: "var(--accent-cyan)"
+      });
     });
     socket.on("custom_room_joined", () => {
       setInCustomGame(true);
-      Swal.fire("Joined room successfully.");
+      Swal.fire({
+        toast: true,
+        position: 'top',
+        showConfirmButton: false,
+        timer: 2000,
+        icon: "success",
+        title: "Joined room successfully.",
+        background: '#1e1932',
+        color: '#fff',
+        iconColor: '#10d9d2'
+      });
     });
     socket.on("room_join_error", (error) => {
-      Swal.fire("Error", typeof error === 'string' ? error : error.message || "Join room error", "error");
+      Swal.fire({
+        title: "Error",
+        text: typeof error === 'string' ? error : error.message || "Join room error",
+        icon: "error",
+        background: '#1a123a',
+        color: '#fff',
+        confirmButtonColor: "var(--accent-cyan)"
+      });
     });
     socket.on("room_creation_error", (error) => {
-      Swal.fire("Error", typeof error === 'string' ? error : error.message || "Failed to create room.", "error");
+      Swal.fire({
+        title: "Error",
+        text: typeof error === 'string' ? error : error.message || "Failed to create room.",
+        icon: "error",
+        background: '#1a123a',
+        color: '#fff',
+        confirmButtonColor: "var(--accent-cyan)"
+      });
     });
     socket.on("room_update", (data) => {
       setConnectedPlayers(data.players);
@@ -863,7 +1036,7 @@ export default function Boards() {
           <div style={{ width: "100%", minHeight: "220px", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
             {wizardStep === 1 && (
               <div className="wizard-step">
-                <h3 style={{ fontFamily: "'Cinzel', serif", fontSize: "1.4rem", color: "var(--accent-gold)", marginBottom: "12px", letterSpacing: "1px" }}>Welcome to Sequence</h3>
+                <h3 style={{ fontFamily: "'Cinzel', serif", fontSize: "1.4rem", color: "var(--accent-gold)", marginBottom: "12px", letterSpacing: "1px" }}>Welcome to Sequence Battle</h3>
                 <p style={{ color: "#d1cde3", fontSize: "0.95rem", lineHeight: "1.5", marginBottom: "15px" }}>
                   A classic board game combining card strategy and chip placement. The objective is to form continuous rows of 5 chips of your color on the board.
                 </p>
@@ -943,7 +1116,7 @@ export default function Boards() {
         <div style={{ textAlign: "center", animation: "scaleIn 1.0s ease forwards" }}>
           <img src="/assests/zaesar_logo.png" alt="Zaesar Games Logo" style={{ maxWidth: "240px", height: "auto", marginBottom: "1.5rem", filter: "drop-shadow(0 10px 20px rgba(16, 217, 210, 0.3))", borderRadius: "16px" }} />
           <div style={{ fontFamily: "'Cinzel', serif", fontWeight: 800, fontSize: "1.2rem", color: "var(--accent-cyan)", letterSpacing: "4px", textTransform: "uppercase", animation: "pulse 1.5s infinite alternate", marginTop: "0.5rem" }}>
-            Loading Sequence...
+            Loading Sequence Battle...
           </div>
         </div>
       </div>
@@ -1267,7 +1440,18 @@ export default function Boards() {
             <button
               onClick={() => {
                 navigator.clipboard.writeText(inviteLink);
-                Swal.fire("Copied!", "Invite link copied to clipboard.", "success");
+                Swal.fire({
+                  toast: true,
+                  position: 'top',
+                  showConfirmButton: false,
+                  timer: 2000,
+                  icon: 'success',
+                  title: 'Copied!',
+                  text: 'Invite link copied to clipboard.',
+                  background: '#1e1932',
+                  color: '#fff',
+                  iconColor: '#10d9d2'
+                });
               }}
               className="btn-cyan-glow"
               style={{ flex: 1, padding: "10px 0", borderRadius: "20px", border: "none", fontSize: "0.82rem", cursor: "pointer" }}
@@ -1423,11 +1607,13 @@ export default function Boards() {
             socket={socket}
             cards={cards}
             selectCard={selectCard}
+            setSelectCard={setSelectCard}
             hoveredCard={hoveredCard}
             currentPlayerIndex={currentPlayerIndex}
             playingAs={playingAs}
             protectedPatterns={protectedPatterns}
             hoveredCardId={hoveredCardId}
+            myTeam={playersList[playingAs]?.team}
           />
 
           {/* Right: Info & Decks Sidebar */}
@@ -1463,11 +1649,14 @@ export default function Boards() {
             <PlayerDeck
               socket={socket}
               playerHand={yourHand}
+              selectCard={selectCard}
               setSelectCard={setSelectCard}
               setHoveredCard={setHoveredCard}
               currentPlayerIndex={currentPlayerIndex}
               playingAs={playingAs}
               setHoveredCardId={setHoveredCardId}
+              cards={cards}
+              roomId={room}
             />
 
             {/* Quit & Rules Buttons Row */}

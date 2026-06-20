@@ -7,16 +7,25 @@ export default function DailyTasks({ tasks = [], onClaimTask, onWatchAd }) {
   const handleWatchAd = (task) => {
     Swal.fire({
       title: "Loading Ad...",
-      html: "Watching video ad to get task progress boost...",
+      html: "<span style='color: #c3bee0;'>Watching video ad to get task progress boost...</span>",
       timer: 2000,
       timerProgressBar: true,
+      background: '#1a123a',
+      color: '#fff',
       didOpen: () => {
         Swal.showLoading();
       }
     }).then((result) => {
       // Simulate progress increase
       onWatchAd(task.id);
-      Swal.fire("Success!", "You watched the ad and gained progress/coins!", "success");
+      Swal.fire({
+        title: "Success!",
+        text: "You watched the ad and gained progress/coins!",
+        icon: "success",
+        background: '#1a123a',
+        color: '#fff',
+        confirmButtonColor: "var(--accent-cyan)"
+      });
     });
   };
 

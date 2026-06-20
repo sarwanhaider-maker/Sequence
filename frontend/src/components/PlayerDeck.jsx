@@ -1,12 +1,21 @@
-import React, { useState } from 'react';
+import React from 'react';
 
-const PlayerDeck = ({ socket, playerHand, setSelectCard, setHoveredCard, playingAs, currentPlayerIndex, setHoveredCardId }) => {
+const PlayerDeck = ({ socket, playerHand, selectCard, setSelectCard, setHoveredCard, playingAs, currentPlayerIndex, setHoveredCardId, cards, roomId }) => {
 
-  const [selectedCardId, setSelectedCardId] = useState(null);
-  
+  const isDeadCard = (card) => {
+    if (!card.matches || card.matches.length === 0) return false;
+    return card.matches.every(cellId => {
+      const boardCell = cards && cards.find(c => c.id === cellId);
+      return boardCell && boardCell.selected === "True";
+    });
+  };
+
   const handleCardClick = (card) => {
-      const isSelected = selectedCardId === card.id;
-      setSelectedCardId(isSelected ? null : card.id);
+      if (isDeadCard(card)) {
+          socket?.emit('deadCardClicked', { roomId, cardId: card.id });
+          return;
+      }
+      const isSelected = selectCard === card.id;
       setSelectCard(isSelected ? null : card.id);
   };
 
@@ -33,7 +42,7 @@ const PlayerDeck = ({ socket, playerHand, setSelectCard, setHoveredCard, playing
             key={card.id} 
             src={card.img && ("/" + card.img.replace('../', ''))} 
             alt={`Card ${card.id}`}
-            className={`hand-card ${selectedCardId === card.id ? 'selected' : ''}`}
+            className={`hand-card ${selectCard === card.id ? 'selected' : ''}`}
             onClick={() => playingAs === currentPlayerIndex && handleCardClick(card)}
             onMouseEnter={() => handleMouseEnter(card)}
             onMouseLeave={handleMouseLeave} 

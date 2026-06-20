@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function Cards({ roomId, socket, selectCard, cards, hoveredCard, playingAs, currentPlayerIndex, protectedPatterns, hoveredCardId }) {
+export default function Cards({ roomId, socket, selectCard, setSelectCard, cards, hoveredCard, playingAs, currentPlayerIndex, protectedPatterns, hoveredCardId, myTeam }) {
 
     function handleClick(cardId, selectCard, socket, card) {
         let card_matches = card.matches;
@@ -11,7 +11,7 @@ export default function Cards({ roomId, socket, selectCard, cards, hoveredCard, 
             validMove = true;
         }
         // One-eyed Jack (Remove) - ID 105 to 108
-        else if (selectCard > 104 && selectCard <= 108 && card.selected) {
+        else if (selectCard > 104 && selectCard <= 108 && card.selected && card.selectedby !== myTeam) {
             validMove = true;
         }
         // Standard card
@@ -19,12 +19,17 @@ export default function Cards({ roomId, socket, selectCard, cards, hoveredCard, 
             validMove = true;
         }
 
-        if (playingAs === currentPlayerIndex && validMove) {
-            socket?.emit('Boardcardclicked', { roomId, cardId: cardId, selectedCard: selectCard });
-        } else if (playingAs !== currentPlayerIndex) {
-            alert("It's not your turn!");
+        if (playingAs === currentPlayerIndex) {
+            if (validMove) {
+                socket?.emit('Boardcardclicked', { roomId, cardId: cardId, selectedCard: selectCard });
+            } else {
+                // Tapping back on board cancels selection and restores board brightness
+                if (setSelectCard) {
+                    setSelectCard(null);
+                }
+            }
         } else {
-            alert('Invalid move! This action is not allowed.');
+            alert("It's not your turn!");
         }
     }
 
@@ -34,7 +39,6 @@ export default function Cards({ roomId, socket, selectCard, cards, hoveredCard, 
 
     const isMyTurn = playingAs === currentPlayerIndex;
     const activeCardId = selectCard || hoveredCardId;
-    const shouldDim = isMyTurn && activeCardId !== null;
 
     const checkIsValidTarget = (card) => {
         if (!activeCardId) return false;
@@ -45,7 +49,7 @@ export default function Cards({ roomId, socket, selectCard, cards, hoveredCard, 
         }
         // One-eyed Jack (Remove) - ID 105 to 108
         if (activeCardId > 104 && activeCardId <= 108) {
-            return card.selected && card.selected === "True" && !isProtected(card.id);
+            return card.selected && card.selected === "True" && !isProtected(card.id) && card.selectedby !== myTeam;
         }
         // Standard card
         return card.matches && card.matches.includes(activeCardId) && !card.selected;
@@ -54,15 +58,15 @@ export default function Cards({ roomId, socket, selectCard, cards, hoveredCard, 
     return (
         <div className="board-container">
             <div className="board-border-text left-border-text">ONE-EYED JACKS: REMOVE CHIP</div>
-            <div className={`board-grid ${shouldDim ? 'dimmed-active' : ''}`}>
+            <div className="board-grid">
                  {cards.map((card) => {
                      const protectedClass = isProtected(card.id) ? "seq-protected" : "";
                      const isCorner = [1, 10, 91, 100].includes(card.id);
-                     const isValid = checkIsValidTarget(card);
+                     const isHighlighted = checkIsValidTarget(card);
                      return (
                         <div 
                             key={card.id} 
-                            className={`card ${isCorner ? 'corner' : ''} ${protectedClass} ${isValid ? 'valid-highlight' : ''}`} 
+                            className={`card ${isCorner ? 'corner' : ''} ${protectedClass} ${isHighlighted ? 'highlighted' : ''}`} 
                             onClick={() => handleClick(card.id, selectCard, socket, card)}
                         >
                             {card.img && (

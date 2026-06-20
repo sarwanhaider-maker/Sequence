@@ -27,7 +27,11 @@ export default function StakesCarousel({ coins, onSelectStake, onBack }) {
         title: "Insufficient Coins",
         text: `You need at least ${stake.fee} coins to enter this match. Go to the Store to get more!`,
         icon: "warning",
-        confirmButtonText: "Okay"
+        confirmButtonText: "Okay",
+        background: '#1a123a',
+        color: '#fff',
+        confirmButtonColor: "var(--accent-cyan)",
+        iconColor: 'var(--accent-gold)'
       });
       return;
     }

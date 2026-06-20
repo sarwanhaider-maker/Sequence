@@ -18,7 +18,7 @@ export default function BotGame() {
 
       {/* Full-screen iframe — takes the ENTIRE screen */}
       <iframe
-        src="https://sarwanhaider-maker.github.io/Sequence/sequence_offline.html"
+        src="/sequence_offline.html"
         title="Sequence vs Bot"
         style={{
           position: "absolute",

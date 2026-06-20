@@ -20,27 +20,36 @@ export default function Store({ onBuyCoins }) {
   const handlePurchase = (pack) => {
     Swal.fire({
       title: "Confirm Purchase",
-      html: `Would you like to purchase <strong>${pack.coins.toLocaleString()} Coins</strong> for <strong>$${pack.price}</strong>?<br><br><small style="color:gray;">(This is a simulated Sandbox in-app purchase)</small>`,
+      html: `<span style="color: #c3bee0;">Would you like to purchase <strong>${pack.coins.toLocaleString()} Coins</strong> for <strong>$${pack.price}</strong>?</span><br><br><small style="color:gray;">(This is a simulated Sandbox in-app purchase)</small>`,
       icon: "question",
       showCancelButton: true,
       confirmButtonText: "Purchase",
-      confirmButtonColor: "#48bb78"
+      confirmButtonColor: "var(--accent-cyan)",
+      cancelButtonText: "Cancel",
+      background: '#1a123a',
+      color: '#fff',
+      iconColor: 'var(--accent-gold)'
     }).then((result) => {
       if (result.isConfirmed) {
         Swal.fire({
           title: "Processing payment...",
           allowOutsideClick: false,
+          background: '#1a123a',
+          color: '#fff',
           didOpen: () => {
             Swal.showLoading();
           },
           timer: 1500
         }).then(() => {
           onBuyCoins(pack.coins);
-          Swal.fire(
-            "Purchase Successful!",
-            `Successfully credited ${pack.coins.toLocaleString()} coins to your account!`,
-            "success"
-          );
+          Swal.fire({
+            title: "Purchase Successful!",
+            text: `Successfully credited ${pack.coins.toLocaleString()} coins to your account!`,
+            icon: "success",
+            background: '#1a123a',
+            color: '#fff',
+            confirmButtonColor: "var(--accent-cyan)"
+          });
         });
       }
     });

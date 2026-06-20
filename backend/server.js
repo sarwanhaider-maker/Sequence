@@ -132,6 +132,28 @@ async function triggerBotTurn(roomId, botSocketId, difficulty) {
         const currentPlayer = game.players.find(p => p.isTurn);
         if (!currentPlayer || currentPlayer.socketId !== botSocketId) return;
 
+        // Discard and replace any dead cards in bot's hand
+        let hasSwappedDeadCard = true;
+        while (hasSwappedDeadCard) {
+            hasSwappedDeadCard = false;
+            for (let i = 0; i < currentPlayer.hand.length; i++) {
+                const cardObj = currentPlayer.hand[i];
+                const isDead = cardObj.matches && cardObj.matches.length > 0 && cardObj.matches.every(cellId => {
+                    const cell = game.cards[cellId - 1];
+                    return cell && cell.selected === "True";
+                });
+                if (isDead) {
+                    currentPlayer.hand.splice(i, 1);
+                    if (game.shuffledDeck.length > 0) {
+                        let newCard = game.shuffledDeck.shift();
+                        currentPlayer.hand.push(newCard);
+                    }
+                    hasSwappedDeadCard = true;
+                    break;
+                }
+            }
+        }
+
         const move = getBotMove(game, game.cards, difficulty, botSocketId);
         if (!move) {
             console.log(`Bot ${botSocketId} has no valid move — skipping turn.`);
@@ -245,6 +267,79 @@ io.on("connection", async (socket) => {
         const newSessionID = await createSession(socket.id);
         activeSockets.set(newSessionID, socket);
     }
+
+    socket.on('deadCardClicked', async (data) => {
+        const { roomId, cardId } = data;
+        try {
+            let game = await Game.findOne({ roomId: roomId });
+            if (!game) {
+                console.log("Game not found for room: ", roomId);
+                return;
+            }
+
+            let currentTurnIndex = game.players.findIndex(p => p.isTurn);
+            let currentPlayer = game.players[currentTurnIndex];
+            if (socket.id !== currentPlayer.socketId) {
+                console.log("Not this player's turn to swap dead card");
+                return;
+            }
+
+            // Verify the card is actually in player's hand
+            let cardIndexInHand = currentPlayer.hand.findIndex(c => c.id === cardId);
+            if (cardIndexInHand === -1) {
+                console.log("Card not in hand");
+                return;
+            }
+
+            let cardObj = currentPlayer.hand[cardIndexInHand];
+
+            const isDead = cardObj.matches && cardObj.matches.length > 0 && cardObj.matches.every(cellId => {
+                const cell = game.cards[cellId - 1];
+                return cell && cell.selected === "True";
+            });
+
+            if (!isDead) {
+                console.log("Card is not dead");
+                return;
+            }
+
+            // Remove dead card from hand and draw new one
+            currentPlayer.hand.splice(cardIndexInHand, 1);
+            if (game.shuffledDeck.length > 0) {
+                let newCard = game.shuffledDeck.shift();
+                currentPlayer.hand.push(newCard);
+            }
+
+            // Save the game state without advancing the turn
+            let updateData = {
+                'players': game.players,
+                'shuffledDeck': game.shuffledDeck
+            };
+
+            await Game.updateOne({ roomId: roomId }, { $set: updateData });
+
+            // Fetch and emit updated game state
+            let latestGame = await Game.findOne({ roomId: roomId });
+            if (latestGame) {
+                latestGame.players.forEach((player) => {
+                    if (!isBot(player.socketId)) {
+                        io.to(player.socketId).emit('updateGameState', {
+                            deckCount: latestGame.shuffledDeck.length,
+                            score: latestGame.scores,
+                            cards: latestGame.cards,
+                            currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
+                            players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                            playerHand: player.hand,
+                            protectedPatterns: latestGame.protectedPatterns || []
+                        });
+                    }
+                });
+            }
+
+        } catch (err) {
+            console.error("Error swapping dead card: ", err);
+        }
+    });
 
     socket.on('Boardcardclicked', async (data) => {
         const { roomId, cardId, selectedCard } = data;

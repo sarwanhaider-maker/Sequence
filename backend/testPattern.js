@@ -7,12 +7,13 @@ let cards = [
     { id: 93, selected: "True", selectedby: "blue" },
     { id: 94, selected: "True", selectedby: "blue" },
 ];
-let game = gameController.initializeGame(cards);
+let game = gameController.initializeGame(cards, ["socket1", "socket2"], ["BluePlayer", "RedPlayer"], "2_players");
 let additonal=[
 { id: 95, selected: "True", selectedby: "blue" },
 { id: 96, selected: "True", selectedby: "blue" },
 { id: 97, selected: "True", selectedby: "blue" },
 { id: 98, selected: "True", selectedby: "blue" },
+{ id: 99, selected: "True", selectedby: "blue" },
 ];
 cards.push(...additonal);
 let result = gameController.Pattern(game, cards);

@@ -99,7 +99,13 @@ function handleCardSelection(
         cardInQuestion.selected = "True";
         cardInQuestion.selectedby = currentPlayer.team;
     }
-    else if (selectedCard > 104 && selectedCard <= 108 && cardInQuestion.selected === "True") {
+    else if (selectedCard > 104 && selectedCard <= 108) {
+        if (cardInQuestion.selected !== "True") {
+            return { success: false, message: "Wrong move: One-Eyed Jack can only remove chips." };
+        }
+        if (cardInQuestion.selectedby === currentPlayer.team) {
+            return { success: false, message: "Wrong move: Cannot remove your own chip with a One-Eyed Jack." };
+        }
         if (!isCardProtected(cardInQuestion.id)) {
             cardInQuestion.selected = false;
             cardInQuestion.selectedby = "";
@@ -136,146 +142,149 @@ function handleCardSelection(
 }
 
 function Pattern(game, cards) {
-    let board = Array(10).fill(null).map(() => Array(10).fill({ color: null, isPartOfPattern: false, index: -1 }));
-    game.protectedPatterns = game.protectedPatterns || [];
+    let board = Array(10).fill(null).map((_, r) => {
+        return Array(10).fill(null).map((_, c) => {
+            const index = r * 10 + c + 1;
+            return { color: null, isPartOfPattern: false, index: index };
+        });
+    });
+    
     const cornerIndices = [1, 10, 91, 100];
-
-    const getPositionFromId = (id) => {
-        let row = Math.floor((id - 1) / 10);
-        let col = (id - 1) % 10;
-        return { row, col };
-    };
+    const isCornerIndex = (index) => cornerIndices.includes(index);
 
     if (Array.isArray(cards)) {
         cards.forEach((card) => {
             if (card.selected === "True") {
-                const { row, col } = getPositionFromId(card.id);
+                const row = Math.floor((card.id - 1) / 10);
+                const col = (card.id - 1) % 10;
                 board[row][col] = { color: card.selectedby, isPartOfPattern: false, index: card.id };
             }
         });
     }
 
-    const isCornerIndex = (index) => cornerIndices.includes(index);
-
-    const checkConsecutive = (arr, color) => {
-        let count = 0;
-        let patternIndices = [];
-        for (let i = 0; i < arr.length; i++) {
-            let cell = arr[i];
-            let effectiveColor = cell.color || (isCornerIndex(cell.index) ? color : null);
-            if (effectiveColor == color) {
-                count++;
-                patternIndices.push(cell.index);
-                if (count >= 5) {
-                    if (isPatternNew(patternIndices)) {
-                        return { isPattern: true, patternIndices };
-                    }
-                }
-            } else {
-                count = 0;
-                patternIndices = [];
-            }
+    // Unique Down-Right diagonals
+    let downRightDiagonals = [];
+    for (let r = 0; r <= 5; r++) {
+        let cells = [];
+        for (let i = 0; r + i < 10 && i < 10; i++) {
+            cells.push(board[r + i][i]);
         }
-        return { isPattern: false, patternIndices: [] };
-    };
-
-    const isPatternNew = (patternIndices) => {
-        let existingPatterns = game.protectedPatterns || [];
-        let isEntirelyNew = !existingPatterns.some(pattern =>
-            patternIndices.every(index => pattern.includes(index))
-        );
-        let isValidOverlap = existingPatterns.map(pattern =>
-            patternIndices.filter(index => pattern.includes(index)).length
-        ).every(count => count <= 1);
-
-        return isEntirelyNew && isValidOverlap;
-    };
-
-    const addProtectedPattern = (pattern) => {
-        game.protectedPatterns = game.protectedPatterns || [];
-        game.protectedPatterns.push(pattern);
-    };
-
-    const checkPatterns = (color) => {
-        const getSequencesOfFive = (arr) => {
-            let sequences = [];
-            for (let i = 0; i <= arr.length - 5; i++) {
-                sequences.push(arr.slice(i, i + 5));
-            }
-            return sequences;
-        };
-
-        const getDownRightDiagonal = (startRow, startCol) => {
-            let cells = [];
-            for (let i = 0; startRow + i < 10 && startCol + i < 10; i++) {
-                cells.push({ ...board[startRow + i][startCol + i], index: (startRow + i) * 10 + startCol + i + 1 });
-            }
-            return cells;
-        };
-
-        const getUpRightDiagonal = (startRow, startCol) => {
-            let cells = [];
-            for (let i = 0; startRow - i >= 0 && startCol + i < 10; i++) {
-                cells.push({ ...board[startRow - i][startCol + i], index: (startRow - i) * 10 + startCol + i + 1 });
-            }
-            return cells;
-        };
-
-        const getDiagonals = (board, getDiagonalCells) => {
-            let diagonals = [];
-            for (let row = 0; row < 10; row++) {
-                for (let col = 0; col < 10; col++) {
-                    let diagonalCells = getDiagonalCells(row, col, board);
-                    if (diagonalCells.length >= 5) {
-                        diagonals.push(diagonalCells);
-                    }
-                }
-            }
-            return diagonals;
-        };
-
-        const allDiagonals = [
-            ...getDiagonals(board, getDownRightDiagonal),
-            ...getDiagonals(board, getUpRightDiagonal)
-        ];
-
-        allDiagonals.forEach(diagonal => {
-            getSequencesOfFive(diagonal).forEach(sequence => {
-                let result = checkConsecutive(sequence, color);
-                if (result.isPattern && isPatternNew(result.patternIndices)) {
-                    addProtectedPattern(result.patternIndices);
-                    game.scores[color] += 1;
-                }
-            });
-        });
-
-        for (let i = 0; i < 10; i++) {
-            let row = board[i].map((cell, index) => ({ ...cell, index: i * 10 + index + 1 }));
-            getSequencesOfFive(row).forEach(sequence => {
-                let rowResult = checkConsecutive(sequence, color);
-                if (rowResult.isPattern && isPatternNew(rowResult.patternIndices)) {
-                    addProtectedPattern(rowResult.patternIndices);
-                    game.scores[color] += 1;
-                }
-            });
-
-            let col = board.map((_, rowIndex) => board[rowIndex][i]).map((cell, index) => ({ ...cell, index: index * 10 + i + 1 }));
-            getSequencesOfFive(col).forEach(sequence => {
-                let colResult = checkConsecutive(sequence, color);
-                if (colResult.isPattern && isPatternNew(colResult.patternIndices)) {
-                    addProtectedPattern(colResult.patternIndices);
-                    game.scores[color] += 1;
-                }
-            });
+        if (cells.length >= 5) downRightDiagonals.push(cells);
+    }
+    for (let c = 1; c <= 5; c++) {
+        let cells = [];
+        for (let i = 0; i < 10 && c + i < 10; i++) {
+            cells.push(board[i][c + i]);
         }
-    };
+        if (cells.length >= 5) downRightDiagonals.push(cells);
+    }
 
+    // Unique Up-Right diagonals
+    let upRightDiagonals = [];
+    for (let r = 4; r <= 9; r++) {
+        let cells = [];
+        for (let i = 0; r - i >= 0 && i < 10; i++) {
+            cells.push(board[r - i][i]);
+        }
+        if (cells.length >= 5) upRightDiagonals.push(cells);
+    }
+    for (let c = 1; c <= 5; c++) {
+        let cells = [];
+        for (let i = 0; 9 - i >= 0 && c + i < 10; i++) {
+            cells.push(board[9 - i][c + i]);
+        }
+        if (cells.length >= 5) upRightDiagonals.push(cells);
+    }
+
+    const oldProtected = [...(game.protectedPatterns || [])];
+    game.protectedPatterns = [];
+    
+    // Check if green score exists
     let colors = ["blue", "red"];
-    if (game.scores.green !== undefined) {
+    if (game.scores && game.scores.green !== undefined) {
         colors.push("green");
     }
 
+    // Reset scores
+    colors.forEach(color => {
+        game.scores[color] = 0;
+    });
+
+    const checkPatterns = (color) => {
+        let totalScore = 0;
+        let colorProtected = [];
+
+        const processLine = (line) => {
+            let matches = line.map(cell => {
+                let effectiveColor = cell.color || (isCornerIndex(cell.index) ? color : null);
+                return effectiveColor === color;
+            });
+
+            let segments = [];
+            let current = [];
+            for (let i = 0; i < matches.length; i++) {
+                if (matches[i]) {
+                    current.push(line[i].index);
+                } else {
+                    if (current.length >= 5) {
+                        segments.push(current);
+                    }
+                    current = [];
+                }
+            }
+            if (current.length >= 5) {
+                segments.push(current);
+            }
+
+            for (let segment of segments) {
+                let K = segment.length;
+                if (K >= 9) {
+                    totalScore += 2;
+                    colorProtected.push(segment.slice(0, 5));
+                    colorProtected.push(segment.slice(K - 5, K));
+                } else if (K >= 5) {
+                    totalScore += 1;
+                    
+                    let sliceToProtect = null;
+                    for (let i = 0; i <= K - 5; i++) {
+                        let slice = segment.slice(i, i + 5);
+                        let alreadyProtected = oldProtected.some(p => {
+                            return slice.every(val => p.includes(val));
+                        });
+                        if (alreadyProtected) {
+                            sliceToProtect = slice;
+                            break;
+                        }
+                    }
+                    if (!sliceToProtect) {
+                        sliceToProtect = segment.slice(0, 5);
+                    }
+                    colorProtected.push(sliceToProtect);
+                }
+            }
+        };
+
+        // 1. Horizontal
+        for (let r = 0; r < 10; r++) {
+            processLine(board[r]);
+        }
+
+        // 2. Vertical
+        for (let c = 0; c < 10; c++) {
+            let colLine = board.map(row => row[c]);
+            processLine(colLine);
+        }
+
+        // 3. Diagonals
+        downRightDiagonals.forEach(line => processLine(line));
+        upRightDiagonals.forEach(line => processLine(line));
+
+        game.scores[color] = totalScore;
+        game.protectedPatterns = game.protectedPatterns.concat(colorProtected);
+    };
+
     colors.forEach(color => checkPatterns(color));
+
     let target = game.targetSequences || 2;
     let winner = Object.keys(game?.scores || {}).find(color => game.scores[color] >= target) || null;
     return { winner, game };

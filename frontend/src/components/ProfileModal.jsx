@@ -9,7 +9,12 @@ export default function ProfileModal({ isOpen, onClose, profile = { name: "Guest
   if (!isOpen) return null;
 
   const handleSave = () => {
-    onSaveProfile({ name: newName, avatarId: selectedAvatar });
+    const trimmed = newName.trim();
+    if (!trimmed) {
+      alert("Name cannot be empty!");
+      return;
+    }
+    onSaveProfile({ name: trimmed, avatarId: selectedAvatar });
     setEditMode(false);
   };
 

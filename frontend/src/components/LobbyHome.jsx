@@ -1,20 +1,29 @@
 import React from "react";
 import Swal from "sweetalert2";
 
-export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boosters = { red: 10, bulb: 10, letterS: 10 } }) {
+export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boosters = { red: 10, bulb: 10, letterP: 10 } }) {
   
   const handleAdsClick = () => {
     Swal.fire({
       title: "Loading Sponsored Ad...",
-      html: "Earn 500 free coins by watching this sponsor video...",
+      html: "<span style='color: #c3bee0;'>Earn 500 free coins by watching this sponsor video...</span>",
       timer: 3000,
       timerProgressBar: true,
+      background: '#1a123a',
+      color: '#fff',
       didOpen: () => {
         Swal.showLoading();
       }
     }).then(() => {
       onPlayOnline(500); // Reward 500 coins callback
-      Swal.fire("Reward Claimed!", "+500 coins have been added to your balance!", "success");
+      Swal.fire({
+        title: "Reward Claimed!",
+        text: "+500 coins have been added to your balance!",
+        icon: "success",
+        background: '#1a123a',
+        color: '#fff',
+        confirmButtonColor: "var(--accent-cyan)"
+      });
     });
   };
 
@@ -41,7 +50,21 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           {/* Share */}
           <button 
-            onClick={() => Swal.fire("Share Game", "Invite link copied to clipboard!", "success")}
+            onClick={() => {
+              navigator.clipboard.writeText("https://sequence-game-81720.netlify.app");
+              Swal.fire({
+                toast: true,
+                position: 'top',
+                showConfirmButton: false,
+                timer: 2000,
+                icon: 'success',
+                title: 'Copied!',
+                text: 'Invite link copied to clipboard.',
+                background: '#1e1932',
+                color: '#fff',
+                iconColor: '#10d9d2'
+              });
+            }}
             style={{
               width: "42px",
               height: "42px",
@@ -62,7 +85,14 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
           </button>
           {/* Mail */}
           <button 
-            onClick={() => Swal.fire("Inbox", "Your mail folder is empty.", "info")}
+            onClick={() => Swal.fire({
+              title: "Inbox",
+              text: "Your mail folder is empty.",
+              icon: "info",
+              background: '#1a123a',
+              color: '#fff',
+              confirmButtonColor: "var(--accent-cyan)"
+            })}
             style={{
               width: "42px",
               height: "42px",
@@ -153,7 +183,7 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
               </span>
             </div>
 
-            {/* Booster 3: Letter S */}
+            {/* Booster 3: Letter P */}
             <div style={{
               background: "white",
               borderRadius: "8px",
@@ -168,7 +198,7 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
               position: "relative",
               boxShadow: "0 4px 6px rgba(0,0,0,0.2)"
             }}>
-              <span style={{ color: "#e53e3e", fontSize: "1.2rem", fontWeight: "bold", fontFamily: "'Cinzel', serif", lineHeight: "1" }}>S</span>
+              <span style={{ color: "#e53e3e", fontSize: "1.2rem", fontWeight: "bold", fontFamily: "'Cinzel', serif", lineHeight: "1" }}>P</span>
               <span style={{ 
                 fontSize: "0.62rem", 
                 fontWeight: "900", 
@@ -177,7 +207,7 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
                 padding: "1px 6px", 
                 borderRadius: "10px" 
               }}>
-                {boosters.letterS}
+                {boosters.letterP}
               </span>
             </div>
           </div>
@@ -348,6 +378,18 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
           </div>
           <span style={{ fontSize: "1.5rem", color: "white" }}>▶</span>
         </button>
+      </div>
+
+      {/* Disclaimer */}
+      <div style={{
+        marginTop: "16px",
+        textAlign: "center",
+        color: "rgba(255, 255, 255, 0.35)",
+        fontSize: "0.68rem",
+        lineHeight: "1.4",
+        padding: "0 10px"
+      }}>
+        Disclaimer: This is an independent, non-commercial, open-source fan creation. It is not affiliated with, authorized, or endorsed by Jax Ltd., Amunis Technologies, or any of their partners.
       </div>
 
     </div>
