@@ -1,7 +1,58 @@
 import React from "react";
 import Swal from "sweetalert2";
 
-export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boosters = { red: 10, bulb: 10, letterP: 10 } }) {
+export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boosters = { shield: 0, wildUpgrade: 0, reroll: 0 }, onGoToStore }) {
+  
+  const showTacticInfo = (tacticKey) => {
+    const tacticsConfig = {
+      wildUpgrade: {
+        name: "Wild Upgrade 🃏",
+        desc: "Upgrades any standard card in your hand to a Two-Eyed Jack (Wild Card) for the duration of your turn.",
+        icon: "♣",
+        count: boosters.wildUpgrade || 0
+      },
+      reroll: {
+        name: "Card Redraw 🔄",
+        desc: "Exchanges any card in your hand with a new card drawn from the deck.",
+        icon: "💡",
+        count: boosters.reroll || 0
+      },
+      shield: {
+        name: "Chip Guard 🛡️",
+        desc: "Protects one of your placed chips on the board from being removed by opponent's One-Eyed Jacks.",
+        icon: "🛡️",
+        count: boosters.shield || 0
+      }
+    };
+
+    const tactic = tacticsConfig[tacticKey];
+    if (!tactic) return;
+
+    Swal.fire({
+      title: tactic.name,
+      html: `
+        <div style="text-align: center; margin-bottom: 15px;">
+          <span style="font-size: 3rem;">${tacticKey === 'shield' ? '🛡️' : tacticKey === 'wildUpgrade' ? '🃏' : '🔄'}</span>
+        </div>
+        <p style="color: #d1cde3; font-size: 0.95rem; line-height: 1.5; margin-bottom: 15px;">${tactic.desc}</p>
+        <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 10px;">
+          <span style="color: #b0a9c9; font-size: 0.85rem;">You Own:</span>
+          <strong style="color: var(--accent-gold); font-size: 1.1rem; margin-left: 5px;">${tactic.count}</strong>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: "Buy in Store 💰",
+      confirmButtonColor: "var(--accent-cyan)",
+      cancelButtonText: "Close",
+      background: '#1a123a',
+      color: '#fff',
+      iconColor: 'var(--accent-gold)'
+    }).then((result) => {
+      if (result.isConfirmed && onGoToStore) {
+        onGoToStore();
+      }
+    });
+  };
   
   const handleAdsClick = () => {
     Swal.fire({
@@ -115,7 +166,7 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
           </button>
         </div>
 
-        {/* Center: Boosters Panel */}
+        {/* Center: Tactics Panel */}
         <div className="glass-panel" style={{
           flex: 1,
           padding: "10px 14px",
@@ -126,24 +177,29 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
           maxWidth: "230px"
         }}>
           <span style={{ fontSize: "0.68rem", fontWeight: "900", color: "#b0a9c9", letterSpacing: "1.5px", textTransform: "uppercase" }}>
-            BOOSTERS
+            TACTIC CARDS
           </span>
           <div style={{ display: "flex", gap: "8px", justifyContent: "center", width: "100%" }}>
-            {/* Booster 1: Red card */}
-            <div style={{
-              background: "white",
-              borderRadius: "8px",
-              width: "44px",
-              height: "56px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "4px 0",
-              border: "1px solid #cbd5e0",
-              position: "relative",
-              boxShadow: "0 4px 6px rgba(0,0,0,0.2)"
-            }}>
+            {/* Tactic 1: Wild Upgrade */}
+            <div 
+              className="tactic-card-lobby"
+              onClick={() => showTacticInfo('wildUpgrade')}
+              style={{
+                background: "white",
+                borderRadius: "8px",
+                width: "44px",
+                height: "56px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "4px 0",
+                border: "1px solid #cbd5e0",
+                position: "relative",
+                boxShadow: "0 4px 6px rgba(0,0,0,0.2)"
+              }}
+              title="Wild Upgrade"
+            >
               <span style={{ color: "#e53e3e", fontSize: "1.2rem", lineHeight: "1" }}>♣</span>
               <span style={{ 
                 fontSize: "0.62rem", 
@@ -153,25 +209,30 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
                 padding: "1px 6px", 
                 borderRadius: "10px" 
               }}>
-                {boosters.red}
+                {boosters.wildUpgrade || 0}
               </span>
             </div>
 
-            {/* Booster 2: Bulb */}
-            <div style={{
-              background: "white",
-              borderRadius: "8px",
-              width: "44px",
-              height: "56px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "4px 0",
-              border: "1px solid #cbd5e0",
-              position: "relative",
-              boxShadow: "0 4px 6px rgba(0,0,0,0.2)"
-            }}>
+            {/* Tactic 2: Card Redraw */}
+            <div 
+              className="tactic-card-lobby"
+              onClick={() => showTacticInfo('reroll')}
+              style={{
+                background: "white",
+                borderRadius: "8px",
+                width: "44px",
+                height: "56px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "4px 0",
+                border: "1px solid #cbd5e0",
+                position: "relative",
+                boxShadow: "0 4px 6px rgba(0,0,0,0.2)"
+              }}
+              title="Card Redraw"
+            >
               <span style={{ color: "#2d3748", fontSize: "1.1rem", lineHeight: "1" }}>💡</span>
               <span style={{ 
                 fontSize: "0.62rem", 
@@ -181,26 +242,31 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
                 padding: "1px 6px", 
                 borderRadius: "10px" 
               }}>
-                {boosters.bulb}
+                {boosters.reroll || 0}
               </span>
             </div>
 
-            {/* Booster 3: Letter P */}
-            <div style={{
-              background: "white",
-              borderRadius: "8px",
-              width: "44px",
-              height: "56px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "4px 0",
-              border: "1px solid #cbd5e0",
-              position: "relative",
-              boxShadow: "0 4px 6px rgba(0,0,0,0.2)"
-            }}>
-              <span style={{ color: "#e53e3e", fontSize: "1.2rem", fontWeight: "bold", fontFamily: "'Cinzel', serif", lineHeight: "1" }}>P</span>
+            {/* Tactic 3: Chip Guard */}
+            <div 
+              className="tactic-card-lobby"
+              onClick={() => showTacticInfo('shield')}
+              style={{
+                background: "white",
+                borderRadius: "8px",
+                width: "44px",
+                height: "56px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "4px 0",
+                border: "1px solid #cbd5e0",
+                position: "relative",
+                boxShadow: "0 4px 6px rgba(0,0,0,0.2)"
+              }}
+              title="Chip Guard"
+            >
+              <span style={{ color: "#2d3748", fontSize: "1.1rem", lineHeight: "1" }}>🛡️</span>
               <span style={{ 
                 fontSize: "0.62rem", 
                 fontWeight: "900", 
@@ -209,7 +275,7 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
                 padding: "1px 6px", 
                 borderRadius: "10px" 
               }}>
-                {boosters.letterP}
+                {boosters.shield || 0}
               </span>
             </div>
           </div>

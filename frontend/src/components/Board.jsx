@@ -1370,6 +1370,7 @@ export default function Boards() {
             <>
               {activeTab === "HOME" && (
                 <LobbyHome 
+                  boosters={boosters}
                   onPlayOnline={(val) => {
                     if (typeof val === 'number') {
                       updateCoins(val);
@@ -1379,6 +1380,7 @@ export default function Boards() {
                   }}
                   onPlayFriends={() => setActiveTab("FRIENDS")}
                   onPractice={startBotGame}
+                  onGoToStore={() => setActiveTab("STORE")}
                 />
               )}
 

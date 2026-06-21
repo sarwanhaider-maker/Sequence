@@ -60,7 +60,7 @@ export default function Store({ onBuyCoins, playerCoins }) {
     if (currentCoins < cost) {
       Swal.fire({
         title: "Insufficient Coins!",
-        text: `You need ${cost.toLocaleString()} coins to purchase this booster.`,
+        text: `You need ${cost.toLocaleString()} coins to purchase this tactic card.`,
         icon: "error",
         background: '#1a123a',
         color: '#fff',
@@ -71,7 +71,7 @@ export default function Store({ onBuyCoins, playerCoins }) {
 
     Swal.fire({
       title: "Confirm Purchase",
-      html: `<span style="color: #c3bee0;">Purchase booster for <strong>${cost.toLocaleString()} Coins</strong>?</span>`,
+      html: `<span style="color: #c3bee0;">Purchase Tactic Card for <strong>${cost.toLocaleString()} Coins</strong>?</span>`,
       icon: "question",
       showCancelButton: true,
       confirmButtonText: "Buy",
@@ -96,8 +96,8 @@ export default function Store({ onBuyCoins, playerCoins }) {
         localStorage.setItem("seq_boosters", JSON.stringify(boostersObj));
 
         Swal.fire({
-          title: "Booster Purchased!",
-          text: `Successfully purchased 1 Booster! You now have ${boostersObj[boosterKey]}.`,
+          title: "Tactic Card Purchased!",
+          text: `Successfully purchased 1 Tactic Card! You now have ${boostersObj[boosterKey]}.`,
           icon: "success",
           background: '#1a123a',
           color: '#fff',
@@ -133,7 +133,7 @@ export default function Store({ onBuyCoins, playerCoins }) {
         borderRadius: "25px",
         padding: "3px"
       }}>
-        {["COMBO", "COINS", "BOOSTERS"].map((tab) => (
+        {["COMBO", "COINS", "TACTICS"].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -219,7 +219,7 @@ export default function Store({ onBuyCoins, playerCoins }) {
             </div>
           ))}
         </div>
-      ) : activeTab === "BOOSTERS" ? (
+      ) : activeTab === "TACTICS" ? (
         /* Boosters shop list */
         <div style={{
           display: "flex",
