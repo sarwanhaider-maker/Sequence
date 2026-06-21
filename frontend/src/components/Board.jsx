@@ -252,6 +252,44 @@ export default function Boards() {
   // Hovered card ID state for card-specific board dimming
   const [hoveredCardId, setHoveredCardId] = useState(null);
 
+  const updateCoins = (amount) => {
+    setProfile(prev => {
+      const newCoins = Math.max(0, prev.coins + amount);
+      localStorage.setItem("seq_coins", newCoins.toString());
+      return { ...prev, coins: newCoins };
+    });
+  };
+
+  const [cards, setCards] = useState([]);
+  const [hoveredCard, setHoveredCard] = useState([]);
+  const [redScore, setRedScore] = useState(0);
+  const [blueScore, setBlueScore] = useState(0);
+  const [greenScore, setGreenScore] = useState(undefined);
+  const [playOnline, setPlayOnline] = useState(false);
+  const [socket, setSocket] = useState(null);
+  const [playerName, setPlayerName] = useState(profile.name);
+  const [playingAs, setPlayingAs] = useState(null);
+  const [yourHand, setYourHand] = useState(null);
+  const [deckCount, setDeckCount] = useState(null);
+  const [selectCard, setSelectCard] = useState(null);
+  const [customRoomId, setCustomRoomId] = useState("");
+  const [inCustomGame, setInCustomGame] = useState(false);
+  const [isWaitingForMatch, setIsWaitingForMatch] = useState(false);
+  const [room, setRoom] = useState("");
+  const [voiceChatEnabled, setVoiceChatEnabled] = useState(false);
+  const [lobbyVoiceChat, setLobbyVoiceChat] = useState(false);
+  
+  // Lobby and turn states
+  const [playersList, setPlayersList] = useState([]);
+  const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
+  const [connectedPlayers, setConnectedPlayers] = useState([]);
+  const [playerLimit, setPlayerLimit] = useState(8);
+  const [gameMode, setGameMode] = useState("8_players");
+  const [protectedPatterns, setProtectedPatterns] = useState([]);
+  const [socketStatus, setSocketStatus] = useState("connecting");
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectError, setConnectError] = useState(null);
+
   // Boosters state & logic
   const getInitialBoosters = () => {
     const saved = localStorage.getItem("seq_boosters");
@@ -336,44 +374,6 @@ export default function Boards() {
       color: '#fff'
     });
   };
-
-  const updateCoins = (amount) => {
-    setProfile(prev => {
-      const newCoins = Math.max(0, prev.coins + amount);
-      localStorage.setItem("seq_coins", newCoins.toString());
-      return { ...prev, coins: newCoins };
-    });
-  };
-
-  const [cards, setCards] = useState([]);
-  const [hoveredCard, setHoveredCard] = useState([]);
-  const [redScore, setRedScore] = useState(0);
-  const [blueScore, setBlueScore] = useState(0);
-  const [greenScore, setGreenScore] = useState(undefined);
-  const [playOnline, setPlayOnline] = useState(false);
-  const [socket, setSocket] = useState(null);
-  const [playerName, setPlayerName] = useState(profile.name);
-  const [playingAs, setPlayingAs] = useState(null);
-  const [yourHand, setYourHand] = useState(null);
-  const [deckCount, setDeckCount] = useState(null);
-  const [selectCard, setSelectCard] = useState(null);
-  const [customRoomId, setCustomRoomId] = useState("");
-  const [inCustomGame, setInCustomGame] = useState(false);
-  const [isWaitingForMatch, setIsWaitingForMatch] = useState(false);
-  const [room, setRoom] = useState("");
-  const [voiceChatEnabled, setVoiceChatEnabled] = useState(false);
-  const [lobbyVoiceChat, setLobbyVoiceChat] = useState(false);
-  
-  // Lobby and turn states
-  const [playersList, setPlayersList] = useState([]);
-  const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
-  const [connectedPlayers, setConnectedPlayers] = useState([]);
-  const [playerLimit, setPlayerLimit] = useState(8);
-  const [gameMode, setGameMode] = useState("8_players");
-  const [protectedPatterns, setProtectedPatterns] = useState([]);
-  const [socketStatus, setSocketStatus] = useState("connecting");
-  const [isConnected, setIsConnected] = useState(false);
-  const [connectError, setConnectError] = useState(null);
 
   const { connected: voiceConnected, muted: voiceMuted, toggleMute: toggleVoiceMute, error: voiceError } = useVoiceChat(
     room,
