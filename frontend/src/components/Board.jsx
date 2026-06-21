@@ -252,6 +252,91 @@ export default function Boards() {
   // Hovered card ID state for card-specific board dimming
   const [hoveredCardId, setHoveredCardId] = useState(null);
 
+  // Boosters state & logic
+  const getInitialBoosters = () => {
+    const saved = localStorage.getItem("seq_boosters");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return { shield: 0, wildUpgrade: 0, reroll: 0 };
+  };
+
+  const [boosters, setBoosters] = useState(getInitialBoosters());
+  const [usedBoosters, setUsedBoosters] = useState({ shield: false, wildUpgrade: false, reroll: false });
+  const [boosterMode, setBoosterMode] = useState(null); // 'shield' | 'wildUpgrade' | 'reroll' | null
+
+  useEffect(() => {
+    setBoosters(getInitialBoosters());
+    if (!playOnline && !inCustomGame) {
+      setUsedBoosters({ shield: false, wildUpgrade: false, reroll: false });
+      setBoosterMode(null);
+    }
+  }, [activeTab, playOnline, inCustomGame]);
+
+  const handleActivateBooster = (type) => {
+    if (playingAs !== currentPlayerIndex) {
+      Swal.fire({
+        title: "Not Your Turn!",
+        text: "You can only use boosters on your turn.",
+        icon: "warning",
+        background: '#1a123a',
+        color: '#fff',
+        confirmButtonColor: "var(--accent-cyan)"
+      });
+      return;
+    }
+
+    if (usedBoosters[type]) {
+      Swal.fire({
+        title: "Already Used!",
+        text: "You can only use each booster once per game.",
+        icon: "warning",
+        background: '#1a123a',
+        color: '#fff',
+        confirmButtonColor: "var(--accent-cyan)"
+      });
+      return;
+    }
+
+    if ((boosters[type] || 0) <= 0) {
+      Swal.fire({
+        title: "No Boosters!",
+        text: "You do not own this booster. Purchase it in the Store first!",
+        icon: "warning",
+        background: '#1a123a',
+        color: '#fff',
+        confirmButtonColor: "var(--accent-cyan)"
+      });
+      return;
+    }
+
+    if (boosterMode === type) {
+      setBoosterMode(null);
+      return;
+    }
+
+    setBoosterMode(type);
+
+    let msg = "";
+    if (type === 'shield') msg = "Select one of your chips on the board to shield it.";
+    if (type === 'wildUpgrade') msg = "Select a card in your hand to turn it into a Wild card.";
+    if (type === 'reroll') msg = "Select a card in your hand to re-roll/exchange it.";
+
+    Swal.fire({
+      title: `${type === 'shield' ? '🛡️ Shield' : type === 'wildUpgrade' ? '🃏 Wild Upgrade' : '🔄 Re-roll'} Mode Active`,
+      text: msg,
+      icon: "info",
+      toast: true,
+      position: "top-end",
+      showConfirmButton: false,
+      timer: 3500,
+      background: '#1a123a',
+      color: '#fff'
+    });
+  };
+
   const updateCoins = (amount) => {
     setProfile(prev => {
       const newCoins = Math.max(0, prev.coins + amount);
@@ -440,6 +525,7 @@ export default function Boards() {
         }
         setSelectCard(null);
         setHoveredCard([]);
+        setBoosterMode(null);
       });
       return () => {
         socket.off("updateGameState");
@@ -479,6 +565,9 @@ export default function Boards() {
       setProtectedPatterns(data.protectedPatterns || []);
       setSelectCard(null);
       setHoveredCard([]);
+      setUsedBoosters({ shield: false, wildUpgrade: false, reroll: false });
+      setBoosterMode(null);
+      setBoosters(getInitialBoosters());
 
       // If it is our turn on start, play turn alert
       if (data.playingAs === (data.currentPlayerIndex || 0)) {
@@ -1404,6 +1493,7 @@ export default function Boards() {
               {activeTab === "STORE" && (
                 <Store 
                   onBuyCoins={updateCoins}
+                  playerCoins={profile.coins}
                 />
               )}
             </>
@@ -1703,6 +1793,10 @@ export default function Boards() {
             protectedPatterns={protectedPatterns}
             hoveredCardId={hoveredCardId}
             myTeam={playersList[playingAs]?.team}
+            boosterMode={boosterMode}
+            setBoosterMode={setBoosterMode}
+            setBoosters={setBoosters}
+            setUsedBoosters={setUsedBoosters}
           />
 
           {/* Right: Info & Decks Sidebar */}
@@ -1734,6 +1828,37 @@ export default function Boards() {
               playingAs={playingAs}
             />
 
+            {/* Booster Tray Panel */}
+            {playingAs !== -1 && (
+              <div className="booster-dock">
+                <span style={{ marginRight: '4px', fontSize: '0.75rem', fontWeight: '800', color: '#b0a9c9' }}>BOOSTERS:</span>
+                {[
+                  { key: 'shield', name: 'Shield', icon: '🛡️' },
+                  { key: 'wildUpgrade', name: 'Wild Card', icon: '🃏' },
+                  { key: 'reroll', name: 'Re-roll', icon: '🔄' }
+                ].map(booster => {
+                  const count = boosters[booster.key] || 0;
+                  const isUsed = usedBoosters[booster.key];
+                  const isDisabled = count <= 0 || isUsed || playingAs !== currentPlayerIndex;
+                  const isActive = boosterMode === booster.key;
+
+                  return (
+                    <button
+                      key={booster.key}
+                      className={`booster-button ${isDisabled ? 'disabled' : ''} ${isActive ? 'active' : ''}`}
+                      disabled={isDisabled}
+                      onClick={() => handleActivateBooster(booster.key)}
+                      title={`${booster.name} (${count} left)`}
+                    >
+                      <span className="booster-icon-display">{booster.icon}</span>
+                      <span className="booster-label-display">{booster.name}</span>
+                      {count > 0 && <span className="booster-count-badge">{count}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Hand Container Panel */}
             <PlayerDeck
               socket={socket}
@@ -1746,6 +1871,10 @@ export default function Boards() {
               setHoveredCardId={setHoveredCardId}
               cards={cards}
               roomId={room}
+              boosterMode={boosterMode}
+              setBoosterMode={setBoosterMode}
+              setBoosters={setBoosters}
+              setUsedBoosters={setUsedBoosters}
             />
 
             {/* Quit & Rules Buttons Row */}

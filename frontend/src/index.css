@@ -805,5 +805,151 @@ body.theme-classic .lobby-suit-bg {
   animation: pulse-green-soft 2.5s ease-in-out infinite;
 }
 
+/* Booster Styles */
+.booster-dock {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  background: rgba(30, 25, 50, 0.75);
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  border-radius: 16px;
+  padding: 10px 20px;
+  margin: 10px auto;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  width: max-content;
+  max-width: 90%;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.booster-button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, #231b42 0%, #11092a 100%);
+  border: 2px solid rgba(124, 58, 237, 0.4);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.booster-button:hover:not(.disabled) {
+  transform: translateY(-4px) scale(1.05);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 15px rgba(16, 217, 210, 0.4);
+}
+
+.booster-button.active {
+  background: linear-gradient(135deg, #10d9d2 0%, #0d9691 100%);
+  border-color: #ffffff;
+  color: #0f0b1e;
+  box-shadow: 0 0 20px rgba(16, 217, 210, 0.8);
+  animation: bounce 0.5s ease;
+}
+
+.booster-button.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(80%);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.booster-icon-display {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.booster-label-display {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #c3bee0;
+  margin-top: 4px;
+}
+
+.booster-button.active .booster-label-display {
+  color: #0f0b1e;
+}
+
+.booster-count-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: linear-gradient(135deg, #e4ca56 0%, #c1a41f 100%);
+  color: #0c0821;
+  font-size: 0.72rem;
+  font-weight: 900;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #11092a;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+/* Shielded Chip visuals */
+.chip.shielded-chip {
+  box-shadow: 0 0 0 2px #ffeb3b, 0 0 12px #ffeb3b;
+  position: relative;
+  overflow: visible !important;
+}
+
+.shield-overlay {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  right: -6px;
+  bottom: -6px;
+  border: 2px solid #00f0ff;
+  border-radius: 50%;
+  background: rgba(0, 240, 255, 0.15);
+  box-shadow: 0 0 10px #00f0ff, inset 0 0 6px rgba(0, 240, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: #ffffff;
+  text-shadow: 0 0 4px #000000;
+  pointer-events: none;
+  animation: shieldPulse 2s ease-in-out infinite;
+}
+
+@keyframes shieldPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.8;
+    box-shadow: 0 0 10px #00f0ff, inset 0 0 6px rgba(0, 240, 255, 0.5);
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+    box-shadow: 0 0 18px #00f0ff, inset 0 0 10px rgba(0, 240, 255, 0.8);
+  }
+}
+
+/* Wild Card / Jack Upgrade glows */
+.hand-card.wild-upgraded {
+  animation: wildGlowPulse 1.8s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+@keyframes wildGlowPulse {
+  0%, 100% {
+    box-shadow: 0 0 8px #ffdf00, 0 0 4px #ff5722;
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 18px #ffdf00, 0 0 10px #ff5722;
+    transform: translateY(-4px) scale(1.04);
+  }
+}
+
+
 
 

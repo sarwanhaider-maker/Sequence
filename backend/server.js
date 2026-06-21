@@ -341,6 +341,141 @@ io.on("connection", async (socket) => {
         }
     });
 
+    socket.on('use_booster_shield', async (data) => {
+        const { roomId, cardId } = data;
+        try {
+            let game = await Game.findOne({ roomId: roomId });
+            if (!game) return;
+
+            let currentTurnIndex = game.players.findIndex(p => p.isTurn);
+            let currentPlayer = game.players[currentTurnIndex];
+            if (socket.id !== currentPlayer.socketId) {
+                console.log("Not this player's turn to use booster");
+                return;
+            }
+
+            let cardIndex = cardId - 1;
+            let cardObj = game.cards[cardIndex];
+            if (cardObj && cardObj.selected === "True" && cardObj.selectedby === currentPlayer.team) {
+                cardObj.shielded = true;
+                
+                await Game.updateOne({ roomId: roomId }, { $set: { cards: game.cards } });
+
+                let latestGame = await Game.findOne({ roomId: roomId });
+                if (latestGame) {
+                    latestGame.players.forEach((player) => {
+                        if (!isBot(player.socketId)) {
+                            io.to(player.socketId).emit('updateGameState', {
+                                deckCount: latestGame.shuffledDeck.length,
+                                score: latestGame.scores,
+                                cards: latestGame.cards,
+                                currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
+                                players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                                playerHand: player.hand,
+                                protectedPatterns: latestGame.protectedPatterns || []
+                            });
+                        }
+                    });
+                }
+            }
+        } catch (err) {
+            console.error("Error using shield booster: ", err);
+        }
+    });
+
+    socket.on('use_booster_wild_upgrade', async (data) => {
+        const { roomId, handCardId } = data;
+        try {
+            let game = await Game.findOne({ roomId: roomId });
+            if (!game) return;
+
+            let currentTurnIndex = game.players.findIndex(p => p.isTurn);
+            let currentPlayer = game.players[currentTurnIndex];
+            if (socket.id !== currentPlayer.socketId) {
+                console.log("Not this player's turn to use booster");
+                return;
+            }
+
+            let cardIndex = currentPlayer.hand.findIndex(c => c.id === handCardId);
+            if (cardIndex !== -1) {
+                currentPlayer.hand[cardIndex] = {
+                    id: 101, // Two-Eyed Jack ID
+                    img: "../assests/JD.png",
+                    selected: false,
+                    matches: [],
+                    isUpgradedWild: true
+                };
+
+                await Game.updateOne({ roomId: roomId }, { $set: { players: game.players } });
+
+                let latestGame = await Game.findOne({ roomId: roomId });
+                if (latestGame) {
+                    latestGame.players.forEach((player) => {
+                        if (!isBot(player.socketId)) {
+                            io.to(player.socketId).emit('updateGameState', {
+                                deckCount: latestGame.shuffledDeck.length,
+                                score: latestGame.scores,
+                                cards: latestGame.cards,
+                                currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
+                                players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                                playerHand: player.hand,
+                                protectedPatterns: latestGame.protectedPatterns || []
+                            });
+                        }
+                    });
+                }
+            }
+        } catch (err) {
+            console.error("Error using wild upgrade booster: ", err);
+        }
+    });
+
+    socket.on('use_booster_reroll', async (data) => {
+        const { roomId, handCardId } = data;
+        try {
+            let game = await Game.findOne({ roomId: roomId });
+            if (!game) return;
+
+            let currentTurnIndex = game.players.findIndex(p => p.isTurn);
+            let currentPlayer = game.players[currentTurnIndex];
+            if (socket.id !== currentPlayer.socketId) {
+                console.log("Not this player's turn to use booster");
+                return;
+            }
+
+            let cardIndex = currentPlayer.hand.findIndex(c => c.id === handCardId);
+            if (cardIndex !== -1 && game.shuffledDeck.length > 0) {
+                let discardedCard = currentPlayer.hand[cardIndex];
+                
+                let newCard = game.shuffledDeck.shift();
+                currentPlayer.hand[cardIndex] = newCard;
+
+                game.shuffledDeck.push(discardedCard);
+
+                await Game.updateOne({ roomId: roomId }, { $set: { players: game.players, shuffledDeck: game.shuffledDeck } });
+
+                let latestGame = await Game.findOne({ roomId: roomId });
+                if (latestGame) {
+                    latestGame.players.forEach((player) => {
+                        if (!isBot(player.socketId)) {
+                            io.to(player.socketId).emit('updateGameState', {
+                                deckCount: latestGame.shuffledDeck.length,
+                                score: latestGame.scores,
+                                cards: latestGame.cards,
+                                currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
+                                players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                                playerHand: player.hand,
+                                protectedPatterns: latestGame.protectedPatterns || []
+                            });
+                        }
+                    });
+                }
+            }
+        } catch (err) {
+            console.error("Error using re-roll booster: ", err);
+        }
+    });
+
     socket.on('Boardcardclicked', async (data) => {
         const { roomId, cardId, selectedCard } = data;
 

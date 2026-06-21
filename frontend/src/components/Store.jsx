@@ -14,7 +14,7 @@ const COIN_PACKS = [
   { coins: 5000000, price: 69.99, originalPrice: 250 }
 ];
 
-export default function Store({ onBuyCoins }) {
+export default function Store({ onBuyCoins, playerCoins }) {
   const [activeTab, setActiveTab] = useState("COINS");
 
   const handlePurchase = (pack) => {
@@ -50,6 +50,58 @@ export default function Store({ onBuyCoins }) {
             color: '#fff',
             confirmButtonColor: "var(--accent-cyan)"
           });
+        });
+      }
+    });
+  };
+
+  const handleBuyBooster = (boosterKey, cost) => {
+    const currentCoins = playerCoins !== undefined ? playerCoins : parseInt(localStorage.getItem("seq_coins") || "0");
+    if (currentCoins < cost) {
+      Swal.fire({
+        title: "Insufficient Coins!",
+        text: `You need ${cost.toLocaleString()} coins to purchase this booster.`,
+        icon: "error",
+        background: '#1a123a',
+        color: '#fff',
+        confirmButtonColor: "var(--accent-cyan)"
+      });
+      return;
+    }
+
+    Swal.fire({
+      title: "Confirm Purchase",
+      html: `<span style="color: #c3bee0;">Purchase booster for <strong>${cost.toLocaleString()} Coins</strong>?</span>`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Buy",
+      confirmButtonColor: "var(--accent-cyan)",
+      cancelButtonText: "Cancel",
+      background: '#1a123a',
+      color: '#fff',
+      iconColor: 'var(--accent-gold)'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        onBuyCoins(-cost);
+        
+        // Update booster count in localStorage
+        const savedBoostersStr = localStorage.getItem("seq_boosters");
+        let boostersObj = { shield: 0, wildUpgrade: 0, reroll: 0 };
+        if (savedBoostersStr) {
+          try {
+            boostersObj = JSON.parse(savedBoostersStr);
+          } catch (e) {}
+        }
+        boostersObj[boosterKey] = (boostersObj[boosterKey] || 0) + 1;
+        localStorage.setItem("seq_boosters", JSON.stringify(boostersObj));
+
+        Swal.fire({
+          title: "Booster Purchased!",
+          text: `Successfully purchased 1 Booster! You now have ${boostersObj[boosterKey]}.`,
+          icon: "success",
+          background: '#1a123a',
+          color: '#fff',
+          confirmButtonColor: "var(--accent-cyan)"
         });
       }
     });
@@ -167,8 +219,76 @@ export default function Store({ onBuyCoins }) {
             </div>
           ))}
         </div>
+      ) : activeTab === "BOOSTERS" ? (
+        /* Boosters shop list */
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px"
+        }}>
+          {[
+            {
+              key: "shield",
+              name: "Chip Shield",
+              desc: "Shield one of your chips on the board from being removed by opponent's One-Eyed Jacks.",
+              price: 3000,
+              icon: "🛡️"
+            },
+            {
+              key: "wildUpgrade",
+              name: "Wild Upgrade",
+              desc: "Temporarily turn one of your hand cards into a Two-Eyed Jack (Wild Card) for this turn.",
+              price: 5000,
+              icon: "🃏"
+            },
+            {
+              key: "reroll",
+              name: "Card Re-roll",
+              desc: "Swap any card in your hand with a random card from the remaining deck during your turn.",
+              price: 1500,
+              icon: "🔄"
+            }
+          ].map((booster) => (
+            <div
+              key={booster.key}
+              className="glass-card"
+              style={{
+                background: "linear-gradient(135deg, #2c1e57 0%, #150d38 100%)",
+                border: "1px solid rgba(124, 58, 237, 0.3)",
+                borderRadius: "16px",
+                padding: "16px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "16px",
+                boxShadow: "0 4px 10px rgba(0,0,0,0.2)"
+              }}
+            >
+              <div style={{ fontSize: "2rem" }}>{booster.icon}</div>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+                <h4 style={{ margin: 0, fontSize: "0.95rem", fontWeight: "800", color: "#e2e8f0", textAlign: "left" }}>{booster.name}</h4>
+                <p style={{ margin: 0, fontSize: "0.75rem", color: "#b0a9c9", lineHeight: "1.2", textAlign: "left" }}>{booster.desc}</p>
+              </div>
+              <button
+                onClick={() => handleBuyBooster(booster.key, booster.price)}
+                className="btn-cyan-glow"
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: "15px",
+                  border: "none",
+                  fontSize: "0.8rem",
+                  fontWeight: "800",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap"
+                }}
+              >
+                💰 {booster.price.toLocaleString()}
+              </button>
+            </div>
+          ))}
+        </div>
       ) : (
-        /* Empty/Locked State for Combo/Boosters */
+        /* Empty/Locked State for Combo */
         <div style={{
           padding: "40px 20px",
           textAlign: "center",
@@ -179,7 +299,7 @@ export default function Store({ onBuyCoins }) {
         }}>
           <div style={{ fontSize: "2rem", marginBottom: "8px" }}>🔒</div>
           <h4 style={{ margin: 0, fontWeight: "700" }}>Locked in Beta</h4>
-          <p style={{ margin: "4px 0 0 0", fontSize: "0.8rem" }}>Boosters and combo items will be purchasable in the next update!</p>
+          <p style={{ margin: "4px 0 0 0", fontSize: "0.8rem" }}>Combo items will be purchasable in the next update!</p>
         </div>
       )}
     </div>

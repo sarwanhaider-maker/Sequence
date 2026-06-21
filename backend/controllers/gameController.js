@@ -106,6 +106,9 @@ function handleCardSelection(
         if (cardInQuestion.selectedby === currentPlayer.team) {
             return { success: false, message: "Wrong move: Cannot remove your own chip with a One-Eyed Jack." };
         }
+        if (cardInQuestion.shielded) {
+            return { success: false, message: "Wrong move: This chip is protected by a shield!" };
+        }
         if (!isCardProtected(cardInQuestion.id)) {
             cardInQuestion.selected = false;
             cardInQuestion.selectedby = "";

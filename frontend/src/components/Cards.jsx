@@ -1,8 +1,43 @@
 import React from "react";
+import Swal from "sweetalert2";
 
-export default function Cards({ roomId, socket, selectCard, setSelectCard, cards, hoveredCard, playingAs, currentPlayerIndex, protectedPatterns, hoveredCardId, myTeam }) {
+export default function Cards({ roomId, socket, selectCard, setSelectCard, cards, hoveredCard, playingAs, currentPlayerIndex, protectedPatterns, hoveredCardId, myTeam, boosterMode, setBoosterMode, setBoosters, setUsedBoosters }) {
 
     function handleClick(cardId, selectCard, socket, card) {
+        if (boosterMode === 'shield') {
+            if (card.selected === "True" && card.selectedby === myTeam && !card.shielded) {
+                socket?.emit('use_booster_shield', { roomId, cardId });
+                
+                // Deduct booster count
+                setBoosters(prev => {
+                    const next = { ...prev, shield: Math.max(0, prev.shield - 1) };
+                    localStorage.setItem("seq_boosters", JSON.stringify(next));
+                    return next;
+                });
+                setUsedBoosters(prev => ({ ...prev, shield: true }));
+                setBoosterMode(null);
+                
+                Swal.fire({
+                    title: "Chip Shielded!",
+                    text: "Your chip has been protected from removal.",
+                    icon: "success",
+                    background: '#1a123a',
+                    color: '#fff',
+                    confirmButtonColor: "var(--accent-cyan)"
+                });
+            } else {
+                Swal.fire({
+                    title: "Invalid Target",
+                    text: "You can only shield your own unshielded chips!",
+                    icon: "error",
+                    background: '#1a123a',
+                    color: '#fff',
+                    confirmButtonColor: "var(--accent-cyan)"
+                });
+            }
+            return;
+        }
+
         let card_matches = card.matches;
         let validMove = false;
         
@@ -11,7 +46,7 @@ export default function Cards({ roomId, socket, selectCard, setSelectCard, cards
             validMove = true;
         }
         // One-eyed Jack (Remove) - ID 105 to 108
-        else if (selectCard > 104 && selectCard <= 108 && card.selected && card.selectedby !== myTeam) {
+        else if (selectCard > 104 && selectCard <= 108 && card.selected && card.selectedby !== myTeam && !card.shielded) {
             validMove = true;
         }
         // Standard card
@@ -41,6 +76,10 @@ export default function Cards({ roomId, socket, selectCard, setSelectCard, cards
     const activeCardId = selectCard || hoveredCardId;
 
     const checkIsValidTarget = (card) => {
+        if (boosterMode === 'shield') {
+            return card.selected && card.selected === "True" && card.selectedby === myTeam && !card.shielded;
+        }
+
         if (!activeCardId) return false;
         
         // Two-eyed Jack (Wild) - ID 101 to 104
@@ -49,7 +88,7 @@ export default function Cards({ roomId, socket, selectCard, setSelectCard, cards
         }
         // One-eyed Jack (Remove) - ID 105 to 108
         if (activeCardId > 104 && activeCardId <= 108) {
-            return card.selected && card.selected === "True" && !isProtected(card.id) && card.selectedby !== myTeam;
+            return card.selected && card.selected === "True" && !isProtected(card.id) && !card.shielded && card.selectedby !== myTeam;
         }
         // Standard card
         return card.matches && card.matches.includes(activeCardId) && !card.selected;
@@ -77,7 +116,13 @@ export default function Cards({ roomId, socket, selectCard, setSelectCard, cards
                                 />
                             )} 
                             {card.selected && card.selected === "True" && (
-                                <div className={`chip chip-${card.selectedby}`}></div>
+                                <div className={`chip chip-${card.selectedby} ${card.shielded ? 'shielded-chip' : ''}`}>
+                                    {card.shielded && (
+                                        <div className="shield-overlay">
+                                            🛡️
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </div>
                      );
