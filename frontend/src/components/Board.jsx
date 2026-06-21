@@ -1171,9 +1171,9 @@ export default function Boards() {
   // 1. Splash Screen
   if (showSplash) {
     return (
-      <div id="splash-screen" style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "#0f0b1e", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", zIndex: 9999 }}>
-        <div style={{ textAlign: "center", animation: "scaleIn 1.0s ease forwards" }}>
-          <img src="/assests/zaesar_logo.png" alt="Zaesar Games Logo" style={{ maxWidth: "240px", height: "auto", marginBottom: "1.5rem", filter: "drop-shadow(0 10px 20px rgba(16, 217, 210, 0.3))", borderRadius: "16px" }} />
+      <div id="splash-screen" style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "#0f0b1e", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", zIndex: 9999 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", animation: "scaleIn 1.0s ease forwards", padding: "20px" }}>
+          <img src="/assests/zaesar_logo.png" alt="Zaesar Games Logo" style={{ width: "240px", maxWidth: "80vw", height: "auto", marginBottom: "1.5rem", filter: "drop-shadow(0 10px 20px rgba(16, 217, 210, 0.3))", borderRadius: "16px" }} />
           <div style={{ fontFamily: "'Cinzel', serif", fontWeight: 800, fontSize: "1.2rem", color: "var(--accent-cyan)", letterSpacing: "4px", textTransform: "uppercase", animation: "pulse 1.5s infinite alternate", marginTop: "0.5rem" }}>
             Loading Sequence Battle...
           </div>
