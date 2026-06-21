@@ -13,37 +13,17 @@
     body {
       font-family: 'Outfit', sans-serif;
       background: #0f0b1e;
-      background-image: radial-gradient(circle at 50% 50%, #1a123a 0%, #0f0b1e 100%);
       color: white;
       height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 20px;
     }
-    h1 {
-      font-family: 'Cinzel', serif;
-      font-size: 2rem;
-      font-weight: 800;
-      color: white;
-      text-shadow: 0 0 20px rgba(16,217,210,0.5);
-      letter-spacing: 4px;
-    }
-    p {
-      color: rgba(255,255,255,0.55);
-      font-size: 0.95rem;
-    }
-    .spinner {
-      width: 42px;
-      height: 42px;
-      border: 3px solid rgba(16,217,210,0.2);
-      border-top-color: #10d9d2;
-      border-radius: 50%;
-      animation: spin 0.85s linear infinite;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    .fallback-container {
+      display: none;
+      text-align: center;
+      animation: fadeIn 0.5s ease-in-out forwards;
     }
     a {
       color: #10d9d2;
@@ -51,19 +31,27 @@
       text-decoration: none;
     }
     a:hover { text-decoration: underline; }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
   </style>
 </head>
 <body>
-  <div class="spinner"></div>
-  <h1>SEQUENCE</h1>
-  <p>Redirecting to Online Multiplayer...</p>
-  <p style="margin-top:8px; font-size:0.8rem;">
-    Not redirected? <a href="https://sequence-liard-theta.vercel.app/">Click here</a>
-  </p>
+  <div id="fallback" class="fallback-container">
+    <p style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Not redirected automatically?</p>
+    <p style="margin-top: 8px;"><a href="https://sequence-liard-theta.vercel.app/">Click here to open the game</a></p>
+  </div>
 
   <script>
     // Immediate JS redirect as backup
     window.location.replace("https://sequence-liard-theta.vercel.app/");
+
+    // If redirect fails or takes too long, show fallback link after 3 seconds
+    setTimeout(function() {
+      var fb = document.getElementById("fallback");
+      if (fb) fb.style.display = "block";
+    }, 3000);
   </script>
 </body>
 </html>
