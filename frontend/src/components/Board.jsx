@@ -1474,7 +1474,7 @@ export default function Boards() {
         title: "Customer Support",
         html: `
           <div style="text-align: center; color: #fff;">
-            <p style="margin-bottom: 12px; font-size: 1rem; color: #ecc94b; font-weight: bold;">Amunis Technologies Support</p>
+            <p style="margin-bottom: 12px; font-size: 1rem; color: #ecc94b; font-weight: bold;">Zaesar Games Support</p>
             <p style="font-size: 0.9rem; line-height: 1.4; color: #c3bee0;">
               Have questions or found a bug? We'd love to help you! Reach us at:
             </p>
@@ -1514,16 +1514,16 @@ export default function Boards() {
         html: `
           <div style="text-align: left; max-height: 250px; overflow-y: auto; padding-right: 8px; font-size: 0.82rem; line-height: 1.5; color: #c3bee0;">
             <p style="margin-bottom: 10px; font-weight: bold; color: #ecc94b;">1. Acceptance of Terms</p>
-            <p style="margin-bottom: 15px;">By accessing and playing Sequence Battle, you agree to comply with and be bound by these Terms of Service provided by Amunis Technologies.</p>
+            <p style="margin-bottom: 15px;">By accessing and playing Sequence Battle, you agree to comply with and be bound by these Terms of Service provided by Zaesar Games.</p>
             
             <p style="margin-bottom: 10px; font-weight: bold; color: #ecc94b;">2. Virtual Currency (Coins)</p>
-            <p style="margin-bottom: 15px;">Coins claimed, earned, or purchased in-game are virtual currencies with zero real-world monetary value. They are non-transferable and non-refundable.</p>
+            <p style="margin-bottom: 15px;">Coins claimed, earned, or purchased in-game are virtual currencies with zero real-world monetary value. They are non-transferable and non-refund-able.</p>
             
             <p style="margin-bottom: 10px; font-weight: bold; color: #ecc94b;">3. Code of Conduct</p>
             <p style="margin-bottom: 15px;">Players are expected to play fairly. Exploiting bugs, running bots/hacks, or engaging in harassment is strictly prohibited and can result in account suspension.</p>
             
             <p style="margin-bottom: 10px; font-weight: bold; color: #ecc94b;">4. Limitation of Liability</p>
-            <p>Amunis Technologies provides the game "as-is". We are not responsible for any connectivity errors, database resets, or loss of game progress.</p>
+            <p>Zaesar Games provides the game "as-is". We are not responsible for any connectivity errors, database resets, or loss of game progress.</p>
           </div>
         `,
         confirmButtonText: "I Accept",

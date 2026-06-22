@@ -963,3 +963,8 @@ body.theme-classic .lobby-suit-bg {
 .swal2-container {
   z-index: 100000 !important;
 }
+
+/* SweetAlert popup border-radius override to curve corners nicely */
+.swal2-popup {
+  border-radius: 24px !important;
+}

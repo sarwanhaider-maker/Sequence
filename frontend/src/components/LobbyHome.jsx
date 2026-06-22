@@ -458,7 +458,7 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
         lineHeight: "1.4",
         padding: "0 10px"
       }}>
-        Disclaimer: This is an independent, non-commercial, open-source fan creation. It is not affiliated with, authorized, or endorsed by Jax Ltd., Amunis Technologies, or any of their partners.
+        Disclaimer: This is an independent, non-commercial, open-source fan creation. It is not affiliated with, authorized, or endorsed by Jax Ltd., Zaesar Games, or any of their partners.
       </div>
 
     </div>
