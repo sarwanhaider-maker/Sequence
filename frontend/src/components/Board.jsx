@@ -583,6 +583,72 @@ export default function Boards() {
   useEffect(() => { currentPlayerIndexRef.current = currentPlayerIndex; }, [currentPlayerIndex]);
   useEffect(() => { customRoomIdRef.current = customRoomId; }, [customRoomId]);
 
+  // Lemon Squeezy Payment Redirect Success Listener
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("status") === "success") {
+      const pack = params.get("pack");
+      let coinsToAdd = 0;
+      let addedBoosters = { shield: 0, wildUpgrade: 0, reroll: 0 };
+      let packName = "";
+
+      if (pack === "bronze") {
+        coinsToAdd = 10000;
+        addedBoosters = { shield: 1, wildUpgrade: 0, reroll: 2 };
+        packName = "Bronze Tactician Combo";
+      } else if (pack === "silver") {
+        coinsToAdd = 25000;
+        addedBoosters = { shield: 3, wildUpgrade: 2, reroll: 0 };
+        packName = "Silver Master Combo";
+      } else if (pack === "gold") {
+        coinsToAdd = 75000;
+        addedBoosters = { shield: 5, wildUpgrade: 5, reroll: 5 };
+        packName = "Gold Champion Combo";
+      }
+
+      if (coinsToAdd > 0) {
+        // 1. Update coins
+        updateCoins(coinsToAdd);
+
+        // 2. Update boosters in localStorage & state
+        const saved = localStorage.getItem("seq_boosters");
+        let current = { shield: 0, wildUpgrade: 0, reroll: 0 };
+        if (saved) {
+          try { current = JSON.parse(saved); } catch (e) {}
+        }
+        current.shield = (current.shield || 0) + addedBoosters.shield;
+        current.wildUpgrade = (current.wildUpgrade || 0) + addedBoosters.wildUpgrade;
+        current.reroll = (current.reroll || 0) + addedBoosters.reroll;
+        
+        localStorage.setItem("seq_boosters", JSON.stringify(current));
+        setBoosters(current);
+
+        // 3. Clear URL query parameters to avoid double-claim on refresh
+        window.history.replaceState({}, document.title, window.location.pathname);
+
+        // 4. Show success alert
+        Swal.fire({
+          title: "Payment Successful!",
+          html: `
+            <div style="color: #c3bee0;">
+              Thank you for purchasing the <strong>${packName}</strong>!<br><br>
+              <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">
+                💰 +${coinsToAdd.toLocaleString()} Coins<br>
+                ${addedBoosters.shield ? `🛡️ +${addedBoosters.shield} Chip Guards<br>` : ''}
+                ${addedBoosters.wildUpgrade ? `🃏 +${addedBoosters.wildUpgrade} Wild Upgrades<br>` : ''}
+                ${addedBoosters.reroll ? `🔄 +${addedBoosters.reroll} Card Redraws<br>` : ''}
+              </div>
+            </div>
+          `,
+          icon: "success",
+          background: '#1a123a',
+          color: '#fff',
+          confirmButtonColor: "var(--accent-cyan)"
+        });
+      }
+    }
+  }, []);
+
   // Audio Context auto-resume on first user gesture
   useEffect(() => {
     const resumeAudio = () => {

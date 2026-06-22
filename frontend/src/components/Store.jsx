@@ -21,7 +21,8 @@ const COMBO_PACKS = [
     coins: 10000,
     boosters: { reroll: 2, shield: 1, wildUpgrade: 0 },
     icon: "🥉",
-    description: "Get started with a neat coin stack and key tactical tools!"
+    description: "Get started with a neat coin stack and key tactical tools!",
+    checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/83d84491-c125-4c37-9a1e-f0160cbbbb6b"
   },
   {
     name: "Silver Master Combo",
@@ -29,7 +30,8 @@ const COMBO_PACKS = [
     coins: 25000,
     boosters: { reroll: 0, shield: 3, wildUpgrade: 2 },
     icon: "🥈",
-    description: "Reinforce your board position and gain control over wild jacks!"
+    description: "Reinforce your board position and gain control over wild jacks!",
+    checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/83d84491-c125-4c37-9a1e-f0160cbbbb6b" // (Default to this URL, update as created)
   },
   {
     name: "Gold Champion Combo",
@@ -37,7 +39,8 @@ const COMBO_PACKS = [
     coins: 75000,
     boosters: { reroll: 5, shield: 5, wildUpgrade: 5 },
     icon: "🥇",
-    description: "The ultimate value bundle to dominate any online matches!"
+    description: "The ultimate value bundle to dominate any online matches!",
+    checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/83d84491-c125-4c37-9a1e-f0160cbbbb6b" // (Default to this URL, update as created)
   }
 ];
 
@@ -234,15 +237,16 @@ export default function Store({ onBuyCoins, playerCoins }) {
             ${combo.boosters.reroll ? `<p style="margin: 4px 0; display: flex; align-items: center; gap: 6px;">🔄 <strong>+${combo.boosters.reroll} Card Redraws</strong></p>` : ''}
           </div>
           <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; font-size: 0.85rem; color: #a5b4fc; text-align: center; margin-top: 8px;">
-            💳 Charging Account: ****${currentAccount.slice(-4)}
+            💳 Linked Account: ****${currentAccount.slice(-4)}
           </div>
-          <br>
-          <small style="color:gray;">(This is a simulated Sandbox in-app purchase)</small>
+          <p style="text-align: center; color: #10d9d2; font-weight: bold; margin-top: 15px; font-size: 0.85rem;">
+            You will be redirected to Lemon Squeezy to complete payment.
+          </p>
         </div>
       `,
       icon: "question",
       showCancelButton: true,
-      confirmButtonText: "Purchase",
+      confirmButtonText: "Go to Checkout 💳",
       confirmButtonColor: "var(--accent-cyan)",
       cancelButtonText: "Cancel",
       background: '#1a123a',
@@ -250,46 +254,7 @@ export default function Store({ onBuyCoins, playerCoins }) {
       iconColor: 'var(--accent-gold)'
     }).then((result) => {
       if (result.isConfirmed) {
-        Swal.fire({
-          title: "Processing payment...",
-          allowOutsideClick: false,
-          background: '#1a123a',
-          color: '#fff',
-          didOpen: () => {
-            Swal.showLoading();
-          },
-          timer: 1500
-        }).then(() => {
-          // 1. Credit the coins
-          onBuyCoins(combo.coins);
-          
-          // 2. Update boosters in localStorage
-          const savedBoostersStr = localStorage.getItem("seq_boosters");
-          let boostersObj = { shield: 0, wildUpgrade: 0, reroll: 0 };
-          if (savedBoostersStr) {
-            try {
-              boostersObj = JSON.parse(savedBoostersStr);
-            } catch (e) {}
-          }
-          boostersObj.shield = (boostersObj.shield || 0) + (combo.boosters.shield || 0);
-          boostersObj.wildUpgrade = (boostersObj.wildUpgrade || 0) + (combo.boosters.wildUpgrade || 0);
-          boostersObj.reroll = (boostersObj.reroll || 0) + (combo.boosters.reroll || 0);
-          localStorage.setItem("seq_boosters", JSON.stringify(boostersObj));
-
-          Swal.fire({
-            title: "Combo Claimed!",
-            html: `
-              <div style="color: #c3bee0;">
-                Successfully purchased <strong>${combo.name}</strong>!<br>
-                Your balance and tactic cards inventory have been updated.
-              </div>
-            `,
-            icon: "success",
-            background: '#1a123a',
-            color: '#fff',
-            confirmButtonColor: "var(--accent-cyan)"
-          });
-        });
+        window.open(combo.checkoutUrl, "_blank");
       }
     });
   };
