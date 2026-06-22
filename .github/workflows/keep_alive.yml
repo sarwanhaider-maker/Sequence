@@ -2,8 +2,8 @@ name: Keep Render Backend Active
 
 on:
   schedule:
-    # Runs every 10 minutes to prevent Render Free Tier from sleeping
-    - cron: '*/10 * * * *'
+    # Runs every 5 minutes to prevent Render Free Tier from sleeping
+    - cron: '*/5 * * * *'
   workflow_dispatch: # Allows manual run
 
 jobs:

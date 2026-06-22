@@ -427,6 +427,7 @@ export default function Boards() {
 
   // Initialize Socket with persistent session ID for reconnection
   useEffect(() => {
+    fetch(`${SERVER_URL}/health`).catch(() => {});
     if (!socket) {
       // Store a persistent session ID so the server can reconnect us if we lose connection
       let sessionId = localStorage.getItem("sequence_session_id");
@@ -929,65 +930,114 @@ export default function Boards() {
     };
   }, [socket]);
 
-  const onlineButton = useCallback(async (selectedStake = null) => {
-    if (!socket || !socket.connected) {
-      Swal.fire("Connection Error", `Not connected to the game server. It is trying to connect to: ${SERVER_URL}\n\nPlease verify that the backend server is running and accessible.`, "error");
+  const ensureConnected = (onConnectSuccess) => {
+    if (socket && socket.connected) {
+      onConnectSuccess();
       return;
     }
+
+    // Wake up the server by triggering a fetch request
+    fetch(`${SERVER_URL}/health`).catch(() => {});
+
+    Swal.fire({
+      title: "Connecting to Server...",
+      html: `
+        <div style="text-align: center; margin: 15px 0;">
+          <div class="spinner-border text-info" role="status" style="width: 3rem; height: 3rem; border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid #10d9d2; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px auto;"></div>
+          <p style="color: #c3bee0; font-size: 0.9rem; line-height: 1.4;">
+            Waking up the game server...<br>
+            Render's free tier takes about 40-50 seconds to boot when idle. Please wait.
+          </p>
+        </div>
+        <style>
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        </style>
+      `,
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      background: '#1a123a',
+      color: '#fff',
+      didOpen: () => {
+        const checkInterval = setInterval(() => {
+          if (socket && socket.connected) {
+            clearInterval(checkInterval);
+            Swal.close();
+            onConnectSuccess();
+          }
+        }, 500);
+
+        // Timeout after 60 seconds
+        setTimeout(() => {
+          clearInterval(checkInterval);
+          if (!socket || !socket.connected) {
+            Swal.fire({
+              title: "Connection Failed",
+              text: "Could not connect to the game server. Please try again in a few seconds.",
+              icon: "error",
+              background: '#1a123a',
+              color: '#fff',
+              confirmButtonColor: "var(--accent-cyan)"
+            });
+          }
+        }, 60000);
+      }
+    });
+  };
+
+  const onlineButton = useCallback(async (selectedStake = null) => {
     if (!playerName.trim()) {
       Swal.fire("Error", "Please enter your name first!", "error");
       return;
     }
-    const currentStake = selectedStake || activeStake;
-    socket.emit("play_online", { 
-      playerName,
-      stakeId: currentStake?.id,
-      stakeFee: currentStake?.fee,
-      stakeReward: currentStake?.reward,
-      stakeName: currentStake?.name,
-      boardType: currentStake?.board || "STANDARD"
-    }, (response) => {
-      setPlayOnline(true);
-      if (response.roomId) {
-        setRoom(`${response.roomId}`);
-        navigate(`/room/${response.roomId}`);
-      } else if (response.waiting) {
-        setIsWaitingForMatch(true);
-        setRoom(`${response.waitingroom}`);
-        navigate(`/room/${response.waitingroom}`);
-      }
+    ensureConnected(() => {
+      const currentStake = selectedStake || activeStake;
+      socket.emit("play_online", { 
+        playerName,
+        stakeId: currentStake?.id,
+        stakeFee: currentStake?.fee,
+        stakeReward: currentStake?.reward,
+        stakeName: currentStake?.name,
+        boardType: currentStake?.board || "STANDARD"
+      }, (response) => {
+        setPlayOnline(true);
+        if (response.roomId) {
+          setRoom(`${response.roomId}`);
+          navigate(`/room/${response.roomId}`);
+        } else if (response.waiting) {
+          setIsWaitingForMatch(true);
+          setRoom(`${response.waitingroom}`);
+          navigate(`/room/${response.waitingroom}`);
+        }
+      });
     });
   }, [socket, isConnected, navigate, playerName, activeStake]);
 
   const createCustomRoom = useCallback(async () => {
-    if (!socket || !socket.connected) {
-      Swal.fire("Connection Error", `Not connected to the game server. It is trying to connect to: ${SERVER_URL}\n\nPlease verify that the backend server is running and accessible.`, "error");
-      return;
-    }
     if (!playerName.trim()) {
       Swal.fire("Error", "Please enter your name first!", "error");
       return;
     }
-    socket.emit("create_custom_room", { playerName, playerLimit, gameMode, voiceChatEnabled: lobbyVoiceChat }, (response) => {
-      if (response && response.roomId) {
-        setInCustomGame(true);
-        setCustomRoomId(response.roomId);
-        setPlayOnline(true);
-        setRoom(`${response.roomId}`);
-        setVoiceChatEnabled(lobbyVoiceChat);
-        navigate(`/room/${response.roomId}`);
-      } else {
-        console.error("Failed to create custom room.");
-        Swal.fire("Error", "Server failed to respond with room ID. Please try again or check the backend server logs.", "error");
-      }
+    ensureConnected(() => {
+      socket.emit("create_custom_room", { playerName, playerLimit, gameMode, voiceChatEnabled: lobbyVoiceChat }, (response) => {
+        if (response && response.roomId) {
+          setInCustomGame(true);
+          setCustomRoomId(response.roomId);
+          setPlayOnline(true);
+          setRoom(`${response.roomId}`);
+          setVoiceChatEnabled(lobbyVoiceChat);
+          navigate(`/room/${response.roomId}`);
+        } else {
+          console.error("Failed to create custom room.");
+          Swal.fire("Error", "Server failed to respond with room ID. Please try again or check the backend server logs.", "error");
+        }
+      });
     });
   }, [socket, isConnected, navigate, playerName, playerLimit, gameMode, lobbyVoiceChat]);
 
   const joinCustomRoom = useCallback(async (forcedRoomCode = null) => {
-    if (!socket || !socket.connected) {
-      Swal.fire("Connection Error", `Not connected to the game server. It is trying to connect to: ${SERVER_URL}\n\nPlease verify that the backend server is running and accessible.`, "error");
-      return;
-    }
     let roomCode = forcedRoomCode;
     if (!roomCode) {
       const roomCodeInput = await Swal.fire({
@@ -999,6 +1049,10 @@ export default function Boards() {
             return "You need to write something!";
           }
         },
+        background: '#1a123a',
+        color: '#fff',
+        confirmButtonColor: "var(--accent-cyan)",
+        cancelButtonColor: "rgba(255,255,255,0.06)"
       });
 
       if (!roomCodeInput.isConfirmed) {
@@ -1017,6 +1071,10 @@ export default function Boards() {
             return "You need to write something!";
           }
         },
+        background: '#1a123a',
+        color: '#fff',
+        confirmButtonColor: "var(--accent-cyan)",
+        cancelButtonColor: "rgba(255,255,255,0.06)"
       });
       if (!nameResult.isConfirmed) {
         return;
@@ -1029,18 +1087,20 @@ export default function Boards() {
   }, [socket, navigate, playerName]);
 
   const emitJoinRoom = (roomCode, name) => {
-    setPlayOnline(true);
-    socket.emit("join_custom_room", { roomId: roomCode, playerName: name }, (response) => {
-      if (response.success) {
-        setInCustomGame(true);
-        setCustomRoomId(roomCode);
-        setRoom(`${roomCode}`);
-        navigate(`/room/${roomCode}`);
-      } else {
-        console.error("Failed to join custom room.");
-        setPlayOnline(false);
-        Swal.fire("Error", response.message || "Failed to join room.", "error");
-      }
+    ensureConnected(() => {
+      setPlayOnline(true);
+      socket.emit("join_custom_room", { roomId: roomCode, playerName: name }, (response) => {
+        if (response.success) {
+          setInCustomGame(true);
+          setCustomRoomId(roomCode);
+          setRoom(`${roomCode}`);
+          navigate(`/room/${roomCode}`);
+        } else {
+          console.error("Failed to join custom room.");
+          setPlayOnline(false);
+          Swal.fire("Error", response.message || "Failed to join room.", "error");
+        }
+      });
     });
   };
 
