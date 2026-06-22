@@ -31,7 +31,7 @@ const COMBO_PACKS = [
     boosters: { reroll: 0, shield: 3, wildUpgrade: 2 },
     icon: "🥈",
     description: "Reinforce your board position and gain control over wild jacks!",
-    checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/83d84491-c125-4c37-9a1e-f0160cbbbb6b" // (Default to this URL, update as created)
+    checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/96f3b943-4878-4f90-94f0-d6374a8fd931"
   },
   {
     name: "Gold Champion Combo",
@@ -40,7 +40,7 @@ const COMBO_PACKS = [
     boosters: { reroll: 5, shield: 5, wildUpgrade: 5 },
     icon: "🥇",
     description: "The ultimate value bundle to dominate any online matches!",
-    checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/83d84491-c125-4c37-9a1e-f0160cbbbb6b" // (Default to this URL, update as created)
+    checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/16c69713-fd9e-48e2-a7d9-cf76b3099b7f"
   }
 ];
 
