@@ -604,6 +604,33 @@ export default function Boards() {
         coinsToAdd = 75000;
         addedBoosters = { shield: 5, wildUpgrade: 5, reroll: 5 };
         packName = "Gold Champion Combo";
+      } else if (pack === "coins_7k") {
+        coinsToAdd = 7000;
+        packName = "7,000 Coins Pack";
+      } else if (pack === "coins_10k") {
+        coinsToAdd = 10000;
+        packName = "10,000 Coins Pack";
+      } else if (pack === "coins_25k") {
+        coinsToAdd = 25000;
+        packName = "25,000 Coins Pack";
+      } else if (pack === "coins_100k") {
+        coinsToAdd = 100000;
+        packName = "100,000 Coins Pack";
+      } else if (pack === "coins_250k") {
+        coinsToAdd = 250000;
+        packName = "250,000 Coins Pack";
+      } else if (pack === "coins_500k") {
+        coinsToAdd = 500000;
+        packName = "500,000 Coins Pack";
+      } else if (pack === "coins_1m") {
+        coinsToAdd = 1000000;
+        packName = "1,000,000 Coins Pack";
+      } else if (pack === "coins_2m") {
+        coinsToAdd = 2000000;
+        packName = "2,000,000 Coins Pack";
+      } else if (pack === "coins_5m") {
+        coinsToAdd = 5000000;
+        packName = "5,000,000 Coins Pack";
       }
 
       if (coinsToAdd > 0) {
@@ -633,10 +660,13 @@ export default function Boards() {
             <div style="color: #c3bee0;">
               Thank you for purchasing the <strong>${packName}</strong>!<br><br>
               <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">
-                💰 +${coinsToAdd.toLocaleString()} Coins<br>
-                ${addedBoosters.shield ? `🛡️ +${addedBoosters.shield} Chip Guards<br>` : ''}
-                ${addedBoosters.wildUpgrade ? `🃏 +${addedBoosters.wildUpgrade} Wild Upgrades<br>` : ''}
-                ${addedBoosters.reroll ? `🔄 +${addedBoosters.reroll} Card Redraws<br>` : ''}
+                💰 +${coinsToAdd.toLocaleString()} Coins
+                ${(addedBoosters.shield || addedBoosters.wildUpgrade || addedBoosters.reroll) ? `
+                  <br>
+                  ${addedBoosters.shield ? `🛡️ +${addedBoosters.shield} Chip Guards<br>` : ''}
+                  ${addedBoosters.wildUpgrade ? `🃏 +${addedBoosters.wildUpgrade} Wild Upgrades<br>` : ''}
+                  ${addedBoosters.reroll ? `🔄 +${addedBoosters.reroll} Card Redraws<br>` : ''}
+                ` : ''}
               </div>
             </div>
           `,

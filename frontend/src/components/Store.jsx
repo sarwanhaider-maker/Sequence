@@ -3,15 +3,15 @@ import { CoinIcon } from "./Avatars";
 import Swal from "sweetalert2";
 
 const COIN_PACKS = [
-  { coins: 7000, price: 1.99 },
-  { coins: 10000, price: 2.99 },
-  { coins: 25000, price: 4.99 },
-  { coins: 100000, price: 6.99 },
-  { coins: 250000, price: 11.99, originalPrice: 15 },
-  { coins: 500000, price: 19.99, originalPrice: 30 },
-  { coins: 1000000, price: 29.99, originalPrice: 80 },
-  { coins: 2000000, price: 49.99, originalPrice: 100 },
-  { coins: 5000000, price: 69.99, originalPrice: 250 }
+  { coins: 7000, price: 1.99, key: "coins_7k", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/83d84491-c125-4c37-9a1e-f0160cbbbb6b" },
+  { coins: 10000, price: 2.99, key: "coins_10k", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/83d84491-c125-4c37-9a1e-f0160cbbbb6b" },
+  { coins: 25000, price: 4.99, key: "coins_25k", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/96f3b943-4878-4f90-94f0-d6374a8fd931" },
+  { coins: 100000, price: 6.99, key: "coins_100k", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/16c69713-fd9e-48e2-a7d9-cf76b3099b7f" },
+  { coins: 250000, price: 11.99, originalPrice: 15, key: "coins_250k", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/16c69713-fd9e-48e2-a7d9-cf76b3099b7f" },
+  { coins: 500000, price: 19.99, originalPrice: 30, key: "coins_500k", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/16c69713-fd9e-48e2-a7d9-cf76b3099b7f" },
+  { coins: 1000000, price: 29.99, originalPrice: 80, key: "coins_1m", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/16c69713-fd9e-48e2-a7d9-cf76b3099b7f" },
+  { coins: 2000000, price: 49.99, originalPrice: 100, key: "coins_2m", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/16c69713-fd9e-48e2-a7d9-cf76b3099b7f" },
+  { coins: 5000000, price: 69.99, originalPrice: 250, key: "coins_5m", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/16c69713-fd9e-48e2-a7d9-cf76b3099b7f" }
 ];
 
 const COMBO_PACKS = [
@@ -113,14 +113,15 @@ export default function Store({ onBuyCoins, playerCoins }) {
         <span style="color: #c3bee0;">Would you like to purchase <strong>${pack.coins.toLocaleString()} Coins</strong> for <strong>$${pack.price}</strong>?</span>
         <br><br>
         <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; font-size: 0.85rem; color: #a5b4fc; text-align: center;">
-          💳 Charging Account: ****${currentAccount.slice(-4)}
+          💳 Linked Account: ****${currentAccount.slice(-4)}
         </div>
-        <br>
-        <small style="color:gray;">(This is a simulated Sandbox in-app purchase)</small>
+        <p style="text-align: center; color: #10d9d2; font-weight: bold; margin-top: 15px; font-size: 0.85rem;">
+          You will be redirected to Lemon Squeezy to complete payment.
+        </p>
       `,
       icon: "question",
       showCancelButton: true,
-      confirmButtonText: "Purchase",
+      confirmButtonText: "Go to Checkout 💳",
       confirmButtonColor: "var(--accent-cyan)",
       cancelButtonText: "Cancel",
       background: '#1a123a',
@@ -128,26 +129,7 @@ export default function Store({ onBuyCoins, playerCoins }) {
       iconColor: 'var(--accent-gold)'
     }).then((result) => {
       if (result.isConfirmed) {
-        Swal.fire({
-          title: "Processing payment...",
-          allowOutsideClick: false,
-          background: '#1a123a',
-          color: '#fff',
-          didOpen: () => {
-            Swal.showLoading();
-          },
-          timer: 1500
-        }).then(() => {
-          onBuyCoins(pack.coins);
-          Swal.fire({
-            title: "Purchase Successful!",
-            text: `Successfully credited ${pack.coins.toLocaleString()} coins to your account!`,
-            icon: "success",
-            background: '#1a123a',
-            color: '#fff',
-            confirmButtonColor: "var(--accent-cyan)"
-          });
-        });
+        window.open(pack.checkoutUrl, "_blank");
       }
     });
   };
