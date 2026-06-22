@@ -104,16 +104,69 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
             onClick={() => {
               navigator.clipboard.writeText("https://sequence-liard-theta.vercel.app");
               Swal.fire({
-                toast: true,
-                position: 'top',
-                showConfirmButton: false,
-                timer: 2000,
-                icon: 'success',
-                title: 'Copied!',
-                text: 'Invite link copied to clipboard.',
-                background: '#1e1932',
+                title: "Invite Link Copied!",
+                html: `
+                  <div style="text-align: center; color: #c3bee0; font-size: 0.92rem; padding: 10px 0;">
+                    <p style="margin-bottom: 20px;">The invite link has been copied to your clipboard. Share it directly with your friends on social media:</p>
+                    
+                    <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin: 15px 0;">
+                      <!-- WhatsApp -->
+                      <a href="https://api.whatsapp.com/send?text=Play%20Sequence%20online%20with%20me%21%20https%3A%2F%2Fsequence-liard-theta.vercel.app" 
+                         target="_blank" rel="noopener noreferrer" title="Share on WhatsApp"
+                         style="width: 48px; height: 48px; border-radius: 50%; background: #25D366; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: transform 0.2s; box-shadow: 0 4px 12px rgba(37,211,102,0.3);"
+                         onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'">
+                        <svg style="width: 22px; height: 22px; fill: white;" viewBox="0 0 24 24">
+                          <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.717-1.458L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.625 1.45 5.275 0 9.57-4.293 9.573-9.568.001-2.553-1.001-4.953-2.822-6.776C16.2 2.438 13.8 1.437 11.244 1.437c-5.277 0-9.572 4.293-9.575 9.569-.001 1.564.487 3.09 1.412 4.41l-.979 3.57 3.655-.959zM15.5 17.5c-.3-.15-1.75-.85-2.05-.95-.3-.1-.5-.15-.7.15-.2.3-.75.95-.9 1.1-.15.15-.3.2-.6.05-1.2-.5-2.1-1.1-2.9-2.5-.2-.35 0-.6.15-.8.15-.15.3-.35.45-.5.15-.15.2-.25.3-.45.1-.2.05-.4 0-.55-.05-.15-.5-1.2-.7-1.7-.2-.45-.4-.4-.55-.4h-.45c-.15 0-.4.05-.6.25-.2.2-.8.8-.8 1.9s.8 2.2.9 2.3c.1.15 1.8 2.7 4.3 3.8.6.25 1.1.4 1.5.55.6.2 1.15.15 1.6.1.5-.05 1.75-.7 2-1.35.25-.65.25-1.2.15-1.3-.1-.15-.3-.25-.6-.4z"/>
+                        </svg>
+                      </a>
+                      
+                      <!-- Telegram -->
+                      <a href="https://t.me/share/url?url=https%3A%2F%2Fsequence-liard-theta.vercel.app&text=Play%20Sequence%20online%20with%20me%21" 
+                         target="_blank" rel="noopener noreferrer" title="Share on Telegram"
+                         style="width: 48px; height: 48px; border-radius: 50%; background: #0088cc; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: transform 0.2s; box-shadow: 0 4px 12px rgba(0,136,204,0.3);"
+                         onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'">
+                        <svg style="width: 20px; height: 20px; fill: white;" viewBox="0 0 24 24">
+                          <path d="M9.78 18.65l.28-4.28 7.68-6.93c.34-.3-.07-.46-.52-.18L7.69 13.25l-4.14-1.3c-.9-.28-.92-.9.19-1.34L20.07 4.3c.75-.28 1.4.17 1.15 1.36l-2.78 13.07c-.2 1-.8 1.24-1.62.78l-4.24-3.13-2.04 1.97c-.22.22-.4.4-.82.4z"/>
+                        </svg>
+                      </a>
+                      
+                      <!-- Twitter / X -->
+                      <a href="https://twitter.com/intent/tweet?url=https%3A%2F%2Fsequence-liard-theta.vercel.app&text=Play%20Sequence%20online%20with%20me%21" 
+                         target="_blank" rel="noopener noreferrer" title="Share on X"
+                         style="width: 48px; height: 48px; border-radius: 50%; background: #000000; border: 1.5px solid rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; text-decoration: none; transition: transform 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.4);"
+                         onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'">
+                        <svg style="width: 16px; height: 16px; fill: white;" viewBox="0 0 24 24">
+                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
+                      </a>
+                      
+                      <!-- Facebook -->
+                      <a href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fsequence-liard-theta.vercel.app" 
+                         target="_blank" rel="noopener noreferrer" title="Share on Facebook"
+                         style="width: 48px; height: 48px; border-radius: 50%; background: #1877F2; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: transform 0.2s; box-shadow: 0 4px 12px rgba(24,119,242,0.3);"
+                         onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'">
+                        <svg style="width: 22px; height: 22px; fill: white;" viewBox="0 0 24 24">
+                          <path d="M9 8H7v3h2v9h4v-9h3.6l.4-3H13V6c0-.5.5-1 1-1h3V1h-3c-3 0-5 2-5 5v2z"/>
+                        </svg>
+                      </a>
+                      
+                      <!-- Instagram -->
+                      <a href="https://instagram.com" 
+                         target="_blank" rel="noopener noreferrer" title="Share on Instagram"
+                         style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); display: flex; align-items: center; justify-content: center; text-decoration: none; transition: transform 0.2s; box-shadow: 0 4px 12px rgba(188,24,136,0.3);"
+                         onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'">
+                        <svg style="width: 20px; height: 20px; fill: white;" viewBox="0 0 24 24">
+                          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
+                        </svg>
+                      </a>
+                    </div>
+                  </div>
+                `,
+                icon: "success",
+                background: '#1a123a',
                 color: '#fff',
-                iconColor: '#10d9d2'
+                confirmButtonColor: "var(--accent-cyan)",
+                confirmButtonText: "Done"
               });
             }}
             className="animate-pulse-cyan"
