@@ -1,6 +1,18 @@
 import React from "react";
 
-export default function SettingsModal({ isOpen, onClose, settings = { music: true, sound: true, vibration: true }, onToggleSetting, onQuit }) {
+export default function SettingsModal({
+  isOpen,
+  onClose,
+  settings = { music: true, sound: true, vibration: true },
+  onToggleSetting,
+  onSupport,
+  onTutorial,
+  onTerms,
+  onPrivacy,
+  onCloudBackup,
+  onRateUs,
+  onQuit
+}) {
   if (!isOpen) return null;
 
   return (
@@ -133,78 +145,98 @@ export default function SettingsModal({ isOpen, onClose, settings = { music: tru
         </div>
 
         {/* Support, Tutorial, etc. */}
-        <button style={{
-          background: "linear-gradient(90deg, #4c1d95 0%, #31105e 100%)",
-          border: "1px solid rgba(124, 58, 237, 0.4)",
-          color: "white",
-          padding: "12px",
-          borderRadius: "30px",
-          fontWeight: "800",
-          fontSize: "0.95rem",
-          cursor: "pointer"
-        }}>
+        <button 
+          onClick={onSupport}
+          style={{
+            background: "linear-gradient(90deg, #4c1d95 0%, #31105e 100%)",
+            border: "1px solid rgba(124, 58, 237, 0.4)",
+            color: "white",
+            padding: "12px",
+            borderRadius: "30px",
+            fontWeight: "800",
+            fontSize: "0.95rem",
+            cursor: "pointer"
+          }}
+        >
           Support
         </button>
-
-        <button style={{
-          background: "linear-gradient(90deg, #4c1d95 0%, #31105e 100%)",
-          border: "1px solid rgba(124, 58, 237, 0.4)",
-          color: "white",
-          padding: "12px",
-          borderRadius: "30px",
-          fontWeight: "800",
-          fontSize: "0.95rem",
-          cursor: "pointer"
-        }}>
+ 
+        <button 
+          onClick={onTutorial}
+          style={{
+            background: "linear-gradient(90deg, #4c1d95 0%, #31105e 100%)",
+            border: "1px solid rgba(124, 58, 237, 0.4)",
+            color: "white",
+            padding: "12px",
+            borderRadius: "30px",
+            fontWeight: "800",
+            fontSize: "0.95rem",
+            cursor: "pointer"
+          }}
+        >
           Tutorial
         </button>
-
-        <button style={{
-          background: "linear-gradient(90deg, #4c1d95 0%, #31105e 100%)",
-          border: "1px solid rgba(124, 58, 237, 0.4)",
-          color: "white",
-          padding: "12px",
-          borderRadius: "30px",
-          fontWeight: "800",
-          fontSize: "0.95rem",
-          cursor: "pointer"
-        }}>
+ 
+        <button 
+          onClick={onTerms}
+          style={{
+            background: "linear-gradient(90deg, #4c1d95 0%, #31105e 100%)",
+            border: "1px solid rgba(124, 58, 237, 0.4)",
+            color: "white",
+            padding: "12px",
+            borderRadius: "30px",
+            fontWeight: "800",
+            fontSize: "0.95rem",
+            cursor: "pointer"
+          }}
+        >
           Terms & Conditions
         </button>
-
-        <button style={{
-          background: "linear-gradient(90deg, #4c1d95 0%, #31105e 100%)",
-          border: "1px solid rgba(124, 58, 237, 0.4)",
-          color: "white",
-          padding: "12px",
-          borderRadius: "30px",
-          fontWeight: "800",
-          fontSize: "0.95rem",
-          cursor: "pointer"
-        }}>
+ 
+        <button 
+          onClick={onPrivacy}
+          style={{
+            background: "linear-gradient(90deg, #4c1d95 0%, #31105e 100%)",
+            border: "1px solid rgba(124, 58, 237, 0.4)",
+            color: "white",
+            padding: "12px",
+            borderRadius: "30px",
+            fontWeight: "800",
+            fontSize: "0.95rem",
+            cursor: "pointer"
+          }}
+        >
           Privacy Policy
         </button>
-
-        <button className="btn-cyan-glow" style={{
-          padding: "12px",
-          borderRadius: "30px",
-          fontWeight: "800",
-          fontSize: "0.95rem",
-          cursor: "pointer",
-          border: "none",
-          marginTop: "4px"
-        }}>
+ 
+        <button 
+          onClick={onCloudBackup}
+          className="btn-cyan-glow" 
+          style={{
+            padding: "12px",
+            borderRadius: "30px",
+            fontWeight: "800",
+            fontSize: "0.95rem",
+            cursor: "pointer",
+            border: "none",
+            marginTop: "4px"
+          }}
+        >
           Cloud Backup / Restore
         </button>
-
-        <button className="btn-gold-glow" style={{
-          padding: "12px",
-          borderRadius: "30px",
-          fontWeight: "800",
-          fontSize: "0.95rem",
-          cursor: "pointer",
-          border: "none"
-        }}>
+ 
+        <button 
+          onClick={onRateUs}
+          className="btn-gold-glow" 
+          style={{
+            padding: "12px",
+            borderRadius: "30px",
+            fontWeight: "800",
+            fontSize: "0.95rem",
+            cursor: "pointer",
+            border: "none"
+          }}
+        >
           Rate Us
         </button>
 

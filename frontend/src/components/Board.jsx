@@ -26,6 +26,42 @@ const SERVER_URL = import.meta.env.VITE_API_URL || (
 );
 
 class GameSounds {
+  static isSoundEnabled() {
+    try {
+      const saved = localStorage.getItem("seq_settings");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.sound !== false;
+      }
+    } catch (e) {}
+    return true;
+  }
+
+  static isMusicEnabled() {
+    try {
+      const saved = localStorage.getItem("seq_settings");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.music !== false;
+      }
+    } catch (e) {}
+    return true;
+  }
+
+  static triggerVibration(duration = 100) {
+    try {
+      const saved = localStorage.getItem("seq_settings");
+      let enabled = true;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        enabled = parsed.vibration !== false;
+      }
+      if (enabled && navigator.vibrate) {
+        navigator.vibrate(duration);
+      }
+    } catch (e) {}
+  }
+
   static initAudio() {
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -38,7 +74,66 @@ class GameSounds {
     }
   }
 
+  static startMusic() {
+    if (!this.isMusicEnabled()) {
+      this.stopMusic();
+      return;
+    }
+    this.initAudio();
+    if (!this.ctx) return;
+    if (this.musicPlaying) return;
+    this.musicPlaying = true;
+
+    // Soft ambient chords (C Maj7 / F Maj7 notes)
+    const notes = [130.81, 164.81, 196.00, 246.94, 261.63]; // C3, E3, G3, B3, C4
+    let index = 0;
+
+    const playNextNote = () => {
+      if (!this.musicPlaying || !this.isMusicEnabled()) return;
+      try {
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(notes[index], now);
+        
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.03, now + 1.2);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 4.8);
+        
+        osc.start(now);
+        osc.stop(now + 5.0);
+        index = (index + 1) % notes.length;
+      } catch (e) {
+        console.error("Music error:", e);
+      }
+      this.musicTimer = setTimeout(playNextNote, 4000);
+    };
+
+    playNextNote();
+  }
+
+  static stopMusic() {
+    this.musicPlaying = false;
+    if (this.musicTimer) {
+      clearTimeout(this.musicTimer);
+      this.musicTimer = null;
+    }
+  }
+
+  static updateMusic() {
+    if (this.isMusicEnabled()) {
+      this.startMusic();
+    } else {
+      this.stopMusic();
+    }
+  }
+
   static playChipPlace() {
+    this.triggerVibration(60);
+    if (!this.isSoundEnabled()) return;
     try {
       this.initAudio();
       if (!this.ctx) return;
@@ -63,6 +158,8 @@ class GameSounds {
   }
 
   static playWin() {
+    this.triggerVibration([100, 50, 100, 50, 150]);
+    if (!this.isSoundEnabled()) return;
     try {
       this.initAudio();
       if (!this.ctx) return;
@@ -90,6 +187,8 @@ class GameSounds {
   }
 
   static playLose() {
+    this.triggerVibration(300);
+    if (!this.isSoundEnabled()) return;
     try {
       this.initAudio();
       if (!this.ctx) return;
@@ -117,6 +216,8 @@ class GameSounds {
   }
 
   static playTurnAlert() {
+    this.triggerVibration(100);
+    if (!this.isSoundEnabled()) return;
     try {
       this.initAudio();
       if (!this.ctx) return;
@@ -411,6 +512,7 @@ export default function Boards() {
   useEffect(() => {
     const resumeAudio = () => {
       GameSounds.initAudio();
+      GameSounds.startMusic();
     };
     window.addEventListener("click", resumeAudio);
     window.addEventListener("touchstart", resumeAudio);
@@ -1359,7 +1461,262 @@ export default function Boards() {
       setGameSettings(prev => {
         const updated = { ...prev, [key]: value !== null ? value : !prev[key] };
         localStorage.setItem("seq_settings", JSON.stringify(updated));
+        if (key === "music") {
+          GameSounds.updateMusic();
+        }
+        GameSounds.triggerVibration(50);
         return updated;
+      });
+    };
+
+    const handleSupportClick = () => {
+      Swal.fire({
+        title: "Customer Support",
+        html: `
+          <div style="text-align: center; color: #fff;">
+            <p style="margin-bottom: 12px; font-size: 1rem; color: #ecc94b; font-weight: bold;">Amunis Technologies Support</p>
+            <p style="font-size: 0.9rem; line-height: 1.4; color: #c3bee0;">
+              Have questions or found a bug? We'd love to help you! Reach us at:
+            </p>
+            <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 10px; border-radius: 8px; margin: 15px 0; font-family: monospace; font-size: 1rem; color: #10d9d2; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              support@amunistec.com
+            </div>
+            <p style="font-size: 0.78rem; color: #a0aec0;">Response time: Usually within 24 hours.</p>
+          </div>
+        `,
+        confirmButtonText: "Copy Email",
+        showCancelButton: true,
+        cancelButtonText: "Close",
+        confirmButtonColor: "var(--accent-cyan)",
+        cancelButtonColor: "rgba(255,255,255,0.15)",
+        background: '#1a123a',
+        color: '#fff'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          navigator.clipboard.writeText("support@amunistec.com");
+          Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'Email address copied!',
+            showConfirmButton: false,
+            timer: 1500,
+            background: '#1a123a',
+            color: '#fff'
+          });
+        }
+      });
+    };
+
+    const handleTermsClick = () => {
+      Swal.fire({
+        title: "Terms & Conditions",
+        html: `
+          <div style="text-align: left; max-height: 250px; overflow-y: auto; padding-right: 8px; font-size: 0.82rem; line-height: 1.5; color: #c3bee0;">
+            <p style="margin-bottom: 10px; font-weight: bold; color: #ecc94b;">1. Acceptance of Terms</p>
+            <p style="margin-bottom: 15px;">By accessing and playing Sequence Battle, you agree to comply with and be bound by these Terms of Service provided by Amunis Technologies.</p>
+            
+            <p style="margin-bottom: 10px; font-weight: bold; color: #ecc94b;">2. Virtual Currency (Coins)</p>
+            <p style="margin-bottom: 15px;">Coins claimed, earned, or purchased in-game are virtual currencies with zero real-world monetary value. They are non-transferable and non-refundable.</p>
+            
+            <p style="margin-bottom: 10px; font-weight: bold; color: #ecc94b;">3. Code of Conduct</p>
+            <p style="margin-bottom: 15px;">Players are expected to play fairly. Exploiting bugs, running bots/hacks, or engaging in harassment is strictly prohibited and can result in account suspension.</p>
+            
+            <p style="margin-bottom: 10px; font-weight: bold; color: #ecc94b;">4. Limitation of Liability</p>
+            <p>Amunis Technologies provides the game "as-is". We are not responsible for any connectivity errors, database resets, or loss of game progress.</p>
+          </div>
+        `,
+        confirmButtonText: "I Accept",
+        confirmButtonColor: "var(--accent-cyan)",
+        background: '#1a123a',
+        color: '#fff'
+      });
+    };
+
+    const handlePrivacyClick = () => {
+      Swal.fire({
+        title: "Privacy Policy",
+        html: `
+          <div style="text-align: left; max-height: 250px; overflow-y: auto; padding-right: 8px; font-size: 0.82rem; line-height: 1.5; color: #c3bee0;">
+            <p style="margin-bottom: 10px; font-weight: bold; color: #ecc94b;">1. Information Collection</p>
+            <p style="margin-bottom: 15px;">We collect minimal game-related statistics, such as your username, selected avatar ID, and coin balances, stored locally on your device or simulated cloud emulator to save your progress.</p>
+            
+            <p style="margin-bottom: 10px; font-weight: bold; color: #ecc94b;">2. Web Storage</p>
+            <p style="margin-bottom: 15px;">We use LocalStorage to persist game settings, sound preferences, daily login streaks, and pending tasks so you don't lose progress when closing the tab.</p>
+            
+            <p style="margin-bottom: 10px; font-weight: bold; color: #ecc94b;">3. Third-Party Services</p>
+            <p style="margin-bottom: 15px;">We do not sell, trade, or transfer any data to outside third parties. Web socket sessions are isolated and used strictly for matchmaking.</p>
+            
+            <p style="margin-bottom: 10px; font-weight: bold; color: #ecc94b;">4. Updates</p>
+            <p>We may update this policy occasionally. Continued play constitutes acceptance of our policy modifications.</p>
+          </div>
+        `,
+        confirmButtonText: "Close",
+        confirmButtonColor: "var(--accent-cyan)",
+        background: '#1a123a',
+        color: '#fff'
+      });
+    };
+
+    const handleRateUsClick = () => {
+      let selectedRating = 5;
+      Swal.fire({
+        title: "Rate Sequence Battle",
+        html: `
+          <div style="text-align: center; color: #fff;">
+            <p style="color: #c3bee0; font-size: 0.9rem; margin-bottom: 15px;">Your rating helps us improve the game!</p>
+            <div id="star-rating-container" style="display: flex; justify-content: center; gap: 10px; margin: 15px 0;">
+              <span class="star-btn" data-value="1" style="font-size: 2.2rem; cursor: pointer; color: #ecc94b; transition: transform 0.15s ease;">★</span>
+              <span class="star-btn" data-value="2" style="font-size: 2.2rem; cursor: pointer; color: #ecc94b; transition: transform 0.15s ease;">★</span>
+              <span class="star-btn" data-value="3" style="font-size: 2.2rem; cursor: pointer; color: #ecc94b; transition: transform 0.15s ease;">★</span>
+              <span class="star-btn" data-value="4" style="font-size: 2.2rem; cursor: pointer; color: #ecc94b; transition: transform 0.15s ease;">★</span>
+              <span class="star-btn" data-value="5" style="font-size: 2.2rem; cursor: pointer; color: #ecc94b; transition: transform 0.15s ease;">★</span>
+            </div>
+            <textarea id="rating-feedback" placeholder="Leave your feedback here (optional)..." style="width: 100%; height: 70px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white; padding: 8px; font-size: 0.85rem; font-family: inherit; resize: none; margin-top: 10px; box-sizing: border-box;"></textarea>
+          </div>
+        `,
+        didOpen: (modal) => {
+          const stars = modal.querySelectorAll('.star-btn');
+          const updateStars = (val) => {
+            selectedRating = val;
+            stars.forEach(star => {
+              const starVal = parseInt(star.getAttribute('data-value'));
+              if (starVal <= val) {
+                star.style.color = '#ecc94b';
+                star.style.transform = 'scale(1.15)';
+              } else {
+                star.style.color = 'rgba(255,255,255,0.2)';
+                star.style.transform = 'scale(1.0)';
+              }
+            });
+          };
+          
+          stars.forEach(star => {
+            star.addEventListener('click', () => {
+              const val = parseInt(star.getAttribute('data-value'));
+              updateStars(val);
+            });
+          });
+          
+          updateStars(5);
+        },
+        confirmButtonText: "Submit Rating",
+        showCancelButton: true,
+        cancelButtonText: "Cancel",
+        confirmButtonColor: "var(--accent-cyan)",
+        cancelButtonColor: "rgba(255,255,255,0.15)",
+        background: '#1a123a',
+        color: '#fff'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          Swal.fire({
+            title: "Thank You!",
+            text: `You rated us ${selectedRating} Stars! We appreciate your support.`,
+            icon: "success",
+            confirmButtonColor: "var(--accent-gold)",
+            background: '#1a123a',
+            color: '#fff'
+          });
+        }
+      });
+    };
+
+    const handleCloudBackupClick = () => {
+      Swal.fire({
+        title: "Cloud Backup & Restore",
+        text: "Securely save your game coins and streaks or restore your progress.",
+        icon: "info",
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: "Backup Progress",
+        denyButtonText: "Restore Progress",
+        cancelButtonText: "Cancel",
+        confirmButtonColor: "var(--accent-cyan)",
+        denyButtonColor: "var(--accent-gold)",
+        cancelButtonColor: "rgba(255,255,255,0.15)",
+        background: '#1a123a',
+        color: '#fff'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          const backupData = {
+            profile,
+            claimedDays,
+            lastClaimTime
+          };
+          localStorage.setItem("seq_cloud_backup", JSON.stringify(backupData));
+          Swal.fire({
+            title: "Backup Complete",
+            text: "Your profile progress has been backed up successfully!",
+            icon: "success",
+            confirmButtonColor: "var(--accent-cyan)",
+            background: '#1a123a',
+            color: '#fff'
+          });
+        } else if (result.isDenied) {
+          const savedBackup = localStorage.getItem("seq_cloud_backup");
+          if (!savedBackup) {
+            Swal.fire({
+              title: "No Backup Found",
+              text: "You do not have any saved progress backups yet.",
+              icon: "warning",
+              confirmButtonColor: "var(--accent-cyan)",
+              background: '#1a123a',
+              color: '#fff'
+            });
+            return;
+          }
+          try {
+            const data = JSON.parse(savedBackup);
+            if (data.profile) {
+              setProfile(data.profile);
+              localStorage.setItem("seq_pname", data.profile.name);
+              localStorage.setItem("seq_avatar", data.profile.avatarId.toString());
+              localStorage.setItem("seq_coins", data.profile.coins.toString());
+            }
+            if (data.claimedDays) setClaimedDays(data.claimedDays);
+            if (data.lastClaimTime) setLastClaimTime(data.lastClaimTime);
+            
+            Swal.fire({
+              title: "Restore Successful",
+              text: "Your profile progress has been restored successfully!",
+              icon: "success",
+              confirmButtonColor: "var(--accent-cyan)",
+              background: '#1a123a',
+              color: '#fff'
+            });
+          } catch (e) {
+            Swal.fire("Error", "Failed to restore backup files.", "error");
+          }
+        }
+      });
+    };
+
+    const handleQuitGame = () => {
+      Swal.fire({
+        title: "Quit Game",
+        text: "Are you sure you want to exit the game?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#e53e3e",
+        cancelButtonColor: "rgba(255,255,255,0.15)",
+        confirmButtonText: "Yes, Exit",
+        background: '#1a123a',
+        color: '#fff'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          setSettingsOpen(false);
+          window.close();
+          setTimeout(() => {
+            Swal.fire({
+              title: "Exited Game",
+              text: "You can safely close this browser tab now. Thank you for playing!",
+              icon: "success",
+              confirmButtonColor: "var(--accent-cyan)",
+              background: '#1a123a',
+              color: '#fff'
+            });
+          }, 200);
+        }
       });
     };
 
@@ -1591,17 +1948,16 @@ export default function Boards() {
           onClose={() => setSettingsOpen(false)}
           settings={gameSettings}
           onToggleSetting={handleToggleSetting}
-          onQuit={() => Swal.fire({
-            title: "Quit Game",
-            text: "Are you sure you want to exit?",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonText: "Yes"
-          }).then(res => {
-            if (res.isConfirmed) {
-              window.close();
-            }
-          })}
+          onSupport={handleSupportClick}
+          onTutorial={() => {
+            setSettingsOpen(false);
+            setShowWizard(true);
+          }}
+          onTerms={handleTermsClick}
+          onPrivacy={handlePrivacyClick}
+          onCloudBackup={handleCloudBackupClick}
+          onRateUs={handleRateUsClick}
+          onQuit={handleQuitGame}
         />
 
         <ProfileModal 
