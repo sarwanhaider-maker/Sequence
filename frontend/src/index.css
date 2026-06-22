@@ -958,3 +958,8 @@ body.theme-classic .lobby-suit-bg {
   transform: scale(1.08);
   box-shadow: 0 6px 12px rgba(16, 217, 210, 0.2) !important;
 }
+
+/* SweetAlert container z-index override to ensure it renders on top of all modals */
+.swal2-container {
+  z-index: 100000 !important;
+}

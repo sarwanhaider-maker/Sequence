@@ -1479,7 +1479,7 @@ export default function Boards() {
               Have questions or found a bug? We'd love to help you! Reach us at:
             </p>
             <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 10px; border-radius: 8px; margin: 15px 0; font-family: monospace; font-size: 1rem; color: #10d9d2; display: flex; align-items: center; justify-content: center; gap: 8px;">
-              support@amunistec.com
+              sarwan.haider@gmail.com
             </div>
             <p style="font-size: 0.78rem; color: #a0aec0;">Response time: Usually within 24 hours.</p>
           </div>
@@ -1493,7 +1493,7 @@ export default function Boards() {
         color: '#fff'
       }).then((result) => {
         if (result.isConfirmed) {
-          navigator.clipboard.writeText("support@amunistec.com");
+          navigator.clipboard.writeText("sarwan.haider@gmail.com");
           Swal.fire({
             toast: true,
             position: 'top-end',
