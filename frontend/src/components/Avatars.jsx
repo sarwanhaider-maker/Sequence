@@ -1,110 +1,186 @@
 import React from "react";
 
-// Helper of 10 stylized avatars as inline SVG components
+// Helper of 10 stylized recognizable premium avatars as inline SVG components
 export const AVATARS = [
-  // 0. Default/Guest Silhouette
+  // 0. Neon Gamer
   (props) => (
     <svg viewBox="0 0 100 100" className={props.className || "w-full h-full"} style={props.style}>
-      <circle cx="50" cy="50" r="50" fill="#4a5568" />
-      <circle cx="50" cy="40" r="18" fill="#e2e8f0" />
-      <path d="M50 62 c-18 0 -28 10 -28 22 c8 8 18 10 28 10 s20 -2 28 -10 c0 -12 -10 -22 -28 -22 z" fill="#e2e8f0" />
+      <defs>
+        <radialGradient id="grad0" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#1e1b4b" />
+          <stop offset="100%" stopColor="#0f0b2a" />
+        </radialGradient>
+      </defs>
+      <circle cx="50" cy="50" r="50" fill="url(#grad0)" />
+      <path d="M50 25c-8.8 0-16 7.2-16 16v6c0 .8.2 1.5.5 2.2C30 50.8 28 54.7 28 59c0 10.5 8.5 19 19 19h6c10.5 0 19-8.5 19-19c0-4.3-2-8.2-5.5-10.8c.3-.7.5-1.4.5-2.2v-6c0-8.8-7.2-16-16-16z" fill="#06b6d4" opacity="0.15" />
+      <circle cx="50" cy="40" r="14" fill="#06b6d4" />
+      <path d="M50 58c-15 0-25 8-25 18v4h50v-4c0-10-10-18-25-18z" fill="#06b6d4" />
+      <path d="M32 40a18 18 0 0 1 36 0v10" fill="none" stroke="#10d9d2" strokeWidth="4" strokeLinecap="round" />
+      <rect x="28" y="44" width="8" height="12" rx="4" fill="#e4ca56" />
+      <rect x="64" y="44" width="8" height="12" rx="4" fill="#e4ca56" />
+      <path d="M32 54c4 4 10 4 14 0" fill="none" stroke="#10d9d2" strokeWidth="2.5" />
     </svg>
   ),
-  // 1. Male Green
+  // 1. Cyber Knight
   (props) => (
     <svg viewBox="0 0 100 100" className={props.className || "w-full h-full"} style={props.style}>
-      <circle cx="50" cy="50" r="50" fill="#2f855a" />
-      <path d="M50 15 c-12 0 -20 8 -20 18 c0 5 2 9 6 12 l-4 12 c-2 2 -2 5 0 7 c4 4 10 4 14 0 c1 -1 2 -3 2 -5 l1 -9 l1 9 c0 2 1 4 2 5 c4 4 10 4 14 0 c2 -2 2 -5 0 -7 l-4 -12 c4 -3 6 -7 6 -12 c0 -10 -8 -18 -20 -18 z" fill="#fbd38d" />
-      <path d="M30 30 c0 -10 10 -15 20 -15 s20 5 20 15 c0 2 -2 4 -5 3 c-5 -2 -10 -1 -15 2 c-5 -3 -10 -4 -15 -2 c-3 1 -5 -1 -5 -3 z" fill="#2d3748" />
-      <path d="M50 68 c-20 0 -32 12 -32 24 c10 6 22 8 32 8 s22 -2 32 -8 c0 -12 -12 -24 -32 -24 z" fill="#48bb78" />
+      <defs>
+        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#475569" />
+          <stop offset="100%" stopColor="#1e293b" />
+        </linearGradient>
+      </defs>
+      <circle cx="50" cy="50" r="50" fill="url(#grad1)" />
+      <path d="M50 15c0 0 15-12 25-2s-10 20-25 15" fill="#ef4444" />
+      <path d="M50 22c-15 0-24 10-24 24v20h48V46c0-14-9-24-24-24z" fill="#94a3b8" stroke="#cbd5e1" strokeWidth="2" />
+      <path d="M30 46h40v6H30z" fill="#e4ca56" filter="drop-shadow(0 0 4px #e4ca56)" />
+      <path d="M47 44h6v18h-6z" fill="#e4ca56" filter="drop-shadow(0 0 4px #e4ca56)" />
+      <path d="M20 82c5-8 15-12 30-12s25 4 30 12" fill="#64748b" stroke="#cbd5e1" strokeWidth="2" />
     </svg>
   ),
-  // 2. Female Yellow
+  // 2. Mystic Wizard
   (props) => (
     <svg viewBox="0 0 100 100" className={props.className || "w-full h-full"} style={props.style}>
-      <circle cx="50" cy="50" r="50" fill="#ecc94b" />
-      <path d="M50 18 c-10 0 -18 8 -18 18 c0 5 2 9 5 12 l-3 11 c-1 2 -1 4 1 5 c3 3 8 3 11 0 l2 -8 l2 8 c3 3 8 3 11 0 c2 -1 2 -3 1 -5 l-3 -11 c3 -3 5 -7 5 -12 c0 -10 -8 -18 -18 -18 z" fill="#ed8936" />
-      <path d="M30 35 c0 -8 8 -12 18 -12 c2 0 4 1 4 3 c0 3 -3 4 -6 4 c-4 0 -8 2 -10 5 c-2 3 -6 2 -6 0 z" fill="#1a202c" />
-      <path d="M50 66 c-18 0 -30 11 -30 22 c9 8 21 10 30 10 s21 -2 30 -10 c0 -11 -12 -22 -30 -22 z" fill="#dd6b20" />
+      <defs>
+        <radialGradient id="grad2" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#1e1035" />
+          <stop offset="100%" stopColor="#0a0518" />
+        </radialGradient>
+      </defs>
+      <circle cx="50" cy="50" r="50" fill="url(#grad2)" />
+      <path d="M50 8L28 44h44L50 8z" fill="#312e81" stroke="#4f46e5" strokeWidth="2" />
+      <ellipse cx="50" cy="44" rx="28" ry="6" fill="#4338ca" />
+      <path d="M50 20l2 4 4 1-3 3 1 4-4-2-4 2 1-4-3-3 4-1z" fill="#e4ca56" />
+      <path d="M36 50c0 18 14 30 14 30s14-12 14-30H36z" fill="#f1f5f9" />
+      <path d="M38 44c0 6 5 10 12 10s12-4 12-10H38z" fill="#ffedd5" />
+      <circle cx="44" cy="48" r="2" fill="#10d9d2" filter="drop-shadow(0 0 2px #10d9d2)" />
+      <circle cx="56" cy="48" r="2" fill="#10d9d2" filter="drop-shadow(0 0 2px #10d9d2)" />
     </svg>
   ),
-  // 3. Male Beard
+  // 3. Stealth Ninja
   (props) => (
     <svg viewBox="0 0 100 100" className={props.className || "w-full h-full"} style={props.style}>
-      <circle cx="50" cy="50" r="50" fill="#744210" />
-      <path d="M50 20 c-10 0 -16 6 -16 15 c0 5 1 9 4 11 l-2 10 c-1 2 -1 4 1 5 c2 2 6 2 8 0 l2 -7 l2 7 c2 2 6 2 8 0 c2 -1 2 -3 1 -5 l-2 -10 c3 -2 4 -6 4 -11 c0 -9 -6 -15 -16 -15 z" fill="#fbd38d" />
-      <path d="M34 32 c0 -8 8 -11 16 -11 s16 3 16 11 c0 3 -4 4 -6 2 c-3 -3 -7 -3 -10 0 c-3 -3 -7 -3 -10 0 c-2 2 -6 1 -6 -2 z" fill="#4a5568" />
-      <path d="M40 50 c0 6 4 10 10 10 s10 -4 10 -10 c0 -2 -2 -3 -4 -2 c-2 1 -4 1 -6 0 c-2 1 -4 1 -6 0 c-2 -1 -4 0 -4 2 z" fill="#2d3748" />
-      <path d="M50 68 c-18 0 -30 10 -30 20 c9 8 21 10 30 10 s21 -2 30 -10 c0 -10 -12 -20 -30 -20 z" fill="#ed8936" />
+      <defs>
+        <linearGradient id="grad3" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#7f1d1d" />
+          <stop offset="100%" stopColor="#111827" />
+        </linearGradient>
+      </defs>
+      <circle cx="50" cy="50" r="50" fill="url(#grad3)" />
+      <path d="M26 35c0-10 10-15 24-15s24 5 24 15v26c0 10-10 16-24 16S26 71 26 61V35z" fill="#1f2937" stroke="#374151" strokeWidth="2" />
+      <path d="M34 40h32v10H34z" fill="#ffedd5" />
+      <path d="M38 45l6-2v4z" fill="#ef4444" filter="drop-shadow(0 0 3px #ef4444)" />
+      <path d="M62 45l-6-2v4z" fill="#ef4444" filter="drop-shadow(0 0 3px #ef4444)" />
+      <path d="M72 32c5-3 12 2 10 8s-8 12-10 6" fill="#ef4444" />
     </svg>
   ),
-  // 4. Male Orange
+  // 4. Retro Robot
   (props) => (
     <svg viewBox="0 0 100 100" className={props.className || "w-full h-full"} style={props.style}>
-      <circle cx="50" cy="50" r="50" fill="#dd6b20" />
-      <path d="M50 18 c-11 0 -18 7 -18 16 c0 4 2 8 5 10 l-3 12 c-2 2 -2 4 0 6 c3 3 8 3 11 0 l1 -8 l1 8 c3 3 8 3 11 0 c2 -2 2 -4 0 -6 l-3 -12 c3 -2 5 -6 5 -10 c0 -9 -7 -16 -18 -16 z" fill="#fbd38d" />
-      <path d="M32 30 c0 -8 8 -12 18 -12 s18 4 18 12 c0 2 -2 3 -4 2 c-4 -2 -9 -1 -14 2 c-5 -3 -10 -4 -14 -2 c-2 1 -4 0 -4 -2 z" fill="#7b341e" />
-      <path d="M50 67 c-18 0 -30 11 -30 22 c9 7 21 9 30 9 s21 -2 30 -9 c0 -11 -12 -22 -30 -22 z" fill="#e53e3e" />
+      <defs>
+        <linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#064e3b" />
+          <stop offset="100%" stopColor="#022c22" />
+        </linearGradient>
+      </defs>
+      <circle cx="50" cy="50" r="50" fill="url(#grad4)" />
+      <line x1="50" y1="26" x2="50" y2="14" stroke="#94a3b8" strokeWidth="4" />
+      <circle cx="50" cy="12" r="4" fill="#e4ca56" filter="drop-shadow(0 0 4px #e4ca56)" />
+      <rect x="28" y="24" width="44" height="36" rx="8" fill="#475569" stroke="#64748b" strokeWidth="3" />
+      <rect x="34" y="30" width="32" height="24" rx="4" fill="#0f172a" />
+      <circle cx="44" cy="38" r="3" fill="#10d9d2" filter="drop-shadow(0 0 3px #10d9d2)" />
+      <circle cx="56" cy="38" r="3" fill="#10d9d2" filter="drop-shadow(0 0 3px #10d9d2)" />
+      <path d="M42 46q8 4 16 0" fill="none" stroke="#10d9d2" strokeWidth="2" strokeLinecap="round" />
+      <path d="M22 84c4-12 14-20 28-20s24 8 28 20" fill="#334155" stroke="#475569" strokeWidth="2" />
     </svg>
   ),
-  // 5. Female Orange/Red
+  // 5. Golden King
   (props) => (
     <svg viewBox="0 0 100 100" className={props.className || "w-full h-full"} style={props.style}>
-      <circle cx="50" cy="50" r="50" fill="#e53e3e" />
-      <path d="M50 18 c-11 0 -18 7 -18 16 c0 4 2 8 5 10 l-3 12 c-2 2 -2 4 0 6 c3 3 8 3 11 0 l1 -8 l1 8 c3 3 8 3 11 0 c2 -2 2 -4 0 -6 l-3 -12 c3 -2 5 -6 5 -10 c0 -9 -7 -16 -18 -16 z" fill="#fbd38d" />
-      <path d="M30 25 c0 -5 10 -7 20 -7 s20 2 20 7 c0 4 -2 6 -6 4 c-4 -2 -9 -1 -14 2 c-5 -3 -10 -4 -14 -2 c-4 2 -6 0 -6 -4 z" fill="#ecc94b" />
-      <path d="M50 66 c-18 0 -30 11 -30 22 c9 8 21 10 30 10 s21 -2 30 -10 c0 -11 -12 -22 -30 -22 z" fill="#ecc94b" />
+      <defs>
+        <linearGradient id="grad5" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#3b0764" />
+          <stop offset="100%" stopColor="#120024" />
+        </linearGradient>
+      </defs>
+      <circle cx="50" cy="50" r="50" fill="url(#grad5)" />
+      <circle cx="50" cy="48" r="16" fill="#4c1d95" />
+      <path d="M50 66c-16 0-26 8-26 18v4h52v-4c0-10-10-18-26-18z" fill="#4c1d95" />
+      <path d="M32 38l6-16 12 10 12-10 6 16z" fill="#ecc94b" stroke="#e2e8f0" strokeWidth="1" filter="drop-shadow(0 0 6px #ecc94b)" />
+      <circle cx="32" cy="38" r="2.5" fill="#ef4444" />
+      <circle cx="38" cy="22" r="2.5" fill="#ef4444" />
+      <circle cx="50" cy="32" r="2.5" fill="#3b82f6" />
+      <circle cx="62" cy="22" r="2.5" fill="#ef4444" />
+      <circle cx="68" cy="38" r="2.5" fill="#ef4444" />
     </svg>
   ),
-  // 6. Boy Green
+  // 6. Cyber Hacker
   (props) => (
     <svg viewBox="0 0 100 100" className={props.className || "w-full h-full"} style={props.style}>
-      <circle cx="50" cy="50" r="50" fill="#38a169" />
-      <path d="M50 20 c-9 0 -15 6 -15 14 c0 4 1 7 4 9 l-2 10 c-1 2 -1 3 1 4 c2 2 5 2 7 0 l1 -7 l1 7 c2 2 5 2 7 0 c2 -1 2 -2 1 -4 l-2 -10 c3 -2 4 -5 4 -9 c0 -8 -6 -14 -15 -14 z" fill="#fbd38d" />
-      <path d="M35 30 c0 -6 6 -9 15 -9 s15 3 15 9 c0 2 -2 3 -4 2 c-3 -2 -7 -2 -11 0 c-4 -2 -8 -2 -11 0 c-2 1 -4 0 -4 -2 z" fill="#2b6cb0" />
-      <path d="M50 68 c-16 0 -27 10 -27 20 c8 8 19 10 27 10 s19 -2 27 -10 c0 -10 -11 -20 -27 -20 z" fill="#3182ce" />
+      <defs>
+        <linearGradient id="grad6" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#0f172a" />
+          <stop offset="100%" stopColor="#1e293b" />
+        </linearGradient>
+      </defs>
+      <circle cx="50" cy="50" r="50" fill="url(#grad6)" />
+      <path d="M28 42c0-18 12-24 22-24s22 6 22 24c4-8 10-4 10 4c0 12-8 16-16 16" fill="#10d9d2" />
+      <path d="M34 40c0 10 7 18 16 18s16-8 16-18H34z" fill="#ffedd5" />
+      <path d="M30 38h40l-4 8H34z" fill="#22c55e" filter="drop-shadow(0 0 4px #22c55e)" />
+      <path d="M50 68c-18 0-28 10-28 20c8 8 18 10 28 10s20-2 28-10c0-10-10-20-28-20z" fill="#0f172a" stroke="#22c55e" strokeWidth="2" />
     </svg>
   ),
-  // 7. Girl Yellow
+  // 7. Volcanic Phoenix
   (props) => (
     <svg viewBox="0 0 100 100" className={props.className || "w-full h-full"} style={props.style}>
-      <circle cx="50" cy="50" r="50" fill="#d69e2e" />
-      <path d="M50 20 c-9 0 -15 6 -15 14 c0 4 1 7 4 9 l-2 10 c-1 2 -1 3 1 4 c2 2 5 2 7 0 l1 -7 l1 7 c2 2 5 2 7 0 c2 -1 2 -2 1 -4 l-2 -10 c3 -2 4 -5 4 -9 c0 -8 -6 -14 -15 -14 z" fill="#fbd38d" />
-      <path d="M35 26 c0 -5 7 -7 15 -7 s15 2 15 7 c0 3 -2 4 -4 3 c-3 -2 -7 -1 -11 1 c-4 -2 -8 -3 -11 -1 c-2 -1 -4 0 -4 2 z" fill="#e53e3e" />
-      <path d="M50 68 c-16 0 -27 10 -27 20 c8 8 19 10 27 10 s19 -2 27 -10 c0 -10 -11 -20 -27 -20 z" fill="#dd6b20" />
+      <defs>
+        <linearGradient id="grad7" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#7c2d12" />
+          <stop offset="100%" stopColor="#292524" />
+        </linearGradient>
+      </defs>
+      <circle cx="50" cy="50" r="50" fill="url(#grad7)" />
+      <path d="M15 65c10-25 25-35 35-35s25 10 35 35" fill="#ef4444" />
+      <path d="M22 55c8-18 18-25 28-25s20 7 28 25" fill="#f97316" />
+      <path d="M50 25c-8 0-14 6-14 14c0 5 3 9 7 11v18h14V50c4-2 7-6 7-11c0-8-6-14-14-14z" fill="#ecc94b" />
+      <path d="M50 50l-8-2 8 16 8-16z" fill="#f59e0b" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.3))" />
+      <circle cx="45" cy="38" r="2" fill="#ef4444" filter="drop-shadow(0 0 2px #ef4444)" />
+      <circle cx="55" cy="38" r="2" fill="#ef4444" filter="drop-shadow(0 0 2px #ef4444)" />
     </svg>
   ),
-  // 8. Man Glasses
+  // 8. Cosmic Astronaut
   (props) => (
     <svg viewBox="0 0 100 100" className={props.className || "w-full h-full"} style={props.style}>
-      <circle cx="50" cy="50" r="50" fill="#3182ce" />
-      <path d="M50 20 c-10 0 -16 6 -16 15 c0 5 1 9 4 11 l-2 10 c-1 2 -1 4 1 5 c2 2 6 2 8 0 l2 -7 l2 7 c2 2 6 2 8 0 c2 -1 2 -3 1 -5 l-2 -10 c3 -2 4 -6 4 -11 c0 -9 -6 -15 -16 -15 z" fill="#fbd38d" />
-      <path d="M34 32 c0 -8 8 -11 16 -11 s16 3 16 11 c0 3 -4 4 -6 2 c-3 -3 -7 -3 -10 0 c-3 -3 -7 -3 -10 0 c-2 2 -6 1 -6 -2 z" fill="#1a202c" />
-      {/* Glasses */}
-      <circle cx="42" cy="38" r="6" stroke="#000" strokeWidth="2" fill="none" />
-      <circle cx="58" cy="38" r="6" stroke="#000" strokeWidth="2" fill="none" />
-      <line x1="48" y1="38" x2="52" y2="38" stroke="#000" strokeWidth="2" />
-      <line x1="36" y1="36" x2="34" y2="38" stroke="#000" strokeWidth="2" />
-      <line x1="64" y1="36" x2="66" y2="38" stroke="#000" strokeWidth="2" />
-      <path d="M50 68 c-18 0 -30 10 -30 20 c9 8 21 10 30 10 s21 -2 30 -10 c0 -10 -12 -20 -30 -20 z" fill="#319795" />
+      <defs>
+        <linearGradient id="grad8" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#1e1b4b" />
+          <stop offset="100%" stopColor="#311042" />
+        </linearGradient>
+      </defs>
+      <circle cx="50" cy="50" r="50" fill="url(#grad8)" />
+      <circle cx="50" cy="46" r="26" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="2.5" />
+      <ellipse cx="50" cy="44" rx="20" ry="14" fill="#f59e0b" stroke="#d97706" strokeWidth="1.5" filter="drop-shadow(0 0 5px #f59e0b)" />
+      <path d="M38 36c4-4 10-6 16-4c2 1 3 3 2 5-1 2-3 3-5 2-5-2-10 0-13 3-2 2-4 1-4-1 0-1 2-3 4-5z" fill="#fff" opacity="0.4" />
+      <path d="M50 72c-15 0-24 6-24 12c5 6 14 8 24 8s19-2 24-8c0-6-9-12-24-12z" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1.5" />
     </svg>
   ),
-  // 9. Astronaut / Space Helmet
+  // 9. Jungle Tiger
   (props) => (
     <svg viewBox="0 0 100 100" className={props.className || "w-full h-full"} style={props.style}>
-      <circle cx="50" cy="50" r="50" fill="#1a202c" />
-      {/* Outer Helmet */}
-      <circle cx="50" cy="46" r="32" fill="#edf2f7" stroke="#cbd5e0" strokeWidth="2" />
-      {/* Visor */}
-      <ellipse cx="50" cy="43" rx="24" ry="17" fill="#2b6cb0" stroke="#1a365d" strokeWidth="2" />
-      {/* Visor Reflection */}
-      <path d="M36 34 c4 -4 10 -6 16 -4 c2 1 3 3 2 5 c-1 2 -3 3 -5 2 c-5 -2 -10 0 -13 3 c-2 2 -4 1 -4 -1 c0 -1 2 -3 4 -5 z" fill="#63b3ed" opacity="0.6" />
-      {/* Details */}
-      <rect x="44" y="76" width="12" height="10" rx="2" fill="#718096" />
-      <circle cx="34" cy="74" r="3" fill="#e53e3e" />
-      <circle cx="66" cy="74" r="3" fill="#38a169" />
-      {/* Suit Collar */}
-      <path d="M50 72 c-18 0 -28 6 -28 14 c5 8 16 11 28 11 s23 -3 28 -11 c0 -8 -10 -14 -28 -14 z" fill="#e2e8f0" stroke="#cbd5e0" strokeWidth="1" />
+      <defs>
+        <linearGradient id="grad9" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#064e3b" />
+          <stop offset="100%" stopColor="#022c22" />
+        </linearGradient>
+      </defs>
+      <circle cx="50" cy="50" r="50" fill="url(#grad9)" />
+      <path d="M28 32c0-12 12-16 22-16s22 4 22 16c0 15-8 28-22 28S28 47 28 32z" fill="#f97316" />
+      <path d="M24 40c0 5 4 8 8 5M76 40c0 5-4 8-8 5" fill="#f97316" />
+      <path d="M28 30h10M72 30H62M50 16v8M45 20h10" stroke="#1e293b" strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M40 46c0 6 5 10 10 10s10-4 10-10H40z" fill="#fff" />
+      <path d="M48 44l4-3 2 3-3 2z" fill="#f43f5e" />
+      <polygon points="36,36 44,34 42,40 36,38" fill="#22c55e" filter="drop-shadow(0 0 3px #22c55e)" />
+      <polygon points="64,36 56,34 58,40 64,38" fill="#22c55e" filter="drop-shadow(0 0 3px #22c55e)" />
     </svg>
   ),
 ];
