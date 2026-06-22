@@ -1,0 +1,15 @@
+name: Keep Render Backend Active
+
+on:
+  schedule:
+    # Runs every 10 minutes to prevent Render Free Tier from sleeping
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allows manual run
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Health Endpoint
+        run: |
+          curl -s -f https://sequence-5otw.onrender.com/health || echo "Pinger warning: Backend did not return 200 OK or was starting up."

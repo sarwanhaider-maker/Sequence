@@ -15,6 +15,9 @@ const config = require('./config/config');
 dotenv.config();
 
 const app = express();
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+});
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
     cors: config.corsOptions
@@ -68,6 +71,9 @@ async function initializeGameForRoom(roomId, playerName, playerId) {
 
 async function startGameForRoom(roomId, playerSockets, playerNames, gameMode) {
     try {
+        if (!botDifficultyMap.has(roomId) && playerSockets.some(isBot)) {
+            botDifficultyMap.set(roomId, 'medium');
+        }
         // Create session for each human player only
         for (let i = 0; i < playerSockets.length; i++) {
             const playerId = playerSockets[i];

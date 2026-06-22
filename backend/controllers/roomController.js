@@ -13,6 +13,8 @@ class RoomController {
     this.startGameForRoom = startGameForRoom;
     // Map of socketId -> timer handle for deferred room cleanup
     this.disconnectTimers = new Map();
+    // Map of roomId -> timer handle for matchmaking bots
+    this.matchmakingTimers = new Map();
     this.registerEvents();
   }
   
@@ -164,6 +166,13 @@ class RoomController {
           room.playersName.push(playerName);
           room.empty = false;
           await room.save();
+
+          // Clear any matchmaking timer for this room since a real opponent joined!
+          if (this.matchmakingTimers.has(room.roomId)) {
+            clearTimeout(this.matchmakingTimers.get(room.roomId));
+            this.matchmakingTimers.delete(room.roomId);
+            console.log(`Cancelled matchmaking bot timer for room ${room.roomId} — real player joined.`);
+          }
         }
 
         socket.join(room.roomId);
@@ -173,6 +182,39 @@ class RoomController {
             callback({ roomId: room.roomId });
           }
         } else {
+          // If this is a new room with 1 player, set a matchmaking timer to auto-pair with a bot after 12 seconds
+          const timeoutMs = 12000;
+          const roomIdStr = room.roomId;
+          const timer = setTimeout(async () => {
+            this.matchmakingTimers.delete(roomIdStr);
+            try {
+              const freshRoom = await Room.findOne({ roomId: roomIdStr });
+              if (freshRoom && freshRoom.players.length === 1 && freshRoom.empty) {
+                console.log(`Matchmaking timeout expired for room ${roomIdStr}. Pairing with a virtual bot.`);
+                const botSocketId = `bot_${roomIdStr}_0`;
+                const botName = this.getRandomBotName();
+
+                freshRoom.players.push(botSocketId);
+                freshRoom.playersName.push(botName);
+                freshRoom.empty = false;
+                await freshRoom.save();
+
+                await this.startGameForRoom(roomIdStr, freshRoom.players, freshRoom.playersName, freshRoom.gameMode);
+                
+                this.io.to(roomIdStr).emit("room_update", {
+                  players: freshRoom.playersName,
+                  playerLimit: freshRoom.playerLimit,
+                  gameMode: freshRoom.gameMode,
+                  voiceChatEnabled: freshRoom.voiceChatEnabled
+                });
+              }
+            } catch (timerErr) {
+              console.error(`Error in matchmaking bot trigger for room ${roomIdStr}:`, timerErr);
+            }
+          }, timeoutMs);
+
+          this.matchmakingTimers.set(roomIdStr, timer);
+
           if (typeof callback === 'function') {
             callback({ waiting: true, waitingroom: room.roomId });
           }
@@ -262,6 +304,13 @@ class RoomController {
       if (this.disconnectTimers.has(socket.id)) {
         clearTimeout(this.disconnectTimers.get(socket.id));
         this.disconnectTimers.delete(socket.id);
+      }
+
+      // Cancel any matchmaking timer if it exists for this room
+      if (this.matchmakingTimers.has(roomId)) {
+        clearTimeout(this.matchmakingTimers.get(roomId));
+        this.matchmakingTimers.delete(roomId);
+        console.log(`Cancelled matchmaking bot timer for room ${roomId} — player left/disconnected.`);
       }
 
       const GRACE_PERIOD_MS = immediate ? 0 : 90 * 1000; // 90 seconds grace period
@@ -472,6 +521,17 @@ class RoomController {
         this.cleanUpSocketRoom(socket, true);
       });
     });
+  }
+
+  getRandomBotName() {
+    const names = [
+      "Alex", "Sam", "Chris", "Jordan", "Taylor", "Morgan", "Casey", "Jamie", "Robin", "Pat",
+      "Oliver", "Sophia", "Jackson", "Emma", "Aiden", "Olivia", "Lucas", "Ava", "Liam", "Mia",
+      "Ethan", "Isabella", "Noah", "Charlotte", "Mason", "Amelia", "Logan", "Harper", "Jacob", "Evelyn",
+      "Aaron", "Grace", "Ben", "Lily", "Daniel", "Zoe", "Luke", "Chloe", "Leo", "Maya",
+      "Guest_5192", "Guest_4821", "Guest_9124", "Guest_1180", "Guest_7329", "Guest_6241"
+    ];
+    return names[Math.floor(Math.random() * names.length)];
   }
 }
 
