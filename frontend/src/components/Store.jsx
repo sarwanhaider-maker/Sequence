@@ -3,15 +3,15 @@ import { CoinIcon } from "./Avatars";
 import Swal from "sweetalert2";
 
 const COIN_PACKS = [
-  { coins: 7000, price: 1.99, key: "coins_7k", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/83d84491-c125-4c37-9a1e-f0160cbbbb6b" },
-  { coins: 10000, price: 2.99, key: "coins_10k", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/83d84491-c125-4c37-9a1e-f0160cbbbb6b" },
-  { coins: 25000, price: 4.99, key: "coins_25k", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/96f3b943-4878-4f90-94f0-d6374a8fd931" },
-  { coins: 100000, price: 6.99, key: "coins_100k", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/16c69713-fd9e-48e2-a7d9-cf76b3099b7f" },
-  { coins: 250000, price: 11.99, originalPrice: 15, key: "coins_250k", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/16c69713-fd9e-48e2-a7d9-cf76b3099b7f" },
-  { coins: 500000, price: 19.99, originalPrice: 30, key: "coins_500k", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/16c69713-fd9e-48e2-a7d9-cf76b3099b7f" },
-  { coins: 1000000, price: 29.99, originalPrice: 80, key: "coins_1m", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/16c69713-fd9e-48e2-a7d9-cf76b3099b7f" },
-  { coins: 2000000, price: 49.99, originalPrice: 100, key: "coins_2m", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/16c69713-fd9e-48e2-a7d9-cf76b3099b7f" },
-  { coins: 5000000, price: 69.99, originalPrice: 250, key: "coins_5m", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/16c69713-fd9e-48e2-a7d9-cf76b3099b7f" }
+  { coins: 7000, price: 1.99, key: "coins_7k", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/a8e3427d-8a7b-4893-aeff-df3b78aa35f9" },
+  { coins: 10000, price: 2.99, key: "coins_10k", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/8c8eec9a-173b-4d23-aa93-13906c392317" },
+  { coins: 25000, price: 4.99, key: "coins_25k", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/389b5626-753e-453a-bf96-b686cef2fc6d" },
+  { coins: 100000, price: 6.99, key: "coins_100k", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/8ea4bf0f-e978-4dcd-8131-300e3259db62" },
+  { coins: 250000, price: 11.99, originalPrice: 15, key: "coins_250k", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/226286d7-3eaa-4ac4-9279-b235a42a11dc" },
+  { coins: 500000, price: 19.99, originalPrice: 30, key: "coins_500k", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/c922d9c1-53d2-42e3-8bfb-fb1243dc8942" },
+  { coins: 1000000, price: 29.99, originalPrice: 80, key: "coins_1m", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/ec9d3287-8694-4134-9431-47428936c64f" },
+  { coins: 2000000, price: 49.99, originalPrice: 100, key: "coins_2m", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/21137cbd-cd2a-49bc-b616-97aceb5744a9" },
+  { coins: 5000000, price: 69.99, originalPrice: 250, key: "coins_5m", checkoutUrl: "https://zaesargame.lemonsqueezy.com/checkout/buy/8f533f56-5f8d-4fe1-9a52-e24e4f52be80" }
 ];
 
 const COMBO_PACKS = [
