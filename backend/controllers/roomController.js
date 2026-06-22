@@ -2,6 +2,7 @@ const { Server } = require("socket.io");
 const Room = require('../models/room');
 const Game = require('../models/Game');
 const { RtcTokenBuilder, RtcRole } = require('agora-token');
+const allCards = require('../data/allCards.js');
 
 const AGORA_APP_ID = process.env.AGORA_APP_ID;
 const AGORA_APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE;
@@ -146,9 +147,25 @@ class RoomController {
   async handlePlayOnline(socket) {
     socket.on("play_online", async (data, callback) => {
       const { playerName } = data || {};
+      const stakeId = data?.stakeId;
+      const stakeFee = data?.stakeFee || 0;
+      const stakeReward = data?.stakeReward || 0;
+      const stakeName = data?.stakeName || "One Vs One";
+      const boardType = data?.boardType || "STANDARD";
+
+      const isThreePlayer = stakeName === "One Vs One Vs One";
+      const playerLimit = isThreePlayer ? 3 : 2;
+      const gameMode = isThreePlayer ? "3_players" : "2_players";
+
       let room;
       try {
-        const rooms = await Room.find({ empty: true, isCustom: false, playerLimit: 2 });
+        const rooms = await Room.find({ 
+          empty: true, 
+          isCustom: false, 
+          playerLimit: playerLimit,
+          stakeId: stakeId,
+          boardType: boardType
+        });
         let validRoom = null;
 
         for (const r of rooms) {
@@ -176,64 +193,77 @@ class RoomController {
             isCustom: false,
             empty: true,
             playersName: [playerName],
-            playerLimit: 2,
-            gameMode: "2_players"
+            playerLimit: playerLimit,
+            gameMode: gameMode,
+            stakeId: stakeId,
+            stakeFee: stakeFee,
+            stakeReward: stakeReward,
+            boardType: boardType
           });
           await room.save();
         } else {
           room = validRoom;
           room.players.push(socket.id);
           room.playersName.push(playerName);
-          room.empty = false;
+          
+          if (room.players.length === playerLimit) {
+            room.empty = false;
+          }
           await room.save();
 
-          // Clear any matchmaking timer for this room since a real opponent joined!
-          if (this.matchmakingTimers.has(room.roomId)) {
+          // Clear any matchmaking timer for this room if the room is now full
+          if (room.players.length === playerLimit && this.matchmakingTimers.has(room.roomId)) {
             clearTimeout(this.matchmakingTimers.get(room.roomId));
             this.matchmakingTimers.delete(room.roomId);
-            console.log(`Cancelled matchmaking bot timer for room ${room.roomId} — real player joined.`);
+            console.log(`Cancelled matchmaking bot timer for room ${room.roomId} — room is full.`);
           }
         }
 
         socket.join(room.roomId);
-        if (room.players.length === 2) {
+        if (room.players.length === playerLimit) {
           await this.startGameForRoom(room.roomId, room.players, room.playersName, room.gameMode);
           if (typeof callback === 'function') {
             callback({ roomId: room.roomId });
           }
         } else {
-          // If this is a new room with 1 player, set a matchmaking timer to auto-pair with a bot after 12 seconds
-          const timeoutMs = 12000;
-          const roomIdStr = room.roomId;
-          const timer = setTimeout(async () => {
-            this.matchmakingTimers.delete(roomIdStr);
-            try {
-              const freshRoom = await Room.findOne({ roomId: roomIdStr });
-              if (freshRoom && freshRoom.players.length === 1 && freshRoom.empty) {
-                console.log(`Matchmaking timeout expired for room ${roomIdStr}. Pairing with a virtual bot.`);
-                const botSocketId = `bot_${roomIdStr}_0`;
-                const botName = this.getRandomBotName();
+          // If this is a new room (only 1 player currently), start the matchmaking timer to pair with bots
+          if (room.players.length === 1) {
+            const timeoutMs = 12000;
+            const roomIdStr = room.roomId;
+            const timer = setTimeout(async () => {
+              this.matchmakingTimers.delete(roomIdStr);
+              try {
+                const freshRoom = await Room.findOne({ roomId: roomIdStr });
+                if (freshRoom && freshRoom.players.length < freshRoom.playerLimit && freshRoom.empty) {
+                  console.log(`Matchmaking timeout expired for room ${roomIdStr}. Pairing with virtual bots.`);
+                  
+                  const botsNeeded = freshRoom.playerLimit - freshRoom.players.length;
+                  for (let i = 0; i < botsNeeded; i++) {
+                    const botSocketId = `bot_${roomIdStr}_${i}`;
+                    const botName = this.getRandomBotName();
 
-                freshRoom.players.push(botSocketId);
-                freshRoom.playersName.push(botName);
-                freshRoom.empty = false;
-                await freshRoom.save();
+                    freshRoom.players.push(botSocketId);
+                    freshRoom.playersName.push(botName);
+                  }
+                  freshRoom.empty = false;
+                  await freshRoom.save();
 
-                await this.startGameForRoom(roomIdStr, freshRoom.players, freshRoom.playersName, freshRoom.gameMode);
-                
-                this.io.to(roomIdStr).emit("room_update", {
-                  players: freshRoom.playersName,
-                  playerLimit: freshRoom.playerLimit,
-                  gameMode: freshRoom.gameMode,
-                  voiceChatEnabled: freshRoom.voiceChatEnabled
-                });
+                  await this.startGameForRoom(roomIdStr, freshRoom.players, freshRoom.playersName, freshRoom.gameMode);
+                  
+                  this.io.to(roomIdStr).emit("room_update", {
+                    players: freshRoom.playersName,
+                    playerLimit: freshRoom.playerLimit,
+                    gameMode: freshRoom.gameMode,
+                    voiceChatEnabled: freshRoom.voiceChatEnabled
+                  });
+                }
+              } catch (timerErr) {
+                console.error(`Error in matchmaking bot trigger for room ${roomIdStr}:`, timerErr);
               }
-            } catch (timerErr) {
-              console.error(`Error in matchmaking bot trigger for room ${roomIdStr}:`, timerErr);
-            }
-          }, timeoutMs);
+            }, timeoutMs);
 
-          this.matchmakingTimers.set(roomIdStr, timer);
+            this.matchmakingTimers.set(roomIdStr, timer);
+          }
 
           if (typeof callback === 'function') {
             callback({ waiting: true, waitingroom: room.roomId });
@@ -552,6 +582,54 @@ class RoomController {
       "Guest_5192", "Guest_4821", "Guest_9124", "Guest_1180", "Guest_7329", "Guest_6241"
     ];
     return names[Math.floor(Math.random() * names.length)];
+  }
+
+  generateGameBoardCards(boardType) {
+    let standardCards = JSON.parse(JSON.stringify(allCards.filter(c => c.id <= 100)));
+    
+    if (boardType === "SHUFFLED") {
+      const cornerIds = [1, 10, 91, 100];
+      let nonCorners = standardCards.filter(c => !cornerIds.includes(c.id));
+      
+      let codesAndImgs = nonCorners.map(c => ({ code: c.code, img: c.img }));
+      
+      // Shuffle Fisher-Yates
+      for (let i = codesAndImgs.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [codesAndImgs[i], codesAndImgs[j]] = [codesAndImgs[j], codesAndImgs[i]];
+      }
+      
+      let nonCornerIdx = 0;
+      standardCards = standardCards.map(c => {
+        if (cornerIds.includes(c.id)) {
+          return c; // Keep corner unchanged
+        } else {
+          const updated = {
+            ...c,
+            code: codesAndImgs[nonCornerIdx].code,
+            img: codesAndImgs[nonCornerIdx].img,
+            matches: []
+          };
+          nonCornerIdx++;
+          return updated;
+        }
+      });
+      
+      // Recompute matches
+      standardCards.forEach(card => {
+        if (card.code !== "Free") {
+          let matches = [];
+          standardCards.forEach(other => {
+            if (other.code === card.code) {
+              matches.push(other.id);
+            }
+          });
+          card.matches = matches;
+        }
+      });
+    }
+    
+    return standardCards;
   }
 }
 

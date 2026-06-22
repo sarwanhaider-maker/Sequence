@@ -79,6 +79,54 @@ async function initializeGameForRoom(roomId, playerName, playerId) {
     // Stub function required by RoomController signature
 }
 
+function generateGameBoardCards(boardType) {
+    let standardCards = JSON.parse(JSON.stringify(allCards.filter(c => c.id <= 100)));
+    
+    if (boardType === "SHUFFLED") {
+        const cornerIds = [1, 10, 91, 100];
+        let nonCorners = standardCards.filter(c => !cornerIds.includes(c.id));
+        
+        let codesAndImgs = nonCorners.map(c => ({ code: c.code, img: c.img }));
+        
+        // Shuffle Fisher-Yates
+        for (let i = codesAndImgs.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [codesAndImgs[i], codesAndImgs[j]] = [codesAndImgs[j], codesAndImgs[i]];
+        }
+        
+        let nonCornerIdx = 0;
+        standardCards = standardCards.map(c => {
+            if (cornerIds.includes(c.id)) {
+                return c; // Keep corner unchanged
+            } else {
+                const updated = {
+                    ...c,
+                    code: codesAndImgs[nonCornerIdx].code,
+                    img: codesAndImgs[nonCornerIdx].img,
+                    matches: []
+                };
+                nonCornerIdx++;
+                return updated;
+            }
+        });
+        
+        // Recompute matches
+        standardCards.forEach(card => {
+            if (card.code !== "Free") {
+                let matches = [];
+                standardCards.forEach(other => {
+                    if (other.code === card.code) {
+                        matches.push(other.id);
+                    }
+                });
+                card.matches = matches;
+            }
+        });
+    }
+    
+    return standardCards;
+}
+
 async function startGameForRoom(roomId, playerSockets, playerNames, gameMode) {
     try {
         if (!botDifficultyMap.has(roomId) && playerSockets.some(isBot)) {
@@ -93,15 +141,22 @@ async function startGameForRoom(roomId, playerSockets, playerNames, gameMode) {
             }
         }
 
+        const room = await Room.findOne({ roomId: roomId });
+        const boardType = room ? room.boardType : "STANDARD";
+
+        const gameBoardCards = generateGameBoardCards(boardType);
+        const jackCards = JSON.parse(JSON.stringify(allCards.filter(c => c.id > 100)));
+        const deckSource = [...gameBoardCards, ...jackCards];
+
         await Game.deleteMany({ roomId: roomId });
-        let gameInitialState = gameController.initializeGame(allCards, playerSockets, playerNames, gameMode);
+        let gameInitialState = gameController.initializeGame(deckSource, playerSockets, playerNames, gameMode);
         
         let newGame = new Game({
             roomId: roomId,
             players: gameInitialState.players,
             scores: gameInitialState.scores,
             shuffledDeck: gameInitialState.shuffledDeck,
-            cards: deepClone(),
+            cards: gameBoardCards,
             protectedPatterns: [],
             targetSequences: gameInitialState.targetSequences
         });

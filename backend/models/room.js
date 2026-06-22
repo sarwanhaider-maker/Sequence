@@ -31,6 +31,22 @@ const RoomSchema = new mongoose.Schema({
   voiceChatEnabled: {
     type: Boolean,
     default: false
+  },
+  stakeId: {
+    type: Number,
+    default: null
+  },
+  stakeFee: {
+    type: Number,
+    default: 0
+  },
+  stakeReward: {
+    type: Number,
+    default: 0
+  },
+  boardType: {
+    type: String,
+    default: "STANDARD"
   }
 }, { timestamps: true });
 

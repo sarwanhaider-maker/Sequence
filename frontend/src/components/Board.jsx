@@ -929,7 +929,7 @@ export default function Boards() {
     };
   }, [socket]);
 
-  const onlineButton = useCallback(async () => {
+  const onlineButton = useCallback(async (selectedStake = null) => {
     if (!socket || !socket.connected) {
       Swal.fire("Connection Error", `Not connected to the game server. It is trying to connect to: ${SERVER_URL}\n\nPlease verify that the backend server is running and accessible.`, "error");
       return;
@@ -938,7 +938,15 @@ export default function Boards() {
       Swal.fire("Error", "Please enter your name first!", "error");
       return;
     }
-    socket.emit("play_online", { playerName }, (response) => {
+    const currentStake = selectedStake || activeStake;
+    socket.emit("play_online", { 
+      playerName,
+      stakeId: currentStake?.id,
+      stakeFee: currentStake?.fee,
+      stakeReward: currentStake?.reward,
+      stakeName: currentStake?.name,
+      boardType: currentStake?.board || "STANDARD"
+    }, (response) => {
       setPlayOnline(true);
       if (response.roomId) {
         setRoom(`${response.roomId}`);
@@ -949,7 +957,7 @@ export default function Boards() {
         navigate(`/room/${response.waitingroom}`);
       }
     });
-  }, [socket, isConnected, navigate, playerName]);
+  }, [socket, isConnected, navigate, playerName, activeStake]);
 
   const createCustomRoom = useCallback(async () => {
     if (!socket || !socket.connected) {
@@ -1327,7 +1335,7 @@ export default function Boards() {
       updateCoins(-stake.fee);
       setActiveStake(stake);
       setStakesOpen(false);
-      onlineButton();
+      onlineButton(stake);
     };
 
     const totalUnclaimedTasks = tasks.filter(t => t.current >= t.target && !t.claimed).length;
