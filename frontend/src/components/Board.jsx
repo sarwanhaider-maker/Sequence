@@ -440,7 +440,7 @@ export default function Boards() {
         autoConnect: true,
         query: { sessionId },
         reconnection: true,
-        reconnectionAttempts: 10,
+        reconnectionAttempts: Infinity,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
       });
@@ -934,6 +934,11 @@ export default function Boards() {
     if (socket && socket.connected) {
       onConnectSuccess();
       return;
+    }
+
+    // Force socket reconnection/connection if it got disconnected or lost attempts
+    if (socket) {
+      socket.connect();
     }
 
     // Wake up the server by triggering a fetch request
