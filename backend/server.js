@@ -266,6 +266,19 @@ async function triggerBotTurn(roomId, botSocketId, difficulty) {
 
         if (winner || patternResult.winner) {
             const finalWinner = winner || patternResult.winner;
+            latestGame.players.forEach(player => {
+                if (!isBot(player.socketId)) {
+                    io.to(player.socketId).emit('updateGameState', {
+                        deckCount: latestGame.shuffledDeck.length,
+                        score: latestGame.scores,
+                        cards: latestGame.cards,
+                        currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
+                        players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                        playerHand: player.hand,
+                        protectedPatterns: latestGame.protectedPatterns || []
+                    });
+                }
+            });
             io.to(roomId).emit('gameOver', { winner: finalWinner });
             botDifficultyMap.delete(roomId);
             return;
@@ -588,46 +601,56 @@ io.on("connection", async (socket) => {
             }
 
             let patternResult = gameController.Pattern(latestGame, latestGame.cards);
-            if (patternResult.winner) {
-                io.to(roomId).emit('gameOver', { winner: patternResult.winner });
+            if (patternResult.game) {
+                await Game.updateOne({ roomId: roomId }, { $set: {
+                    'scores': patternResult.game.scores,
+                    'protectedPatterns': patternResult.game.protectedPatterns
+                }});
+                latestGame = await Game.findOne({ roomId: roomId });
+            }
+
+            // Check for winner
+            let target = latestGame.targetSequences || 2;
+            let finalWinner = patternResult.winner || Object.keys(latestGame.scores || {}).find(color => latestGame.scores[color] >= target) || null;
+
+            if (finalWinner) {
+                // Send final state so they see the last chip and protected pattern highlights
+                latestGame.players.forEach(player => {
+                    if (!isBot(player.socketId)) {
+                        io.to(player.socketId).emit('updateGameState', {
+                            deckCount: latestGame.shuffledDeck.length,
+                            score: latestGame.scores,
+                            cards: latestGame.cards,
+                            currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
+                            players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                            playerHand: player.hand,
+                            protectedPatterns: latestGame.protectedPatterns || []
+                        });
+                    }
+                });
+                io.to(roomId).emit('gameOver', { winner: finalWinner });
                 botDifficultyMap.delete(roomId);
             } else {
-                if (patternResult.game) {
-                    await Game.updateOne({ roomId: roomId }, { $set: {
-                        'scores': patternResult.game.scores,
-                        'protectedPatterns': patternResult.game.protectedPatterns
-                    }});
-                    latestGame = await Game.findOne({ roomId: roomId });
-                }
-
-                // Check again for winner after updates
-                let target = latestGame.targetSequences || 2;
-                let finalWinner = Object.keys(latestGame.scores || {}).find(color => latestGame.scores[color] >= target) || null;
-                if (finalWinner) {
-                    io.to(roomId).emit('gameOver', { winner: finalWinner });
-                    botDifficultyMap.delete(roomId);
-                } else {
-                    // Send state only to human players
-                    latestGame.players.forEach(player => {
-                        if (!isBot(player.socketId)) {
-                            io.to(player.socketId).emit('updateGameState', {
-                                deckCount: latestGame.shuffledDeck.length,
-                                score: latestGame.scores,
-                                cards: latestGame.cards,
-                                currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
-                                players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
-                                playerHand: player.hand,
-                                protectedPatterns: latestGame.protectedPatterns || []
-                            });
-                        }
-                    });
-
-                    // If next player is a bot, trigger its turn
-                    const nextPlayer = latestGame.players.find(p => p.isTurn);
-                    if (nextPlayer && isBot(nextPlayer.socketId)) {
-                        const difficulty = botDifficultyMap.get(roomId) || 'medium';
-                        setTimeout(() => triggerBotTurn(roomId, nextPlayer.socketId, difficulty), 1200);
+                // Send state only to human players
+                latestGame.players.forEach(player => {
+                    if (!isBot(player.socketId)) {
+                        io.to(player.socketId).emit('updateGameState', {
+                            deckCount: latestGame.shuffledDeck.length,
+                            score: latestGame.scores,
+                            cards: latestGame.cards,
+                            currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
+                            players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                            playerHand: player.hand,
+                            protectedPatterns: latestGame.protectedPatterns || []
+                        });
                     }
+                });
+
+                // If next player is a bot, trigger its turn
+                const nextPlayer = latestGame.players.find(p => p.isTurn);
+                if (nextPlayer && isBot(nextPlayer.socketId)) {
+                    const difficulty = botDifficultyMap.get(roomId) || 'medium';
+                    setTimeout(() => triggerBotTurn(roomId, nextPlayer.socketId, difficulty), 1200);
                 }
             }
         } catch (err) {

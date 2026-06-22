@@ -46,77 +46,15 @@ const COMBO_PACKS = [
 
 export default function Store({ onBuyCoins, playerCoins }) {
   const [activeTab, setActiveTab] = useState("COINS");
-  const [paymentAccount, setPaymentAccount] = useState(
-    localStorage.getItem("seq_payment_account") || ""
-  );
-
-  const handleLinkPayment = () => {
-    Swal.fire({
-      title: "Link Payment Account",
-      input: "text",
-      inputLabel: "Enter Bank/Card/Payment Account Number:",
-      inputValue: localStorage.getItem("seq_payment_account") || "",
-      placeholder: "e.g., 1234567890",
-      showCancelButton: true,
-      confirmButtonText: "Link Account",
-      confirmButtonColor: "var(--accent-cyan)",
-      cancelButtonText: "Cancel",
-      background: '#1a123a',
-      color: '#fff',
-      iconColor: 'var(--accent-gold)',
-      inputValidator: (value) => {
-        if (!value || !value.trim()) {
-          return "Account number cannot be empty!";
-        }
-      }
-    }).then((result) => {
-      if (result.isConfirmed && result.value) {
-        const cleaned = result.value.trim();
-        localStorage.setItem("seq_payment_account", cleaned);
-        setPaymentAccount(cleaned);
-        Swal.fire({
-          title: "Account Linked!",
-          text: `Your account number ending in ****${cleaned.slice(-4)} has been successfully linked.`,
-          icon: "success",
-          background: '#1a123a',
-          color: '#fff',
-          confirmButtonColor: "var(--accent-cyan)"
-        });
-      }
-    });
-  };
 
   const handlePurchase = (pack) => {
-    const currentAccount = localStorage.getItem("seq_payment_account");
-    if (!currentAccount) {
-      Swal.fire({
-        title: "Payment Method Required",
-        text: "Please link a payment account number before making this simulated purchase.",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonText: "Link Account",
-        confirmButtonColor: "var(--accent-cyan)",
-        cancelButtonText: "Cancel",
-        background: '#1a123a',
-        color: '#fff'
-      }).then((result) => {
-        if (result.isConfirmed) {
-          handleLinkPayment();
-        }
-      });
-      return;
-    }
-
     Swal.fire({
       title: "Confirm Purchase",
       html: `
         <span style="color: #c3bee0;">Would you like to purchase <strong>${pack.coins.toLocaleString()} Coins</strong> for <strong>$${pack.price}</strong>?</span>
         <br><br>
-        <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; font-size: 0.85rem; color: #a5b4fc; text-align: center;">
-          💳 Linked Account: ****${currentAccount.slice(-4)}
-        </div>
         <p style="text-align: center; color: #10d9d2; font-weight: bold; margin-top: 15px; font-size: 0.85rem;">
-          You will be redirected to Lemon Squeezy to complete payment.
+          You will be redirected to Lemon Squeezy to complete payment securely.
         </p>
       `,
       icon: "question",
@@ -187,26 +125,6 @@ export default function Store({ onBuyCoins, playerCoins }) {
   };
 
   const handleBuyCombo = (combo) => {
-    const currentAccount = localStorage.getItem("seq_payment_account");
-    if (!currentAccount) {
-      Swal.fire({
-        title: "Payment Method Required",
-        text: "Please link a payment account number before making this simulated purchase.",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonText: "Link Account",
-        confirmButtonColor: "var(--accent-cyan)",
-        cancelButtonText: "Cancel",
-        background: '#1a123a',
-        color: '#fff'
-      }).then((result) => {
-        if (result.isConfirmed) {
-          handleLinkPayment();
-        }
-      });
-      return;
-    }
-
     Swal.fire({
       title: "Confirm Combo Purchase",
       html: `
@@ -218,11 +136,8 @@ export default function Store({ onBuyCoins, playerCoins }) {
             ${combo.boosters.wildUpgrade ? `<p style="margin: 4px 0; display: flex; align-items: center; gap: 6px;">🃏 <strong>+${combo.boosters.wildUpgrade} Wild Upgrades</strong></p>` : ''}
             ${combo.boosters.reroll ? `<p style="margin: 4px 0; display: flex; align-items: center; gap: 6px;">🔄 <strong>+${combo.boosters.reroll} Card Redraws</strong></p>` : ''}
           </div>
-          <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; font-size: 0.85rem; color: #a5b4fc; text-align: center; margin-top: 8px;">
-            💳 Linked Account: ****${currentAccount.slice(-4)}
-          </div>
           <p style="text-align: center; color: #10d9d2; font-weight: bold; margin-top: 15px; font-size: 0.85rem;">
-            You will be redirected to Lemon Squeezy to complete payment.
+            You will be redirected to Lemon Squeezy to complete payment securely.
           </p>
         </div>
       `,
@@ -289,43 +204,6 @@ export default function Store({ onBuyCoins, playerCoins }) {
             {tab}
           </button>
         ))}
-      </div>
-
-      {/* Payment Link status card */}
-      <div style={{
-        background: "linear-gradient(135deg, #1f1847 0%, #110930 100%)",
-        border: "1px solid rgba(16, 217, 210, 0.25)",
-        borderRadius: "16px",
-        padding: "12px 16px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: "12px",
-        boxShadow: "0 4px 10px rgba(0,0,0,0.2)"
-      }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "2px", textAlign: "left" }}>
-          <span style={{ fontSize: "0.68rem", fontWeight: "900", color: "#10d9d2", textTransform: "uppercase", letterSpacing: "1.0px" }}>
-            Payment Method
-          </span>
-          <span style={{ fontSize: "0.85rem", fontWeight: "800", color: "#f8fafc" }}>
-            {paymentAccount ? `Linked Account: ****${paymentAccount.slice(-4) || paymentAccount}` : "No payment method linked"}
-          </span>
-        </div>
-        <button
-          onClick={handleLinkPayment}
-          className="btn-cyan-glow"
-          style={{
-            padding: "6px 12px",
-            borderRadius: "12px",
-            border: "none",
-            fontSize: "0.75rem",
-            fontWeight: "900",
-            cursor: "pointer",
-            whiteSpace: "nowrap"
-          }}
-        >
-          {paymentAccount ? "Edit Account" : "Link Account"}
-        </button>
       </div>
 
       {activeTab === "COINS" ? (
