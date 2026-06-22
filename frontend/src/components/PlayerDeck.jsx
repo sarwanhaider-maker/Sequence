@@ -58,7 +58,7 @@ const PlayerDeck = ({ socket, playerHand, selectCard, setSelectCard, setHoveredC
           setBoosterMode(null);
 
           Swal.fire({
-              title: "Card Re-rolled!",
+              title: "Card Redrawn!",
               text: "You exchanged your card for a new one from the deck.",
               icon: "success",
               background: '#1a123a',

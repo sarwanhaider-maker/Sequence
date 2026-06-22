@@ -229,7 +229,7 @@ export default function Store({ onBuyCoins, playerCoins }) {
           {[
             {
               key: "shield",
-              name: "Chip Shield",
+              name: "Chip Guard",
               desc: "Shield one of your chips on the board from being removed by opponent's One-Eyed Jacks.",
               price: 3000,
               icon: "🛡️"
@@ -243,7 +243,7 @@ export default function Store({ onBuyCoins, playerCoins }) {
             },
             {
               key: "reroll",
-              name: "Card Re-roll",
+              name: "Card Redraw",
               desc: "Swap any card in your hand with a random card from the remaining deck during your turn.",
               price: 1500,
               icon: "🔄"

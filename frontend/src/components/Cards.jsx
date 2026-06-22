@@ -18,7 +18,7 @@ export default function Cards({ roomId, socket, selectCard, setSelectCard, cards
                 setBoosterMode(null);
                 
                 Swal.fire({
-                    title: "Chip Shielded!",
+                    title: "Chip Guarded!",
                     text: "Your chip has been protected from removal.",
                     icon: "success",
                     background: '#1a123a',

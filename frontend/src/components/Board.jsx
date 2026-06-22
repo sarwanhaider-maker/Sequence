@@ -317,7 +317,7 @@ export default function Boards() {
     if (playingAs !== currentPlayerIndex) {
       Swal.fire({
         title: "Not Your Turn!",
-        text: "You can only use boosters on your turn.",
+        text: "You can only use tactic cards on your turn.",
         icon: "warning",
         background: '#1a123a',
         color: '#fff',
@@ -329,7 +329,7 @@ export default function Boards() {
     if (usedBoosters[type]) {
       Swal.fire({
         title: "Already Used!",
-        text: "You can only use each booster once per game.",
+        text: "You can only use each tactic card once per game.",
         icon: "warning",
         background: '#1a123a',
         color: '#fff',
@@ -340,8 +340,8 @@ export default function Boards() {
 
     if ((boosters[type] || 0) <= 0) {
       Swal.fire({
-        title: "No Boosters!",
-        text: "You do not own this booster. Purchase it in the Store first!",
+        title: "No Tactic Cards!",
+        text: "You do not own this tactic card. Purchase it in the Store first!",
         icon: "warning",
         background: '#1a123a',
         color: '#fff',
@@ -360,10 +360,10 @@ export default function Boards() {
     let msg = "";
     if (type === 'shield') msg = "Select one of your chips on the board to shield it.";
     if (type === 'wildUpgrade') msg = "Select a card in your hand to turn it into a Wild card.";
-    if (type === 'reroll') msg = "Select a card in your hand to re-roll/exchange it.";
+    if (type === 'reroll') msg = "Select a card in your hand to redraw/exchange it.";
 
     Swal.fire({
-      title: `${type === 'shield' ? '🛡️ Shield' : type === 'wildUpgrade' ? '🃏 Wild Upgrade' : '🔄 Re-roll'} Mode Active`,
+      title: `${type === 'shield' ? '🛡️ Chip Guard' : type === 'wildUpgrade' ? '🃏 Wild Upgrade' : '🔄 Card Redraw'} Mode Active`,
       text: msg,
       icon: "info",
       toast: true,
@@ -1830,14 +1830,14 @@ export default function Boards() {
               playingAs={playingAs}
             />
 
-            {/* Booster Tray Panel */}
+            {/* Tactic Cards Dock */}
             {playingAs !== -1 && (
               <div className="booster-dock">
-                <span style={{ marginRight: '4px', fontSize: '0.75rem', fontWeight: '800', color: '#b0a9c9' }}>BOOSTERS:</span>
+                <span style={{ marginRight: '4px', fontSize: '0.75rem', fontWeight: '800', color: '#b0a9c9' }}>TACTICS:</span>
                 {[
-                  { key: 'shield', name: 'Shield', icon: '🛡️' },
-                  { key: 'wildUpgrade', name: 'Wild Card', icon: '🃏' },
-                  { key: 'reroll', name: 'Re-roll', icon: '🔄' }
+                  { key: 'shield', name: 'Chip Guard', icon: '🛡️' },
+                  { key: 'wildUpgrade', name: 'Wild Upgrade', icon: '🃏' },
+                  { key: 'reroll', name: 'Card Redraw', icon: '🔄' }
                 ].map(booster => {
                   const count = boosters[booster.key] || 0;
                   const isUsed = usedBoosters[booster.key];
