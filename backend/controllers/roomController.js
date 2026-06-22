@@ -148,8 +148,27 @@ class RoomController {
       const { playerName } = data || {};
       let room;
       try {
-        room = await Room.findOne({ empty: true, isCustom: false, playerLimit: 2 });
-        if (!room) {
+        const rooms = await Room.find({ empty: true, isCustom: false, playerLimit: 2 });
+        let validRoom = null;
+
+        for (const r of rooms) {
+          const waitingSocketId = r.players[0];
+          const isActive = this.io.sockets.sockets.has(waitingSocketId);
+          if (isActive) {
+            validRoom = r;
+            break;
+          } else {
+            console.log(`Cleaning up zombie room ${r.roomId} (player ${r.playersName[0]} is disconnected).`);
+            if (this.matchmakingTimers.has(r.roomId)) {
+              clearTimeout(this.matchmakingTimers.get(r.roomId));
+              this.matchmakingTimers.delete(r.roomId);
+            }
+            await Room.deleteOne({ roomId: r.roomId });
+            await Game.deleteOne({ roomId: r.roomId });
+          }
+        }
+
+        if (!validRoom) {
           const roomId = await this.generateUniqueRoomId();
           room = new Room({
             roomId,
@@ -162,6 +181,7 @@ class RoomController {
           });
           await room.save();
         } else {
+          room = validRoom;
           room.players.push(socket.id);
           room.playersName.push(playerName);
           room.empty = false;

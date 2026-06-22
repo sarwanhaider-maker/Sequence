@@ -25,7 +25,17 @@ const io = new Server(httpServer, {
 
 mongoose.set('bufferCommands', false);
 mongoose.connect(config.MONGO_URL)
-  .then(() => console.log('MongoDB connected'))
+  .then(async () => {
+    console.log('MongoDB connected');
+    try {
+      await Room.deleteMany({});
+      await Game.deleteMany({});
+      await Session.deleteMany({});
+      console.log('Cleared old rooms, games, and sessions from database.');
+    } catch (err) {
+      console.error('Error clearing database on startup:', err);
+    }
+  })
   .catch(err => console.error('MongoDB connection error:', err));
 
 const activeSockets = new Map();
