@@ -67,6 +67,24 @@ class GameSounds {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
+        
+        // Create global music routing chain: lowpass filter -> delay -> destination
+        this.filterNode = this.ctx.createBiquadFilter();
+        this.filterNode.type = 'lowpass';
+        this.filterNode.frequency.setValueAtTime(650, this.ctx.currentTime);
+        
+        this.delayNode = this.ctx.createDelay(1.0);
+        this.delayNode.delayTime.setValueAtTime(0.5, this.ctx.currentTime);
+        
+        this.feedbackNode = this.ctx.createGain();
+        this.feedbackNode.gain.setValueAtTime(0.4, this.ctx.currentTime);
+        
+        // Connections
+        this.filterNode.connect(this.ctx.destination);
+        this.filterNode.connect(this.delayNode);
+        this.delayNode.connect(this.feedbackNode);
+        this.feedbackNode.connect(this.delayNode);
+        this.delayNode.connect(this.ctx.destination);
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
@@ -84,35 +102,92 @@ class GameSounds {
     if (this.musicPlaying) return;
     this.musicPlaying = true;
 
-    // Soft ambient chords (C Maj7 / F Maj7 notes)
-    const notes = [130.81, 164.81, 196.00, 246.94, 261.63]; // C3, E3, G3, B3, C4
-    let index = 0;
+    // Beautiful lo-fi chord progression
+    const chords = [
+      [174.61, 220.00, 261.63, 329.63], // F Maj7 (F3, A3, C4, E4)
+      [196.00, 246.94, 293.66, 392.00], // G Maj (G3, B3, D4, G4)
+      [164.81, 196.00, 246.94, 293.66], // E min7 (E3, G3, B3, D4)
+      [220.00, 261.63, 329.63, 392.00]  // A min7 (A3, C4, E4, G4)
+    ];
 
-    const playNextNote = () => {
+    // Pentatonic scale arpeggios tailored for each chord
+    const melodyScales = [
+      [349.23, 392.00, 440.00, 523.25, 659.25, 783.99], // F Pentatonic/Major: F4, G4, A4, C5, E5, G5
+      [392.00, 440.00, 493.88, 587.33, 659.25, 783.99], // G Pentatonic/Major: G4, A4, B4, D5, E5, G5
+      [329.63, 392.00, 440.00, 493.88, 587.33, 659.25], // E Pentatonic/Minor: E4, G4, A4, B4, D5, E5
+      [440.00, 523.25, 587.33, 659.25, 783.99, 880.00]  // A Pentatonic/Minor: A4, C5, D5, E5, G5, A5
+    ];
+
+    let chordIndex = 0;
+
+    const playChordLoop = () => {
       if (!this.musicPlaying || !this.isMusicEnabled()) return;
       try {
         const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(notes[index], now);
-        
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.03, now + 1.2);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 4.8);
-        
-        osc.start(now);
-        osc.stop(now + 5.0);
-        index = (index + 1) % notes.length;
+        const chordNotes = chords[chordIndex];
+
+        // Play the lush chord notes together with a soft strum delay
+        chordNotes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gainNode = this.ctx.createGain();
+          osc.connect(gainNode);
+          gainNode.connect(this.filterNode);
+
+          osc.type = 'triangle'; // Smooth triangle wave
+          osc.frequency.setValueAtTime(freq, now);
+
+          // Strum: slightly delay each voice
+          const startDelay = idx * 0.1;
+          gainNode.gain.setValueAtTime(0, now);
+          // Slow rise (attack)
+          gainNode.gain.linearRampToValueAtTime(0.02, now + startDelay + 1.5);
+          // Exponential decay (release)
+          gainNode.gain.exponentialRampToValueAtTime(0.001, now + startDelay + 7.5);
+
+          osc.start(now + startDelay);
+          osc.stop(now + startDelay + 8.0);
+        });
+
+        // Trigger melody notes during this chord's duration
+        // We schedule 4 beats per chord (each beat is 2 seconds apart, total 8 seconds)
+        for (let beat = 0; beat < 4; beat++) {
+          const beatTime = now + beat * 2.0;
+          
+          // Random chance to play a note (e.g. 70%)
+          if (Math.random() < 0.7) {
+            // Delay the note slightly off-beat for a lo-fi human feel
+            const humanize = Math.random() * 0.15;
+            const noteTime = beatTime + humanize;
+
+            const scale = melodyScales[chordIndex];
+            const freq = scale[Math.floor(Math.random() * scale.length)];
+
+            const oscMelody = this.ctx.createOscillator();
+            const gainMelody = this.ctx.createGain();
+            oscMelody.connect(gainMelody);
+            gainMelody.connect(this.filterNode);
+
+            oscMelody.type = 'sine'; // Pure sine tone for clean melody
+            oscMelody.frequency.setValueAtTime(freq, noteTime);
+
+            gainMelody.gain.setValueAtTime(0, noteTime);
+            gainMelody.gain.linearRampToValueAtTime(0.012, noteTime + 0.08); // Quick attack
+            gainMelody.gain.exponentialRampToValueAtTime(0.001, noteTime + 1.8); // Long decay
+
+            oscMelody.start(noteTime);
+            oscMelody.stop(noteTime + 2.0);
+          }
+        }
+
+        // Advance to next chord
+        chordIndex = (chordIndex + 1) % chords.length;
       } catch (e) {
-        console.error("Music error:", e);
+        console.error("Music playback error:", e);
       }
-      this.musicTimer = setTimeout(playNextNote, 4000);
+      this.musicTimer = setTimeout(playChordLoop, 8000); // 8 seconds per chord cycle
     };
 
-    playNextNote();
+    playChordLoop();
   }
 
   static stopMusic() {

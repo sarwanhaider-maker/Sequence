@@ -14,6 +14,33 @@ const COIN_PACKS = [
   { coins: 5000000, price: 69.99, originalPrice: 250 }
 ];
 
+const COMBO_PACKS = [
+  {
+    name: "Bronze Tactician Combo",
+    price: 2.99,
+    coins: 10000,
+    boosters: { reroll: 2, shield: 1, wildUpgrade: 0 },
+    icon: "🥉",
+    description: "Get started with a neat coin stack and key tactical tools!"
+  },
+  {
+    name: "Silver Master Combo",
+    price: 4.99,
+    coins: 25000,
+    boosters: { reroll: 0, shield: 3, wildUpgrade: 2 },
+    icon: "🥈",
+    description: "Reinforce your board position and gain control over wild jacks!"
+  },
+  {
+    name: "Gold Champion Combo",
+    price: 9.99,
+    coins: 75000,
+    boosters: { reroll: 5, shield: 5, wildUpgrade: 5 },
+    icon: "🥇",
+    description: "The ultimate value bundle to dominate any online matches!"
+  }
+];
+
 export default function Store({ onBuyCoins, playerCoins }) {
   const [activeTab, setActiveTab] = useState("COINS");
 
@@ -102,6 +129,75 @@ export default function Store({ onBuyCoins, playerCoins }) {
           background: '#1a123a',
           color: '#fff',
           confirmButtonColor: "var(--accent-cyan)"
+        });
+      }
+    });
+  };
+
+  const handleBuyCombo = (combo) => {
+    Swal.fire({
+      title: "Confirm Combo Purchase",
+      html: `
+        <div style="text-align: left; color: #c3bee0; font-size: 0.9rem;">
+          <p>Would you like to purchase the <strong>${combo.name}</strong> for <strong>$${combo.price}</strong>?</p>
+          <div style="background: rgba(0,0,0,0.25); padding: 10px; border-radius: 12px; margin: 10px 0; border: 1px solid rgba(255,255,255,0.05);">
+            <p style="margin: 4px 0; display: flex; align-items: center; gap: 6px;">💰 <strong>+${combo.coins.toLocaleString()} Coins</strong></p>
+            ${combo.boosters.shield ? `<p style="margin: 4px 0; display: flex; align-items: center; gap: 6px;">🛡️ <strong>+${combo.boosters.shield} Chip Guards</strong></p>` : ''}
+            ${combo.boosters.wildUpgrade ? `<p style="margin: 4px 0; display: flex; align-items: center; gap: 6px;">🃏 <strong>+${combo.boosters.wildUpgrade} Wild Upgrades</strong></p>` : ''}
+            ${combo.boosters.reroll ? `<p style="margin: 4px 0; display: flex; align-items: center; gap: 6px;">🔄 <strong>+${combo.boosters.reroll} Card Redraws</strong></p>` : ''}
+          </div>
+          <small style="color:gray;">(This is a simulated Sandbox in-app purchase)</small>
+        </div>
+      `,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Purchase",
+      confirmButtonColor: "var(--accent-cyan)",
+      cancelButtonText: "Cancel",
+      background: '#1a123a',
+      color: '#fff',
+      iconColor: 'var(--accent-gold)'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: "Processing payment...",
+          allowOutsideClick: false,
+          background: '#1a123a',
+          color: '#fff',
+          didOpen: () => {
+            Swal.showLoading();
+          },
+          timer: 1500
+        }).then(() => {
+          // 1. Credit the coins
+          onBuyCoins(combo.coins);
+          
+          // 2. Update boosters in localStorage
+          const savedBoostersStr = localStorage.getItem("seq_boosters");
+          let boostersObj = { shield: 0, wildUpgrade: 0, reroll: 0 };
+          if (savedBoostersStr) {
+            try {
+              boostersObj = JSON.parse(savedBoostersStr);
+            } catch (e) {}
+          }
+          boostersObj.shield = (boostersObj.shield || 0) + (combo.boosters.shield || 0);
+          boostersObj.wildUpgrade = (boostersObj.wildUpgrade || 0) + (combo.boosters.wildUpgrade || 0);
+          boostersObj.reroll = (boostersObj.reroll || 0) + (combo.boosters.reroll || 0);
+          localStorage.setItem("seq_boosters", JSON.stringify(boostersObj));
+
+          Swal.fire({
+            title: "Combo Claimed!",
+            html: `
+              <div style="color: #c3bee0;">
+                Successfully purchased <strong>${combo.name}</strong>!<br>
+                Your balance and tactic cards inventory have been updated.
+              </div>
+            `,
+            icon: "success",
+            background: '#1a123a',
+            color: '#fff',
+            confirmButtonColor: "var(--accent-cyan)"
+          });
         });
       }
     });
@@ -288,18 +384,149 @@ export default function Store({ onBuyCoins, playerCoins }) {
           ))}
         </div>
       ) : (
-        /* Empty/Locked State for Combo */
+        /* Combo packs view */
         <div style={{
-          padding: "40px 20px",
-          textAlign: "center",
-          color: "#b0a9c9",
-          background: "rgba(0,0,0,0.15)",
-          borderRadius: "16px",
-          border: "1px dashed rgba(255,255,255,0.1)"
+          display: "flex",
+          flexDirection: "column",
+          gap: "14px"
         }}>
-          <div style={{ fontSize: "2rem", marginBottom: "8px" }}>🔒</div>
-          <h4 style={{ margin: 0, fontWeight: "700" }}>Locked in Beta</h4>
-          <p style={{ margin: "4px 0 0 0", fontSize: "0.8rem" }}>Combo items will be purchasable in the next update!</p>
+          {COMBO_PACKS.map((combo, idx) => (
+            <div
+              key={idx}
+              className="glass-card"
+              style={{
+                background: "linear-gradient(135deg, #311e68 0%, #150d38 100%)",
+                border: "1px solid rgba(167, 139, 250, 0.4)",
+                borderRadius: "18px",
+                padding: "16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px",
+                boxShadow: "0 6px 15px rgba(0,0,0,0.3)",
+                position: "relative",
+                overflow: "hidden"
+              }}
+            >
+              {/* Top Row: Icon & Name & Price */}
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div style={{
+                  fontSize: "2.2rem",
+                  background: "rgba(255,255,255,0.06)",
+                  borderRadius: "12px",
+                  width: "52px",
+                  height: "52px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}>
+                  {combo.icon}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h4 style={{ margin: 0, fontSize: "0.95rem", fontWeight: "900", color: "#f8fafc", textAlign: "left" }}>
+                    {combo.name}
+                  </h4>
+                  <p style={{ margin: "2px 0 0 0", fontSize: "0.72rem", color: "#a5b4fc", textAlign: "left", lineHeight: "1.2" }}>
+                    {combo.description}
+                  </p>
+                </div>
+              </div>
+
+              {/* Items Granted List */}
+              <div style={{
+                background: "rgba(0, 0, 0, 0.2)",
+                borderRadius: "10px",
+                padding: "8px 12px",
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "12px",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.8rem", fontWeight: "800", color: "#fcd34d" }}>
+                  <CoinIcon className="w-4 h-4" />
+                  <span>+{combo.coins.toLocaleString()}</span>
+                </div>
+                {combo.boosters.shield > 0 && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.78rem", fontWeight: "700", color: "#e2e8f0" }}>
+                    <span>🛡️</span>
+                    <span>+{combo.boosters.shield} Guard</span>
+                  </div>
+                )}
+                {combo.boosters.wildUpgrade > 0 && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.78rem", fontWeight: "700", color: "#e2e8f0" }}>
+                    <span>🃏</span>
+                    <span>+{combo.boosters.wildUpgrade} Wild</span>
+                  </div>
+                )}
+                {combo.boosters.reroll > 0 && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.78rem", fontWeight: "700", color: "#e2e8f0" }}>
+                    <span>🔄</span>
+                    <span>+{combo.boosters.reroll} Redraw</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Bottom Row: Buy Button & Discount Badge */}
+              <div style={{ display: "flex", alignItems: "center", justifycontent: "space-between", gap: "8px" }}>
+                {combo.price === 9.99 ? (
+                  <div style={{
+                    fontSize: "0.68rem",
+                    fontWeight: "900",
+                    background: "rgba(239, 68, 68, 0.2)",
+                    border: "1px solid rgba(239, 68, 68, 0.5)",
+                    color: "#f87171",
+                    padding: "3px 8px",
+                    borderRadius: "12px",
+                    textTransform: "uppercase"
+                  }}>
+                    Save 35%
+                  </div>
+                ) : combo.price === 4.99 ? (
+                  <div style={{
+                    fontSize: "0.68rem",
+                    fontWeight: "900",
+                    background: "rgba(16, 185, 129, 0.2)",
+                    border: "1px solid rgba(16, 185, 129, 0.5)",
+                    color: "#34d399",
+                    padding: "3px 8px",
+                    borderRadius: "12px",
+                    textTransform: "uppercase"
+                  }}>
+                    Best Choice
+                  </div>
+                ) : (
+                  <div style={{
+                    fontSize: "0.68rem",
+                    fontWeight: "900",
+                    background: "rgba(99, 102, 241, 0.2)",
+                    border: "1px solid rgba(99, 102, 241, 0.5)",
+                    color: "#818cf8",
+                    padding: "3px 8px",
+                    borderRadius: "12px",
+                    textTransform: "uppercase"
+                  }}>
+                    Popular
+                  </div>
+                )}
+                
+                <button
+                  onClick={() => handleBuyCombo(combo)}
+                  className="btn-cyan-glow"
+                  style={{
+                    padding: "7px 18px",
+                    borderRadius: "14px",
+                    border: "none",
+                    fontSize: "0.82rem",
+                    fontWeight: "900",
+                    cursor: "pointer",
+                    marginLeft: "auto"
+                  }}
+                >
+                  Buy ${combo.price}
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
