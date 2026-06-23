@@ -472,6 +472,7 @@ export default function Boards() {
   const [gameMode, setGameMode] = useState("8_players");
   const [friendsTouchStart, setFriendsTouchStart] = useState(null);
   const [friendsTouchEnd, setFriendsTouchEnd] = useState(null);
+  const [turnTimeLeft, setTurnTimeLeft] = useState(60);
 
   const handleSelectFriendsMode = (index) => {
     const mode = FRIENDS_MODES[index];
@@ -635,6 +636,29 @@ export default function Boards() {
   useEffect(() => { setPlayerName(profile.name); }, [profile.name]);
   useEffect(() => { currentPlayerIndexRef.current = currentPlayerIndex; }, [currentPlayerIndex]);
   useEffect(() => { customRoomIdRef.current = customRoomId; }, [customRoomId]);
+
+  // Turn Countdown Timer logic
+  useEffect(() => {
+    const isGameActive = (playOnline || inCustomGame) && playersList.length > 0 && playingAs !== null;
+    if (!isGameActive) {
+      setTurnTimeLeft(60);
+      return;
+    }
+
+    const limit = activeStake ? activeStake.time : 60;
+    setTurnTimeLeft(limit);
+
+    const interval = setInterval(() => {
+      setTurnTimeLeft((prev) => {
+        if (prev <= 1) {
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentPlayerIndex, playOnline, inCustomGame, playersList.length, playingAs, activeStake]);
 
   // Lemon Squeezy Payment Redirect Success Listener
   useEffect(() => {
@@ -1552,16 +1576,16 @@ export default function Boards() {
           </div>
 
           {/* Active Turn Indicator */}
-          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <span style={{ opacity: 0.7 }}>Turn:</span>
             {isMyTurn ? (
-              <span className="blink-turn" style={{ color: "var(--accent-gold)", fontWeight: "800" }}>YOUR TURN! ⭐</span>
+              <span className="blink-turn" style={{ color: "var(--accent-gold)", fontWeight: "800" }}>YOUR TURN! ⭐ ({turnTimeLeft}s)</span>
             ) : (
               <span style={{ 
                 color: activeTeam === "blue" ? "#3b82f6" : activeTeam === "red" ? "#ef4444" : activeTeam === "green" ? "#22c55e" : "#b0a9c9", 
                 fontWeight: "700" 
               }}>
-                {activePlayer?.name || "Opponent"}
+                {activePlayer?.name || "Opponent"} ({turnTimeLeft}s)
               </span>
             )}
           </div>
@@ -2612,8 +2636,11 @@ export default function Boards() {
               </div>
 
               {/* Turn display */}
-              <div className={`turn-alert turn-${playersList[currentPlayerIndex]?.team || "blue"}`} style={{ fontSize: "0.8rem", padding: "4px", marginBottom: "8px" }}>
-                {playingAs === currentPlayerIndex ? "Your Turn" : `${playersList[currentPlayerIndex]?.name || "Opponent"}'s Turn`}
+              <div className={`turn-alert turn-${playersList[currentPlayerIndex]?.team || "blue"}`} style={{ fontSize: "0.8rem", padding: "6px", marginBottom: "8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span>{playingAs === currentPlayerIndex ? "Your Turn" : `${playersList[currentPlayerIndex]?.name || "Opponent"}'s Turn`}</span>
+                <span style={{ fontWeight: "800", background: "rgba(0,0,0,0.25)", padding: "2px 8px", borderRadius: "8px", color: turnTimeLeft <= 10 ? "#ef4444" : "inherit" }}>
+                  ⏱️ {turnTimeLeft}s
+                </span>
               </div>
 
               <ScoreComponent redScore={redScore} blueScore={blueScore} greenScore={greenScore} targetSequences={targetGoal} />

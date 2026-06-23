@@ -43,6 +43,119 @@ const activeSockets = new Map();
 // Map of roomId -> bot difficulty for ongoing bot games
 const botDifficultyMap = new Map();
 
+// Map to hold active turn timeouts for each room
+const turnTimers = new Map();
+
+/**
+ * Clear the turn timer for a specific room.
+ */
+function clearTurnTimer(roomId) {
+    if (turnTimers.has(roomId)) {
+        clearTimeout(turnTimers.get(roomId));
+        turnTimers.delete(roomId);
+    }
+}
+
+/**
+ * Start or reset the turn timer for a specific room.
+ */
+async function startTurnTimer(roomId) {
+    clearTurnTimer(roomId);
+
+    try {
+        const room = await Room.findOne({ roomId });
+        const game = await Game.findOne({ roomId });
+        if (!game) return;
+
+        // Find the active player
+        const activePlayer = game.players.find(p => p.isTurn);
+        if (!activePlayer) return;
+
+        // If the active player is a bot, we don't need a timeout timer
+        if (isBot(activePlayer.socketId)) {
+            return;
+        }
+
+        // Determine turn limit duration
+        let turnDuration = 60; // Default fallback
+        if (room) {
+            if (room.isCustom) {
+                turnDuration = 60;
+            } else {
+                if (room.stakeReward === 1000 || room.stakeReward === 10000) {
+                    turnDuration = 45;
+                } else {
+                    turnDuration = 60;
+                }
+            }
+        }
+
+        console.log(`Setting turn timer for room ${roomId}: ${turnDuration} seconds for player ${activePlayer.name}`);
+
+        const timeoutHandle = setTimeout(async () => {
+            console.log(`Turn timed out for player ${activePlayer.name} in room ${roomId}. Skipping turn.`);
+            await advanceGameTurn(roomId);
+        }, turnDuration * 1000);
+
+        turnTimers.set(roomId, timeoutHandle);
+    } catch (err) {
+        console.error(`Error in startTurnTimer for room ${roomId}:`, err);
+    }
+}
+
+/**
+ * Force advance the game turn.
+ */
+async function advanceGameTurn(roomId) {
+    clearTurnTimer(roomId);
+
+    try {
+        let game = await Game.findOne({ roomId });
+        if (!game) return;
+
+        let currentIndex = game.players.findIndex(p => p.isTurn);
+        if (currentIndex === -1) return;
+
+        // Move to the next player
+        game.players[currentIndex].isTurn = false;
+        let nextIndex = (currentIndex + 1) % game.players.length;
+        game.players[nextIndex].isTurn = true;
+
+        await Game.updateOne({ roomId }, { $set: { players: game.players } });
+
+        // Retrieve updated game data
+        let latestGame = await Game.findOne({ roomId });
+        if (!latestGame) return;
+
+        // Broadcast state update to all human players
+        latestGame.players.forEach(player => {
+            if (!isBot(player.socketId)) {
+                io.to(player.socketId).emit('updateGameState', {
+                    deckCount: latestGame.shuffledDeck.length,
+                    score: latestGame.scores,
+                    cards: latestGame.cards,
+                    currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
+                    players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                    playerHand: player.hand,
+                    protectedPatterns: latestGame.protectedPatterns || []
+                });
+            }
+        });
+
+        // If the next player is a bot, trigger the bot turn after a short delay
+        const nextPlayer = latestGame.players.find(p => p.isTurn);
+        if (nextPlayer && isBot(nextPlayer.socketId)) {
+            const difficulty = botDifficultyMap.get(roomId) || 'medium';
+            setTimeout(() => triggerBotTurn(roomId, nextPlayer.socketId, difficulty), 1200);
+        } else {
+            // Otherwise start the turn timer for the next human player
+            startTurnTimer(roomId);
+        }
+    } catch (err) {
+        console.error(`Error in advanceGameTurn for room ${roomId}:`, err);
+    }
+}
+
 function deepClone() {
     let filteredCards = allCards.filter(card => card.id <= 100);
     return JSON.parse(JSON.stringify(filteredCards));
@@ -183,6 +296,8 @@ async function startGameForRoom(roomId, playerSockets, playerNames, gameMode) {
         if (isBot(firstPlayer.socketId)) {
             const difficulty = botDifficultyMap.get(roomId) || 'medium';
             setTimeout(() => triggerBotTurn(roomId, firstPlayer.socketId, difficulty), 1500);
+        } else {
+            startTurnTimer(roomId);
         }
     } catch (err) {
         console.error(`Error starting game for room ${roomId}:`, err);
@@ -195,6 +310,7 @@ const roomController = new RoomController(io, initializeGameForRoom, startGameFo
  * Trigger a bot's turn automatically.
  */
 async function triggerBotTurn(roomId, botSocketId, difficulty) {
+    clearTurnTimer(roomId);
     try {
         let game = await Game.findOne({ roomId });
         if (!game) return;
@@ -303,6 +419,8 @@ async function triggerBotTurn(roomId, botSocketId, difficulty) {
         const nextPlayer = latestGame.players.find(p => p.isTurn);
         if (nextPlayer && isBot(nextPlayer.socketId)) {
             setTimeout(() => triggerBotTurn(roomId, nextPlayer.socketId, difficulty), 1200);
+        } else {
+            startTurnTimer(roomId);
         }
     } catch (err) {
         console.error(`Error in triggerBotTurn for room ${roomId}:`, err);
@@ -562,6 +680,7 @@ io.on("connection", async (socket) => {
 
     socket.on('Boardcardclicked', async (data) => {
         const { roomId, cardId, selectedCard } = data;
+        clearTurnTimer(roomId);
 
         try {
             let game = await Game.findOne({ roomId: roomId });
@@ -651,6 +770,8 @@ io.on("connection", async (socket) => {
                 if (nextPlayer && isBot(nextPlayer.socketId)) {
                     const difficulty = botDifficultyMap.get(roomId) || 'medium';
                     setTimeout(() => triggerBotTurn(roomId, nextPlayer.socketId, difficulty), 1200);
+                } else {
+                    startTurnTimer(roomId);
                 }
             }
         } catch (err) {
@@ -713,7 +834,7 @@ io.on("connection", async (socket) => {
     });
 
     socket.on('room_closed', roomId => {
-        // Handle room closure
+        clearTurnTimer(roomId);
     });
 });
 
