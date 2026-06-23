@@ -19,6 +19,15 @@ import Store from "./Store";
 import StakesCarousel from "./StakesCarousel";
 import { useVoiceChat, VoiceChatControls } from "./VoiceChatManager";
 
+const FRIENDS_MODES = [
+  { value: "2_players", name: "One Vs One", playersCount: "2 Players", limit: 2, seq: 2, teamFormat: "Solo Match (1v1)", board: "STANDARD" },
+  { value: "3_players", name: "One Vs One Vs One", playersCount: "3 Players", limit: 3, seq: 1, teamFormat: "Solo Match (1v1v1)", board: "STANDARD" },
+  { value: "4_players", name: "Two Teams", playersCount: "4 Players", limit: 4, seq: 2, teamFormat: "2 Teams (2v2)", board: "STANDARD" },
+  { value: "6_players_3_teams", name: "Three Teams", playersCount: "6 Players", limit: 6, seq: 1, teamFormat: "3 Teams (2v2v2)", board: "STANDARD" },
+  { value: "6_players_2_teams", name: "Two Teams", playersCount: "6 Players", limit: 6, seq: 2, teamFormat: "2 Teams (3v3)", board: "STANDARD" },
+  { value: "8_players", name: "Two Teams", playersCount: "8 Players", limit: 8, seq: 2, teamFormat: "2 Teams (4v4)", board: "STANDARD" }
+];
+
 const SERVER_URL = import.meta.env.VITE_API_URL || (
   window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://localhost:8000"
@@ -461,6 +470,50 @@ export default function Boards() {
   const [connectedPlayers, setConnectedPlayers] = useState([]);
   const [playerLimit, setPlayerLimit] = useState(8);
   const [gameMode, setGameMode] = useState("8_players");
+  const [friendsTouchStart, setFriendsTouchStart] = useState(null);
+  const [friendsTouchEnd, setFriendsTouchEnd] = useState(null);
+
+  const handleSelectFriendsMode = (index) => {
+    const mode = FRIENDS_MODES[index];
+    setGameMode(mode.value);
+    setPlayerLimit(mode.limit);
+  };
+
+  const handleNextFriendsMode = () => {
+    const curIdx = FRIENDS_MODES.findIndex(m => m.value === gameMode);
+    const nextIdx = (curIdx + 1) % FRIENDS_MODES.length;
+    handleSelectFriendsMode(nextIdx);
+  };
+
+  const handlePrevFriendsMode = () => {
+    const curIdx = FRIENDS_MODES.findIndex(m => m.value === gameMode);
+    const prevIdx = (curIdx - 1 + FRIENDS_MODES.length) % FRIENDS_MODES.length;
+    handleSelectFriendsMode(prevIdx);
+  };
+
+  const handleFriendsTouchStart = (e) => {
+    setFriendsTouchEnd(null);
+    setFriendsTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleFriendsTouchMove = (e) => {
+    setFriendsTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleFriendsTouchEnd = () => {
+    if (!friendsTouchStart || !friendsTouchEnd) return;
+    const distance = friendsTouchStart - friendsTouchEnd;
+    const minSwipeDistance = 50;
+    if (distance > minSwipeDistance) {
+      handleNextFriendsMode();
+    } else if (distance < -minSwipeDistance) {
+      handlePrevFriendsMode();
+    }
+  };
+
+  const activeFriendsModeIdx = FRIENDS_MODES.findIndex(m => m.value === gameMode);
+  const activeFriendsMode = FRIENDS_MODES[activeFriendsModeIdx !== -1 ? activeFriendsModeIdx : 0];
+
   const [protectedPatterns, setProtectedPatterns] = useState([]);
   const [socketStatus, setSocketStatus] = useState("connecting");
   const [isConnected, setIsConnected] = useState(false);
@@ -1999,37 +2052,180 @@ export default function Boards() {
                       CREATE PRIVATE ROOM
                     </h3>
                     
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      <label style={{ fontSize: "0.78rem", fontWeight: "800", color: "#b0a9c9" }}>SELECT GAME MODE</label>
-                      <select
-                        value={gameMode}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setGameMode(val);
-                          if (val === '2_players') setPlayerLimit(2);
-                          else if (val === '3_players') setPlayerLimit(3);
-                          else if (val === '4_players') setPlayerLimit(4);
-                          else if (val === '6_players_3_teams') setPlayerLimit(6);
-                          else if (val === '6_players_2_teams') setPlayerLimit(6);
-                          else if (val === '8_players') setPlayerLimit(8);
-                        }}
-                        style={{
-                          background: "rgba(0,0,0,0.3)",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          borderRadius: "10px",
-                          padding: "10px",
-                          color: "white",
-                          fontWeight: "700",
-                          outline: "none"
-                        }}
-                      >
-                        <option value="2_players">2 Players (Goal: 2 seq)</option>
-                        <option value="3_players">3 Players (Goal: 1 seq)</option>
-                        <option value="4_players">4 Players (Goal: 2 seq)</option>
-                        <option value="6_players_3_teams">6 Players / 3 Teams (Goal: 1 seq)</option>
-                        <option value="6_players_2_teams">6 Players / 2 Teams (Goal: 2 seq)</option>
-                        <option value="8_players">8 Players (Goal: 2 seq)</option>
-                      </select>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", alignItems: "center", width: "100%", marginTop: "4px" }}>
+                      <label style={{ fontSize: "0.78rem", fontWeight: "800", color: "#b0a9c9", alignSelf: "flex-start" }}>SELECT GAME MODE</label>
+                      
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: "100%",
+                        gap: "10px",
+                        marginTop: "4px"
+                      }}>
+                        {/* Left Arrow */}
+                        <button 
+                          onClick={handlePrevFriendsMode}
+                          style={{
+                            background: "rgba(124, 58, 237, 0.2)",
+                            border: "1px solid rgba(124, 58, 237, 0.4)",
+                            color: "#10d9d2",
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "50%",
+                            cursor: "pointer",
+                            fontSize: "1.2rem",
+                            fontWeight: "900",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            outline: "none"
+                          }}
+                        >
+                          ‹
+                        </button>
+
+                        {/* Card Detail */}
+                        <div 
+                          onTouchStart={handleFriendsTouchStart}
+                          onTouchMove={handleFriendsTouchMove}
+                          onTouchEnd={handleFriendsTouchEnd}
+                          style={{
+                            flex: 1,
+                            maxWidth: "240px",
+                            background: "linear-gradient(135deg, #322168 0%, #150a32 100%)",
+                            border: "2.5px solid #10d9d2",
+                            borderRadius: "20px",
+                            padding: "20px 16px",
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: "14px",
+                            boxShadow: "0 10px 30px rgba(16, 217, 210, 0.25)",
+                            position: "relative",
+                            userSelect: "none"
+                          }}
+                        >
+                          {/* Room Name ribbon */}
+                          <div style={{
+                            background: "linear-gradient(90deg, #4c1d95, #7c3aed)",
+                            border: "1px solid rgba(16, 217, 210, 0.5)",
+                            borderRadius: "20px",
+                            padding: "4px 18px",
+                            fontSize: "0.85rem",
+                            fontWeight: "800",
+                            color: "white",
+                            position: "absolute",
+                            top: "-14px",
+                            boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
+                            whiteSpace: "nowrap"
+                          }}>
+                            {activeFriendsMode.name}
+                          </div>
+
+                          {/* Players Count Capsule */}
+                          <div style={{
+                            background: "rgba(0, 0, 0, 0.35)",
+                            border: "1px solid rgba(255,255,255,0.06)",
+                            borderRadius: "14px",
+                            width: "100%",
+                            padding: "10px",
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: "4px",
+                            marginTop: "8px"
+                          }}>
+                            <span style={{ fontSize: "0.68rem", fontWeight: "800", color: "#b0a9c9", letterSpacing: "1px" }}>PLAYERS LIMIT</span>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              <span style={{ fontSize: "1.4rem", fontWeight: "900", color: "#ecc94b" }}>
+                                {activeFriendsMode.playersCount}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Sub Stats Row */}
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", width: "100%" }}>
+                            {/* Turn time */}
+                            <div style={{
+                              background: "rgba(0, 0, 0, 0.2)",
+                              border: "1px solid rgba(255,255,255,0.04)",
+                              borderRadius: "12px",
+                              padding: "6px",
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "center",
+                              gap: "2px"
+                            }}>
+                              <span style={{ fontSize: "0.58rem", fontWeight: "700", color: "#b0a9c9" }}>TIME PER TURN</span>
+                              <span style={{ fontSize: "0.78rem", fontWeight: "800", color: "#e2e8f0" }}>⏳ 60 sec</span>
+                            </div>
+
+                            {/* Sequences */}
+                            <div style={{
+                              background: "rgba(0, 0, 0, 0.2)",
+                              border: "1px solid rgba(255,255,255,0.04)",
+                              borderRadius: "12px",
+                              padding: "6px",
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "center",
+                              gap: "2px"
+                            }}>
+                              <span style={{ fontSize: "0.58rem", fontWeight: "700", color: "#b0a9c9" }}>SEQUENCES</span>
+                              <span style={{ fontSize: "0.78rem", fontWeight: "800", color: "#ecc94b" }}># {activeFriendsMode.seq}</span>
+                            </div>
+                          </div>
+
+                          {/* Board type */}
+                          <div style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            width: "100%",
+                            fontSize: "0.75rem",
+                            fontWeight: "700",
+                            borderBottom: "1px solid rgba(255,255,255,0.06)",
+                            paddingBottom: "6px"
+                          }}>
+                            <span style={{ color: "#b0a9c9" }}>BOARD TYPE :</span>
+                            <span style={{ color: "#10d9d2", fontWeight: "800" }}>{activeFriendsMode.board}</span>
+                          </div>
+
+                          {/* Team Format */}
+                          <div style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            width: "100%",
+                            fontSize: "0.75rem",
+                            fontWeight: "700"
+                          }}>
+                            <span style={{ color: "#b0a9c9" }}>TEAM FORMAT :</span>
+                            <span style={{ color: "#ecc94b", fontWeight: "800" }}>{activeFriendsMode.teamFormat}</span>
+                          </div>
+                        </div>
+
+                        {/* Right Arrow */}
+                        <button 
+                          onClick={handleNextFriendsMode}
+                          style={{
+                            background: "rgba(124, 58, 237, 0.2)",
+                            border: "1px solid rgba(124, 58, 237, 0.4)",
+                            color: "#10d9d2",
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "50%",
+                            cursor: "pointer",
+                            fontSize: "1.2rem",
+                            fontWeight: "900",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            outline: "none"
+                          }}
+                        >
+                          ›
+                        </button>
+                      </div>
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "4px 0" }}>
