@@ -1,7 +1,7 @@
 import React from "react";
 import Swal from "sweetalert2";
 
-export default function Cards({ roomId, socket, selectCard, setSelectCard, cards, hoveredCard, playingAs, currentPlayerIndex, protectedPatterns, hoveredCardId, myTeam, boosterMode, setBoosterMode, setBoosters, setUsedBoosters }) {
+export default function Cards({ roomId, socket, selectCard, setSelectCard, cards, hoveredCard, playingAs, currentPlayerIndex, protectedPatterns, hoveredCardId, myTeam, boosterMode, setBoosterMode, setBoosters, setUsedBoosters, lastMove }) {
 
     function handleClick(cardId, selectCard, socket, card) {
         if (boosterMode === 'shield') {
@@ -102,10 +102,11 @@ export default function Cards({ roomId, socket, selectCard, setSelectCard, cards
                      const protectedClass = isProtected(card.id) ? "seq-protected" : "";
                      const isCorner = [1, 10, 91, 100].includes(card.id);
                      const isHighlighted = checkIsValidTarget(card);
+                     const isLastMove = lastMove && lastMove.cardId === card.id;
                      return (
                         <div 
                             key={card.id} 
-                            className={`card ${isCorner ? 'corner' : ''} ${protectedClass} ${isHighlighted ? 'highlighted' : ''}`} 
+                            className={`card ${isCorner ? 'corner' : ''} ${protectedClass} ${isHighlighted ? 'highlighted' : ''} ${isLastMove ? 'last-move' : ''}`} 
                             onClick={() => handleClick(card.id, selectCard, socket, card)}
                         >
                             {card.img && (

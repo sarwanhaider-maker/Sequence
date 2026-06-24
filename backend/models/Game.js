@@ -24,7 +24,8 @@ const GameSchema = new mongoose.Schema({
   shuffledDeck: [Object],
   cards: [Object],
   protectedPatterns: [Array],
-  targetSequences: { type: Number, default: 2 }
+  targetSequences: { type: Number, default: 2 },
+  lastMove: { type: Object, default: null }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Game', GameSchema);

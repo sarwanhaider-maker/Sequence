@@ -30,6 +30,17 @@ jest.mock('../models/room', () => {
     }
     return Promise.resolve(null);
   });
+  MockRoom.find = jest.fn().mockImplementation((query) => {
+    let res = roomsDb;
+    if (query) {
+      if (query.empty !== undefined) res = res.filter(r => r.empty === query.empty);
+      if (query.isCustom !== undefined) res = res.filter(r => r.isCustom === query.isCustom);
+      if (query.playerLimit !== undefined) res = res.filter(r => r.playerLimit === query.playerLimit);
+      if (query.stakeId !== undefined) res = res.filter(r => r.stakeId === query.stakeId);
+      if (query.boardType !== undefined) res = res.filter(r => r.boardType === query.boardType);
+    }
+    return Promise.resolve(res);
+  });
   MockRoom.deleteOne = jest.fn().mockImplementation((query) => {
     const index = roomsDb.findIndex(r => r.roomId === query.roomId);
     if (index > -1) {

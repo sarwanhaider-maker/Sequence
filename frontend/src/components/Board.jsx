@@ -447,6 +447,7 @@ export default function Boards() {
 
   const [cards, setCards] = useState([]);
   const [hoveredCard, setHoveredCard] = useState([]);
+  const [lastMove, setLastMove] = useState(null);
   const [redScore, setRedScore] = useState(0);
   const [blueScore, setBlueScore] = useState(0);
   const [greenScore, setGreenScore] = useState(undefined);
@@ -877,6 +878,7 @@ export default function Boards() {
         setSelectCard(null);
         setHoveredCard([]);
         setBoosterMode(null);
+        setLastMove(gameState.lastMove || null);
       });
       return () => {
         socket.off("updateGameState");
@@ -919,6 +921,7 @@ export default function Boards() {
       setUsedBoosters({ shield: false, wildUpgrade: false, reroll: false });
       setBoosterMode(null);
       setBoosters(getInitialBoosters());
+      setLastMove(data.lastMove || null);
 
       // If it is our turn on start, play turn alert
       if (data.playingAs === (data.currentPlayerIndex || 0)) {
@@ -2619,6 +2622,7 @@ export default function Boards() {
             setBoosterMode={setBoosterMode}
             setBoosters={setBoosters}
             setUsedBoosters={setUsedBoosters}
+            lastMove={lastMove}
           />
 
           {/* Right: Info & Decks Sidebar */}

@@ -193,6 +193,28 @@ body {
   100% { box-shadow: 0 0 10px #ffd700, inset 0 0 5px #ffd700; }
 }
 
+/* Highlight the last played move cell */
+.card.last-move::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 3px solid #ff9f43; /* Neon orange border */
+  border-radius: 6px;
+  box-shadow: 0 0 12px #ff9f43, inset 0 0 6px #ff9f43;
+  z-index: 8; /* Sits above chips and protected borders */
+  pointer-events: none;
+  animation: lastMovePulse 1.5s infinite ease-in-out;
+}
+
+@keyframes lastMovePulse {
+  0% { box-shadow: 0 0 6px #ff9f43, inset 0 0 3px #ff9f43; border-color: #ff9f43; }
+  50% { box-shadow: 0 0 18px #ff9f43, inset 0 0 9px #ff9f43; border-color: #ffb773; }
+  100% { box-shadow: 0 0 6px #ff9f43, inset 0 0 3px #ff9f43; border-color: #ff9f43; }
+}
+
 /* Right Side: Game Panels */
 .side-panels {
   display: flex;

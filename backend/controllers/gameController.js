@@ -123,7 +123,7 @@ function handleCardSelection(
     }
 
     let indexToRemove = playerHand.findIndex(
-        (card) => card.id === cardId || (selectedCard > 100 && selectedCard < 109 && card.id === selectedCard) || (card.matches && card.matches.includes(cardId))
+        (card) => card.id === selectedCard
     );
     if (indexToRemove !== -1) {
         playerHand.splice(indexToRemove, 1);
@@ -134,6 +134,16 @@ function handleCardSelection(
     }
 
     currentPlayer.hand = playerHand;
+
+    // Record last move details
+    game.lastMove = {
+        cardId: cardId,
+        selectedCard: selectedCard,
+        playerName: currentPlayer.name,
+        team: currentPlayer.team,
+        action: (selectedCard > 104 && selectedCard <= 108) ? 'remove' : 'place',
+        timestamp: Date.now()
+    };
 
     // Advance turn
     let currentIndex = game.players.findIndex(p => p.socketId === socketId);

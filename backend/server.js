@@ -265,7 +265,8 @@ async function handleTurnTimeout(roomId) {
         await Game.updateOne({ roomId }, { $set: {
             players: result.game.players,
             shuffledDeck: result.game.shuffledDeck,
-            cards: result.game.cards
+            cards: result.game.cards,
+            lastMove: result.game.lastMove
         }});
 
         let latestGame = await Game.findOne({ roomId });
@@ -287,38 +288,14 @@ async function handleTurnTimeout(roomId) {
         const finalWinner = winner || patternResult.winner;
 
         if (finalWinner) {
-            latestGame.players.forEach(player => {
-                if (!isBot(player.socketId)) {
-                    io.to(player.socketId).emit('updateGameState', {
-                        deckCount: latestGame.shuffledDeck.length,
-                        score: latestGame.scores,
-                        cards: latestGame.cards,
-                        currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
-                        players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
-                        playerHand: player.hand,
-                        protectedPatterns: latestGame.protectedPatterns || []
-                    });
-                }
-            });
+            broadcastGameState(latestGame);
             io.to(roomId).emit('gameOver', { winner: finalWinner });
             botDifficultyMap.delete(roomId);
             return;
         }
 
         // 5. Send state updates to human players
-        latestGame.players.forEach(player => {
-            if (!isBot(player.socketId)) {
-                io.to(player.socketId).emit('updateGameState', {
-                    deckCount: latestGame.shuffledDeck.length,
-                    score: latestGame.scores,
-                    cards: latestGame.cards,
-                    currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
-                    players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
-                    playerHand: player.hand,
-                    protectedPatterns: latestGame.protectedPatterns || []
-                });
-            }
-        });
+        broadcastGameState(latestGame);
 
         // 6. Chain turn logic
         const nextPlayer = latestGame.players.find(p => p.isTurn);
@@ -418,6 +395,23 @@ function generateGameBoardCards(boardType) {
     return standardCards;
 }
 
+function broadcastGameState(game) {
+    game.players.forEach(player => {
+        if (!isBot(player.socketId)) {
+            io.to(player.socketId).emit('updateGameState', {
+                deckCount: game.shuffledDeck.length,
+                score: game.scores,
+                cards: game.cards,
+                currentPlayerIndex: game.players.findIndex(p => p.isTurn),
+                players: game.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                playerHand: player.hand,
+                protectedPatterns: game.protectedPatterns || [],
+                lastMove: game.lastMove || null
+            });
+        }
+    });
+}
+
 async function startGameForRoom(roomId, playerSockets, playerNames, gameMode) {
     try {
         if (!botDifficultyMap.has(roomId) && playerSockets.some(isBot)) {
@@ -464,7 +458,8 @@ async function startGameForRoom(roomId, playerSockets, playerNames, gameMode) {
                     cards: newGame.cards,
                     players: newGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
                     currentPlayerIndex: 0,
-                    protectedPatterns: newGame.protectedPatterns || []
+                    protectedPatterns: newGame.protectedPatterns || [],
+                    lastMove: null
                 });
             }
         });
@@ -539,7 +534,8 @@ async function triggerBotTurn(roomId, botSocketId, difficulty) {
             await Game.updateOne({ roomId }, { $set: {
                 players: result.game.players,
                 shuffledDeck: result.game.shuffledDeck,
-                cards: result.game.cards
+                cards: result.game.cards,
+                lastMove: result.game.lastMove
             }});
         }
 
@@ -560,38 +556,14 @@ async function triggerBotTurn(roomId, botSocketId, difficulty) {
 
         if (winner || patternResult.winner) {
             const finalWinner = winner || patternResult.winner;
-            latestGame.players.forEach(player => {
-                if (!isBot(player.socketId)) {
-                    io.to(player.socketId).emit('updateGameState', {
-                        deckCount: latestGame.shuffledDeck.length,
-                        score: latestGame.scores,
-                        cards: latestGame.cards,
-                        currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
-                        players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
-                        playerHand: player.hand,
-                        protectedPatterns: latestGame.protectedPatterns || []
-                    });
-                }
-            });
+            broadcastGameState(latestGame);
             io.to(roomId).emit('gameOver', { winner: finalWinner });
             botDifficultyMap.delete(roomId);
             return;
         }
 
         // Send updated state to all human players
-        latestGame.players.forEach(player => {
-            if (!isBot(player.socketId)) {
-                io.to(player.socketId).emit('updateGameState', {
-                    deckCount: latestGame.shuffledDeck.length,
-                    score: latestGame.scores,
-                    cards: latestGame.cards,
-                    currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
-                    players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
-                    playerHand: player.hand,
-                    protectedPatterns: latestGame.protectedPatterns || []
-                });
-            }
-        });
+        broadcastGameState(latestGame);
 
         // Chain: if next player is also a bot, trigger again after delay
         const nextPlayer = latestGame.players.find(p => p.isTurn);
@@ -638,7 +610,8 @@ io.on("connection", async (socket) => {
                     cards: game.cards,
                     players: game.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
                     currentPlayerIndex: game.players.findIndex(p => p.isTurn),
-                    protectedPatterns: game.protectedPatterns || []
+                    protectedPatterns: game.protectedPatterns || [],
+                    lastMove: game.lastMove || null
                 });
             }
         }
@@ -701,19 +674,7 @@ io.on("connection", async (socket) => {
             // Fetch and emit updated game state
             let latestGame = await Game.findOne({ roomId: roomId });
             if (latestGame) {
-                latestGame.players.forEach((player) => {
-                    if (!isBot(player.socketId)) {
-                        io.to(player.socketId).emit('updateGameState', {
-                            deckCount: latestGame.shuffledDeck.length,
-                            score: latestGame.scores,
-                            cards: latestGame.cards,
-                            currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
-                            players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
-                            playerHand: player.hand,
-                            protectedPatterns: latestGame.protectedPatterns || []
-                        });
-                    }
-                });
+                broadcastGameState(latestGame);
             }
 
         } catch (err) {
@@ -743,19 +704,7 @@ io.on("connection", async (socket) => {
 
                 let latestGame = await Game.findOne({ roomId: roomId });
                 if (latestGame) {
-                    latestGame.players.forEach((player) => {
-                        if (!isBot(player.socketId)) {
-                            io.to(player.socketId).emit('updateGameState', {
-                                deckCount: latestGame.shuffledDeck.length,
-                                score: latestGame.scores,
-                                cards: latestGame.cards,
-                                currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
-                                players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
-                                playerHand: player.hand,
-                                protectedPatterns: latestGame.protectedPatterns || []
-                            });
-                        }
-                    });
+                    broadcastGameState(latestGame);
                 }
             }
         } catch (err) {
@@ -790,19 +739,7 @@ io.on("connection", async (socket) => {
 
                 let latestGame = await Game.findOne({ roomId: roomId });
                 if (latestGame) {
-                    latestGame.players.forEach((player) => {
-                        if (!isBot(player.socketId)) {
-                            io.to(player.socketId).emit('updateGameState', {
-                                deckCount: latestGame.shuffledDeck.length,
-                                score: latestGame.scores,
-                                cards: latestGame.cards,
-                                currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
-                                players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
-                                playerHand: player.hand,
-                                protectedPatterns: latestGame.protectedPatterns || []
-                            });
-                        }
-                    });
+                    broadcastGameState(latestGame);
                 }
             }
         } catch (err) {
@@ -836,19 +773,7 @@ io.on("connection", async (socket) => {
 
                 let latestGame = await Game.findOne({ roomId: roomId });
                 if (latestGame) {
-                    latestGame.players.forEach((player) => {
-                        if (!isBot(player.socketId)) {
-                            io.to(player.socketId).emit('updateGameState', {
-                                deckCount: latestGame.shuffledDeck.length,
-                                score: latestGame.scores,
-                                cards: latestGame.cards,
-                                currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
-                                players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
-                                playerHand: player.hand,
-                                protectedPatterns: latestGame.protectedPatterns || []
-                            });
-                        }
-                    });
+                    broadcastGameState(latestGame);
                 }
             }
         } catch (err) {
@@ -886,7 +811,8 @@ io.on("connection", async (socket) => {
                 'scores': updatedGame.game.scores,
                 'shuffledDeck': updatedGame.game.shuffledDeck,
                 'cards': updatedGame.game.cards,
-                'protectedPatterns': updatedGame.game.protectedPatterns
+                'protectedPatterns': updatedGame.game.protectedPatterns,
+                'lastMove': updatedGame.game.lastMove
             };
     
             await Game.updateOne({ roomId: roomId }, { $set: updateData });
@@ -912,36 +838,12 @@ io.on("connection", async (socket) => {
 
             if (finalWinner) {
                 // Send final state so they see the last chip and protected pattern highlights
-                latestGame.players.forEach(player => {
-                    if (!isBot(player.socketId)) {
-                        io.to(player.socketId).emit('updateGameState', {
-                            deckCount: latestGame.shuffledDeck.length,
-                            score: latestGame.scores,
-                            cards: latestGame.cards,
-                            currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
-                            players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
-                            playerHand: player.hand,
-                            protectedPatterns: latestGame.protectedPatterns || []
-                        });
-                    }
-                });
+                broadcastGameState(latestGame);
                 io.to(roomId).emit('gameOver', { winner: finalWinner });
                 botDifficultyMap.delete(roomId);
             } else {
                 // Send state only to human players
-                latestGame.players.forEach(player => {
-                    if (!isBot(player.socketId)) {
-                        io.to(player.socketId).emit('updateGameState', {
-                            deckCount: latestGame.shuffledDeck.length,
-                            score: latestGame.scores,
-                            cards: latestGame.cards,
-                            currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
-                            players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
-                            playerHand: player.hand,
-                            protectedPatterns: latestGame.protectedPatterns || []
-                        });
-                    }
-                });
+                broadcastGameState(latestGame);
 
                 // If next player is a bot, trigger its turn
                 const nextPlayer = latestGame.players.find(p => p.isTurn);
