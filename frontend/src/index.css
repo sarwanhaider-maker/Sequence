@@ -545,6 +545,16 @@ body {
   min-height: 0;
 }
 
+.board-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  flex: 1.2;
+  min-width: 0;
+}
+
 /* Mobile Media Queries */
 @media (max-width: 768px) {
   #mobile-header {
@@ -572,6 +582,12 @@ body {
     height: auto !important;
     min-height: 0 !important;
     flex: none !important;
+  }
+
+  .board-column {
+    width: 100%;
+    flex: none !important;
+    gap: 6px;
   }
 
   .board-container {

@@ -458,6 +458,11 @@ class RoomController {
             await activeGame.save();
           }
 
+          // Broadcast updated player list with new socket IDs to everyone in the room
+          this.io.to(roomId).emit("updatePlayersList", {
+            players: activeGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index, socketId: p.socketId }))
+          });
+
           const myPlayer = activeGame.players.find(p => p.index === playerIndex);
           socket.emit("rejoin_room_success", {
             gameInProgress: true,
@@ -466,7 +471,7 @@ class RoomController {
             yourHand: myPlayer ? myPlayer.hand : [],
             deckCount: activeGame.shuffledDeck.length,
             cards: activeGame.cards,
-            players: activeGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+            players: activeGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index, socketId: p.socketId })),
             currentPlayerIndex: activeGame.players.findIndex(p => p.isTurn),
             protectedPatterns: activeGame.protectedPatterns || [],
             voiceChatEnabled: room.voiceChatEnabled

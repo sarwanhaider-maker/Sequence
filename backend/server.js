@@ -140,7 +140,7 @@ async function advanceGameTurn(roomId) {
                     score: latestGame.scores,
                     cards: latestGame.cards,
                     currentPlayerIndex: latestGame.players.findIndex(p => p.isTurn),
-                    players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                    players: latestGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index, socketId: p.socketId })),
                     playerHand: player.hand,
                     protectedPatterns: latestGame.protectedPatterns || []
                 });
@@ -429,7 +429,7 @@ function broadcastGameState(game) {
                 score: game.scores,
                 cards: game.cards,
                 currentPlayerIndex: game.players.findIndex(p => p.isTurn),
-                players: game.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                players: game.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index, socketId: p.socketId })),
                 playerHand: player.hand,
                 protectedPatterns: game.protectedPatterns || [],
                 lastMove: game.lastMove || null
@@ -482,7 +482,7 @@ async function startGameForRoom(roomId, playerSockets, playerNames, gameMode) {
                     playingAs: player.index,
                     deckCount: newGame.shuffledDeck.length,
                     cards: newGame.cards,
-                    players: newGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                    players: newGame.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index, socketId: p.socketId })),
                     currentPlayerIndex: 0,
                     protectedPatterns: newGame.protectedPatterns || [],
                     lastMove: null
@@ -652,7 +652,7 @@ io.on("connection", async (socket) => {
                     playingAs: playingAs,
                     deckCount: game.shuffledDeck.length,
                     cards: game.cards,
-                    players: game.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index })),
+                    players: game.players.map(p => ({ name: p.name, team: p.team, isTurn: p.isTurn, index: p.index, socketId: p.socketId })),
                     currentPlayerIndex: game.players.findIndex(p => p.isTurn),
                     protectedPatterns: game.protectedPatterns || [],
                     lastMove: game.lastMove || null
@@ -831,12 +831,8 @@ io.on("connection", async (socket) => {
             let game = await Game.findOne({ roomId: roomId });
             if (!game) return;
 
-            let currentTurnIndex = game.players.findIndex(p => p.isTurn);
-            let currentPlayer = game.players[currentTurnIndex];
-            if (socket.id !== currentPlayer.socketId) {
-                console.log("Not this player's turn to use booster");
-                return;
-            }
+            let senderPlayer = game.players.find(p => p.socketId === socket.id);
+            if (!senderPlayer) return;
 
             // Find the opponent player
             let opponentPlayer;
@@ -852,7 +848,7 @@ io.on("connection", async (socket) => {
                 
                 // Notify the opponent that a spying glass was used on them
                 socket.to(opponentPlayer.socketId).emit('booster_spy_notification', {
-                    message: `${currentPlayer.name} used Spying Glass on you!`
+                    message: `${senderPlayer.name} used Spying Glass on you!`
                 });
             }
         } catch (err) {

@@ -440,6 +440,17 @@ export default function Boards() {
     localStorage.setItem("seq_stats", JSON.stringify(stats));
   }, [stats]);
 
+  // Mobile viewport detection state
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Daily Tasks
   const [tasks, setTasks] = useState(() => {
     const defaultTasks = [
@@ -652,7 +663,7 @@ export default function Boards() {
   }, [activeTab, playOnline, inCustomGame]);
 
   const handleActivateBooster = (type) => {
-    if (playingAs !== currentPlayerIndex) {
+    if (type !== 'spy' && playingAs !== currentPlayerIndex) {
       Swal.fire({
         title: "Not Your Turn!",
         text: "You can only use tactic cards on your turn.",
@@ -1432,11 +1443,11 @@ export default function Boards() {
 
     socket.on("booster_spy_result", (data) => {
       setSpyOpponentHand(data.opponentHand);
-      setSpyTimeLeft(3.0);
+      setSpyTimeLeft(5.0);
       GameSounds.playSpy();
       
       const startTime = Date.now();
-      const duration = 3000;
+      const duration = 5000;
       
       const spyInterval = setInterval(() => {
         const elapsed = Date.now() - startTime;
@@ -1464,6 +1475,10 @@ export default function Boards() {
         color: '#fff',
         iconColor: '#fecaca'
       });
+    });
+
+    socket.on("updatePlayersList", (data) => {
+      setPlayersList(data.players || []);
     });
 
     socket.on("booster_effect_msg", (data) => {
@@ -1533,6 +1548,7 @@ export default function Boards() {
       socket.off("booster_spy_result");
       socket.off("booster_spy_notification");
       socket.off("booster_effect_msg");
+      socket.off("updatePlayersList");
     };
   }, [socket]);
 
@@ -1918,7 +1934,7 @@ export default function Boards() {
                   🔄 **Card Redraw**: Discard one of your hand cards and draw a fresh replacement.
                 </p>
                 <p style={{ color: "#d1cde3", fontSize: "0.82rem", lineHeight: "1.4", marginBottom: "6px" }}>
-                  🔍 **Spying Glass**: Peek at any opponent's hand cards secretly for 3 seconds.
+                  🔍 **Spying Glass**: Peek at any opponent's hand cards secretly for 5 seconds.
                 </p>
                 <p style={{ color: "#d1cde3", fontSize: "0.82rem", lineHeight: "1.4", marginBottom: "6px" }}>
                   🔀 **Hand Exchange**: Select one card from your hand to swap with a random card of an opponent.
@@ -2936,6 +2952,90 @@ export default function Boards() {
     );
   };
 
+  const renderHandDeck = () => {
+    return (
+      <div style={{
+        position: 'relative',
+        width: '100%',
+        maxWidth: '600px',
+        margin: isMobile ? '0' : '10px auto 0 auto',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        flexShrink: 0,
+        order: isMobile ? 1 : 'unset'
+      }}>
+        <PlayerDeck
+          socket={socket}
+          playerHand={yourHand}
+          selectCard={selectCard}
+          setSelectCard={setSelectCard}
+          setHoveredCard={setHoveredCard}
+          currentPlayerIndex={currentPlayerIndex}
+          playingAs={playingAs}
+          setHoveredCardId={setHoveredCardId}
+          cards={cards}
+          roomId={room}
+          boosterMode={boosterMode}
+          setBoosterMode={setBoosterMode}
+          setBoosters={setBoosters}
+          setUsedBoosters={setUsedBoosters}
+          players={playersList}
+        />
+        {spyOpponentHand && (
+          <div style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(10, 7, 26, 0.95)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '12px',
+            border: '2px solid #10d9d2',
+            boxShadow: '0 0 20px rgba(16, 217, 210, 0.4)',
+            zIndex: 10,
+            animation: 'fadeIn 0.2s ease-out'
+          }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: '900', color: '#10d9d2', letterSpacing: '1px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              🔍 SPYING OPPONENT'S HAND ({spyTimeLeft.toFixed(1)}s)
+            </div>
+            
+            {/* Progress Bar */}
+            <div style={{ width: '80%', height: '5px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden', marginBottom: '12px' }}>
+              <div style={{
+                width: `${(spyTimeLeft / 5) * 100}%`,
+                height: '100%',
+                background: 'linear-gradient(90deg, #10d9d2, #00f2fe)',
+                boxShadow: '0 0 8px #10d9d2',
+                transition: 'width 0.1s linear'
+              }} />
+            </div>
+
+            {/* Opponent's cards */}
+            <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              {spyOpponentHand.map((card, idx) => (
+                <img 
+                  key={idx} 
+                  src={card.img && ("/" + card.img.replace('../', ''))} 
+                  alt="Opponent Card"
+                  style={{
+                    height: '52px',
+                    borderRadius: '4px',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       {renderWizard()}
@@ -3012,7 +3112,7 @@ export default function Boards() {
                   const booster = { key, ...def };
                   const count = boosters[booster.key] || 0;
                   const isUsed = usedBoosters[booster.key];
-                  const isDisabled = count <= 0 || isUsed || playingAs !== currentPlayerIndex;
+                  const isDisabled = count <= 0 || isUsed || (booster.key !== 'spy' && playingAs !== currentPlayerIndex);
                   const isActive = boosterMode === booster.key;
 
                   return (
@@ -3032,7 +3132,8 @@ export default function Boards() {
               </div>
             )}
 
-
+            {/* On Mobile, render the Hand Container Panel here inside side-panels */}
+            {isMobile && renderHandDeck()}
 
             {/* Quit & Rules Buttons Row */}
             <div className="action-buttons-row" style={{ display: "flex", gap: "8px", marginTop: "auto", flexShrink: 0 }}>
@@ -3071,76 +3172,8 @@ export default function Boards() {
             </div>
           </div>
         </div>
-        {/* Hand Container Panel */}
-        <div style={{ position: 'relative', width: '100%', maxWidth: '600px', margin: '10px auto 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-          <PlayerDeck
-            socket={socket}
-            playerHand={yourHand}
-            selectCard={selectCard}
-            setSelectCard={setSelectCard}
-            setHoveredCard={setHoveredCard}
-            currentPlayerIndex={currentPlayerIndex}
-            playingAs={playingAs}
-            setHoveredCardId={setHoveredCardId}
-            cards={cards}
-            roomId={room}
-            boosterMode={boosterMode}
-            setBoosterMode={setBoosterMode}
-            setBoosters={setBoosters}
-            setUsedBoosters={setUsedBoosters}
-            players={playersList}
-          />
-          {spyOpponentHand && (
-            <div style={{
-              position: 'absolute',
-              top: 0, left: 0, right: 0, bottom: 0,
-              background: 'rgba(10, 7, 26, 0.95)',
-              backdropFilter: 'blur(8px)',
-              borderRadius: '16px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '12px',
-              border: '2px solid #10d9d2',
-              boxShadow: '0 0 20px rgba(16, 217, 210, 0.4)',
-              zIndex: 10,
-              animation: 'fadeIn 0.2s ease-out'
-            }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: '900', color: '#10d9d2', letterSpacing: '1px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                🔍 SPYING OPPONENT'S HAND ({spyTimeLeft.toFixed(1)}s)
-              </div>
-              
-              {/* Progress Bar */}
-              <div style={{ width: '80%', height: '5px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden', marginBottom: '12px' }}>
-                <div style={{
-                  width: `${(spyTimeLeft / 3) * 100}%`,
-                  height: '100%',
-                  background: 'linear-gradient(90deg, #10d9d2, #00f2fe)',
-                  boxShadow: '0 0 8px #10d9d2',
-                  transition: 'width 0.1s linear'
-                }} />
-              </div>
-
-              {/* Opponent's cards */}
-              <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                {spyOpponentHand.map((card, idx) => (
-                  <img 
-                    key={idx} 
-                    src={card.img && ("/" + card.img.replace('../', ''))} 
-                    alt="Opponent Card"
-                    style={{
-                      height: '52px',
-                      borderRadius: '4px',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        {/* On Desktop, render the Hand Container Panel below the layout */}
+        {!isMobile && renderHandDeck()}
       </div>
       {voiceChatEnabled && playersList.length > 0 && (
         <VoiceChatControls
