@@ -1,4 +1,5 @@
 import React from "react";
+import Swal from "sweetalert2";
 
 export default function SettingsModal({
   isOpen,
@@ -14,6 +15,45 @@ export default function SettingsModal({
   onQuit
 }) {
   if (!isOpen) return null;
+
+  const handleRedeemCode = () => {
+    Swal.fire({
+      title: "Redeem Code",
+      input: "text",
+      inputPlaceholder: "Enter code here",
+      showCancelButton: true,
+      confirmButtonText: "Redeem",
+      confirmButtonColor: "var(--accent-cyan)",
+      background: '#1a123a',
+      color: '#fff'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const code = result.value ? result.value.trim().toUpperCase() : "";
+        if (code === "SARWAN5M" || code === "COINS5M" || code === "489976") {
+          localStorage.setItem("seq_coins", "5000000");
+          Swal.fire({
+            title: "Success!",
+            text: "Dev Cheat Activated: 5,000,000 coins added!",
+            icon: "success",
+            background: '#1a123a',
+            color: '#fff',
+            confirmButtonColor: "var(--accent-cyan)"
+          }).then(() => {
+            window.location.reload();
+          });
+        } else {
+          Swal.fire({
+            title: "Invalid Code",
+            text: "The code you entered is invalid.",
+            icon: "error",
+            background: '#1a123a',
+            color: '#fff',
+            confirmButtonColor: "var(--accent-cyan)"
+          });
+        }
+      }
+    });
+  };
 
   return (
     <div style={{
@@ -225,6 +265,22 @@ export default function SettingsModal({
           Cloud Backup / Restore
         </button>
  
+        <button 
+          onClick={handleRedeemCode}
+          style={{
+            background: "linear-gradient(90deg, #4c1d95 0%, #31105e 100%)",
+            border: "1px solid rgba(124, 58, 237, 0.4)",
+            color: "#e4ca56",
+            padding: "12px",
+            borderRadius: "30px",
+            fontWeight: "800",
+            fontSize: "0.95rem",
+            cursor: "pointer"
+          }}
+        >
+          Redeem Code
+        </button>
+
         <button 
           onClick={onRateUs}
           className="btn-gold-glow" 
