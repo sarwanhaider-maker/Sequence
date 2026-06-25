@@ -2067,11 +2067,35 @@ export default function Boards() {
 
               {activeTab === "FRIENDS" && (
                 <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "18px", animation: "fadeIn 0.35s ease" }}>
-                  <div style={{ textAlign: "center", marginBottom: "4px" }}>
-                    <h2 style={{ fontFamily: "'Cinzel', serif", fontSize: "1.6rem", fontWeight: "900", color: "#e4ca56", margin: 0, letterSpacing: "2.5px" }}>PLAY WITH FRIENDS</h2>
-                    <p style={{ color: "#b0a9c9", fontSize: "0.85rem", fontWeight: "600", margin: "4px 0 0 0" }}>
-                      Create private rooms and play together!
-                    </p>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", marginBottom: "4px" }}>
+                    <button 
+                      onClick={() => setActiveTab("HOME")}
+                      style={{
+                        background: "rgba(255,255,255,0.08)",
+                        border: "1px solid rgba(255,255,255,0.15)",
+                        color: "white",
+                        width: "36px",
+                        height: "36px",
+                        borderRadius: "50%",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "1.1rem",
+                        fontWeight: "bold",
+                        zIndex: 10,
+                        padding: 0
+                      }}
+                    >
+                      ←
+                    </button>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flex: 1 }}>
+                      <h2 style={{ fontFamily: "'Cinzel', serif", fontSize: "1.5rem", fontWeight: "900", color: "#e4ca56", margin: 0, letterSpacing: "2.5px" }}>PLAY WITH FRIENDS</h2>
+                      <p style={{ color: "#b0a9c9", fontSize: "0.78rem", fontWeight: "600", margin: "2px 0 0 0" }}>
+                        Create private rooms and play together!
+                      </p>
+                    </div>
+                    <div style={{ width: "36px" }}></div>
                   </div>
 
                   <div className="glass-panel" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>

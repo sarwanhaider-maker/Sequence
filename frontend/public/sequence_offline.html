@@ -763,7 +763,19 @@
 
   <!-- SCREEN 1: Setup Screen -->
   <div id="setup-screen" class="screen active">
-    <h1 style="font-family: 'Cinzel', serif; font-size: 2.2rem; font-weight: 800; color: white; text-shadow: 0 0 15px rgba(16, 217, 210, 0.5); margin: 0 0 20px 0; letter-spacing: 4px; text-align: center; flex-shrink: 0;">SEQUENCE BATTLE</h1>
+    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; margin-bottom: 20px; flex-shrink: 0; box-sizing: border-box; padding: 0 10px;">
+      <button 
+        type="button"
+        onclick="window.parent.location.href = '/';"
+        style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: white; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: bold; z-index: 10; padding: 0; line-height: 1; outline: none; transition: transform 0.2s;"
+        onmouseover="this.style.transform='scale(1.1)'"
+        onmouseout="this.style.transform='scale(1)'"
+      >
+        ←
+      </button>
+      <h1 style="font-family: 'Cinzel', serif; font-size: 1.8rem; font-weight: 800; color: white; text-shadow: 0 0 15px rgba(16, 217, 210, 0.5); margin: 0; letter-spacing: 2px; text-align: center;">SEQUENCE BATTLE</h1>
+      <div style="width: 36px;"></div>
+    </div>
     <div class="setup-container" style="margin-top: 0; max-height: 85vh; overflow-y: auto;">
       <h2>Offline Game Settings</h2>
       
@@ -772,40 +784,68 @@
         <input type="text" id="player-name" value="Player 1" placeholder="Enter name">
       </div>
 
-      <div class="form-group" style="margin-bottom: 20px; text-align: left;">
-        <label style="color: #b0a9c9; font-weight: 600; margin-bottom: 8px; display: block;">Select Game Mode</label>
-        <div class="mode-options-container" style="display: flex; flex-direction: column; gap: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px;">
-          
-          <label class="mode-option" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: rgba(255,255,255,0.02); cursor: pointer; border: 1px solid transparent; margin: 0;">
-            <input type="radio" name="game-mode" value="2_players" checked style="accent-color: var(--accent-cyan); width: 18px; height: 18px;">
-            <span style="color: white; font-weight: 600; font-size: 0.9rem;">2 Players (Goal: 2 seq)</span>
-          </label>
-          
-          <label class="mode-option" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: rgba(255,255,255,0.02); cursor: pointer; border: 1px solid transparent; margin: 0;">
-            <input type="radio" name="game-mode" value="3_players" style="accent-color: var(--accent-cyan); width: 18px; height: 18px;">
-            <span style="color: white; font-weight: 600; font-size: 0.9rem;">3 Players (Goal: 1 seq)</span>
-          </label>
-          
-          <label class="mode-option" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: rgba(255,255,255,0.02); cursor: pointer; border: 1px solid transparent; margin: 0;">
-            <input type="radio" name="game-mode" value="4_players" style="accent-color: var(--accent-cyan); width: 18px; height: 18px;">
-            <span style="color: white; font-weight: 600; font-size: 0.9rem;">4 Players (Goal: 2 seq)</span>
-          </label>
-          
-          <label class="mode-option" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: rgba(255,255,255,0.02); cursor: pointer; border: 1px solid transparent; margin: 0;">
-            <input type="radio" name="game-mode" value="6_players_3_teams" style="accent-color: var(--accent-cyan); width: 18px; height: 18px;">
-            <span style="color: white; font-weight: 600; font-size: 0.9rem;">6 Players / 3 Teams (Goal: 1 seq)</span>
-          </label>
-          
-          <label class="mode-option" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: rgba(255,255,255,0.02); cursor: pointer; border: 1px solid transparent; margin: 0;">
-            <input type="radio" name="game-mode" value="6_players_2_teams" style="accent-color: var(--accent-cyan); width: 18px; height: 18px;">
-            <span style="color: white; font-weight: 600; font-size: 0.9rem;">6 Players / 2 Teams (Goal: 2 seq)</span>
-          </label>
-          
-          <label class="mode-option" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: rgba(255,255,255,0.02); cursor: pointer; border: 1px solid transparent; margin: 0;">
-            <input type="radio" name="game-mode" value="8_players" style="accent-color: var(--accent-cyan); width: 18px; height: 18px;">
-            <span style="color: white; font-weight: 600; font-size: 0.9rem;">8 Players (Goal: 2 seq)</span>
-          </label>
+      <div class="form-group" style="margin-bottom: 25px; text-align: center; display: flex; flex-direction: column; align-items: center; width: 100%;">
+        <label style="color: #b0a9c9; font-weight: 600; margin-bottom: 12px; display: block; align-self: flex-start;">Select Game Mode</label>
+        
+        <!-- Hidden Inputs for Compatibility -->
+        <div style="display: none;">
+          <input type="radio" name="game-mode" value="2_players" id="radio-2_players" checked>
+          <input type="radio" name="game-mode" value="3_players" id="radio-3_players">
+          <input type="radio" name="game-mode" value="4_players" id="radio-4_players">
+          <input type="radio" name="game-mode" value="6_players_3_teams" id="radio-6_players_3_teams">
+          <input type="radio" name="game-mode" value="6_players_2_teams" id="radio-6_players_2_teams">
+          <input type="radio" name="game-mode" value="8_players" id="radio-8_players">
+        </div>
 
+        <!-- Carousel Container -->
+        <div class="carousel-container" style="display: flex; align-items: center; justify-content: center; width: 100%; gap: 10px; margin-top: 10px; position: relative;">
+          <!-- Left Arrow -->
+          <button type="button" id="btn-carousel-prev" style="background: rgba(124, 58, 237, 0.2); border: 1px solid rgba(124, 58, 237, 0.4); color: #10d9d2; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; font-weight: 900; display: flex; align-items: center; justify-content: center; outline: none; transition: transform 0.2s; padding: 0; line-height: 1;">
+            ‹
+          </button>
+
+          <!-- Card Detail -->
+          <div id="carousel-card" style="flex: 1; max-width: 240px; background: linear-gradient(135deg, #322168 0%, #150a32 100%); border: 2.5px solid #10d9d2; border-radius: 20px; padding: 20px 16px; display: flex; flex-direction: column; align-items: center; gap: 14px; box-shadow: 0 10px 30px rgba(16, 217, 210, 0.25); position: relative; user-select: none; transition: all 0.3s ease; box-sizing: border-box;">
+            <!-- Ribbon Pill -->
+            <div id="carousel-ribbon" style="background: linear-gradient(90deg, #4c1d95, #7c3aed); border: 1px solid rgba(16, 217, 210, 0.5); border-radius: 20px; padding: 4px 18px; font-size: 0.85rem; font-weight: 800; color: white; position: absolute; top: -14px; left: 50%; transform: translateX(-50%); box-shadow: 0 4px 10px rgba(0,0,0,0.3); white-space: nowrap;">
+              One Vs One
+            </div>
+
+            <!-- Players Limit capsule -->
+            <div style="background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; width: 100%; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 8px; box-sizing: border-box;">
+              <span style="font-size: 0.68rem; font-weight: 800; color: #b0a9c9; letter-spacing: 1px; text-transform: uppercase;">PLAYERS LIMIT</span>
+              <span id="carousel-players" style="font-size: 1.4rem; font-weight: 900; color: #ecc94b; line-height: 1;">2 Players</span>
+            </div>
+
+            <!-- Details grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; box-sizing: border-box;">
+              <div style="background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255,255,255,0.04); border-radius: 12px; padding: 6px; display: flex; flex-direction: column; align-items: center; gap: 2px;">
+                <span style="font-size: 0.58rem; font-weight: 700; color: #b0a9c9;">TIME PER TURN</span>
+                <span style="font-size: 0.78rem; font-weight: 800; color: #e2e8f0;">⏳ 60 sec</span>
+              </div>
+              <div style="background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255,255,255,0.04); border-radius: 12px; padding: 6px; display: flex; flex-direction: column; align-items: center; gap: 2px;">
+                <span style="font-size: 0.58rem; font-weight: 700; color: #b0a9c9;">SEQUENCES</span>
+                <span id="carousel-sequences" style="font-size: 0.78rem; font-weight: 800; color: #ecc94b;"># 2</span>
+              </div>
+            </div>
+
+            <!-- Board Type row -->
+            <div style="display: flex; justify-content: space-between; width: 100%; font-size: 0.75rem; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px; box-sizing: border-box;">
+              <span style="color: #b0a9c9;">BOARD TYPE :</span>
+              <span id="carousel-board" style="color: #10d9d2; font-weight: 800;">STANDARD</span>
+            </div>
+
+            <!-- Team Format row -->
+            <div style="display: flex; justify-content: space-between; width: 100%; font-size: 0.75rem; font-weight: 700; box-sizing: border-box;">
+              <span style="color: #b0a9c9;">TEAM FORMAT :</span>
+              <span id="carousel-teamformat" style="color: #ecc94b; font-weight: 800;">Solo Match (1v1)</span>
+            </div>
+          </div>
+
+          <!-- Right Arrow -->
+          <button type="button" id="btn-carousel-next" style="background: rgba(124, 58, 237, 0.2); border: 1px solid rgba(124, 58, 237, 0.4); color: #10d9d2; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; font-weight: 900; display: flex; align-items: center; justify-content: center; outline: none; transition: transform 0.2s; padding: 0; line-height: 1;">
+            ›
+          </button>
         </div>
       </div>
       
@@ -2050,6 +2090,68 @@
         splash.remove();
       }
       localStorage.setItem('sequence_wizard_seen', 'true');
+
+      // Offline Game Settings Carousel Logic
+      const OFFLINE_MODES = [
+        { value: "2_players", name: "One Vs One", playersCount: "2 Players", seq: 2, teamFormat: "Solo Match (1v1)", board: "STANDARD" },
+        { value: "3_players", name: "One Vs One Vs One", playersCount: "3 Players", seq: 1, teamFormat: "Solo Match (1v1v1)", board: "STANDARD" },
+        { value: "4_players", name: "Two Teams", playersCount: "4 Players", seq: 2, teamFormat: "2 Teams (2v2)", board: "STANDARD" },
+        { value: "6_players_3_teams", name: "Three Teams", playersCount: "6 Players", seq: 1, teamFormat: "3 Teams (2v2v2)", board: "STANDARD" },
+        { value: "6_players_2_teams", name: "Two Teams", playersCount: "6 Players", seq: 2, teamFormat: "2 Teams (3v3)", board: "STANDARD" },
+        { value: "8_players", name: "Two Teams", playersCount: "8 Players", seq: 2, teamFormat: "2 Teams (4v4)", board: "STANDARD" }
+      ];
+      let currentModeIdx = 0;
+
+      function updateOfflineCarousel() {
+        const mode = OFFLINE_MODES[currentModeIdx];
+        document.getElementById('carousel-ribbon').innerText = mode.name;
+        document.getElementById('carousel-players').innerText = mode.playersCount;
+        document.getElementById('carousel-sequences').innerText = "# " + mode.seq;
+        document.getElementById('carousel-teamformat').innerText = mode.teamFormat;
+        document.getElementById('carousel-board').innerText = mode.board;
+
+        const radio = document.getElementById('radio-' + mode.value);
+        if (radio) {
+          radio.checked = true;
+        }
+      }
+
+      const btnPrev = document.getElementById('btn-carousel-prev');
+      const btnNext = document.getElementById('btn-carousel-next');
+
+      if (btnPrev && btnNext) {
+        btnPrev.addEventListener('click', () => {
+          currentModeIdx = (currentModeIdx - 1 + OFFLINE_MODES.length) % OFFLINE_MODES.length;
+          updateOfflineCarousel();
+        });
+
+        btnNext.addEventListener('click', () => {
+          currentModeIdx = (currentModeIdx + 1) % OFFLINE_MODES.length;
+          updateOfflineCarousel();
+        });
+
+        // Touch swipe support
+        let carouselTouchStartX = null;
+        const cardEl = document.getElementById('carousel-card');
+        if (cardEl) {
+          cardEl.addEventListener('touchstart', (e) => {
+            carouselTouchStartX = e.touches[0].clientX;
+          });
+          cardEl.addEventListener('touchend', (e) => {
+            if (carouselTouchStartX === null) return;
+            const diffX = carouselTouchStartX - e.changedTouches[0].clientX;
+            const swipeThreshold = 55;
+            if (diffX > swipeThreshold) {
+              currentModeIdx = (currentModeIdx + 1) % OFFLINE_MODES.length;
+              updateOfflineCarousel();
+            } else if (diffX < -swipeThreshold) {
+              currentModeIdx = (currentModeIdx - 1 + OFFLINE_MODES.length) % OFFLINE_MODES.length;
+              updateOfflineCarousel();
+            }
+            carouselTouchStartX = null;
+          });
+        }
+      }
     });
 
     let currentWizardStep = 1;
