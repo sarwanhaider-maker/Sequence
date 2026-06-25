@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const mongoose = require("mongoose");
 const { createServer } = require('http');
 const { Server } = require('socket.io');
@@ -15,6 +16,7 @@ const config = require('./config/config');
 dotenv.config();
 
 const app = express();
+app.use(cors({ origin: '*', methods: ['GET','POST','OPTIONS'] })); // Allow browser access to REST endpoints
 app.use(express.json());
 
 // --- Admin Analytics: in-memory daily player tracker ---
