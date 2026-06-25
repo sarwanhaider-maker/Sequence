@@ -2027,8 +2027,7 @@ export default function Boards() {
           borderRadius: "24px",
           border: "2px solid rgba(255, 255, 255, 0.05)",
           boxSizing: "border-box",
-          height: "calc(100dvh - 10px)",
-          minHeight: "calc(100vh - 10px)",
+          height: "100%",
           overflow: "hidden"
         }}
       >
@@ -2401,8 +2400,7 @@ export default function Boards() {
           maxWidth: "420px", 
           margin: "0 auto", 
           borderRadius: "24px",
-          height: "calc(100dvh - 10px)",
-          minHeight: "calc(100vh - 10px)",
+          height: "100%",
           overflow: "hidden"
         }}
       >
@@ -2451,8 +2449,7 @@ export default function Boards() {
           maxWidth: "420px", 
           margin: "0 auto", 
           borderRadius: "24px",
-          height: "calc(100dvh - 10px)",
-          minHeight: "calc(100vh - 10px)",
+          height: "100%",
           overflow: "hidden"
         }}
       >
