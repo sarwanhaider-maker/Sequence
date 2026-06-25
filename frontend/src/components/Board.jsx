@@ -2017,7 +2017,7 @@ export default function Boards() {
 
     return (
       <div 
-        className="lobby-suit-bg w-full min-h-screen flex flex-col justify-between"
+        className="lobby-suit-bg w-full flex flex-col justify-between"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         style={{
@@ -2026,7 +2026,10 @@ export default function Boards() {
           boxShadow: "0 0 40px rgba(0,0,0,0.8)",
           borderRadius: "24px",
           border: "2px solid rgba(255, 255, 255, 0.05)",
-          boxSizing: "border-box"
+          boxSizing: "border-box",
+          height: "calc(100dvh - 10px)",
+          minHeight: "calc(100vh - 10px)",
+          overflow: "hidden"
         }}
       >
         {renderWizard()}
@@ -2392,7 +2395,17 @@ export default function Boards() {
   // 3. Waiting for Quick Match
   if (playOnline && playersList.length === 0 && !inCustomGame && isWaitingForMatch) {
     return (
-      <div className="lobby-suit-bg w-full min-h-screen flex flex-col items-center justify-center text-white" style={{ maxWidth: "420px", margin: "0 auto", borderRadius: "24px" }}>
+      <div 
+        className="lobby-suit-bg w-full flex flex-col items-center justify-center text-white" 
+        style={{ 
+          maxWidth: "420px", 
+          margin: "0 auto", 
+          borderRadius: "24px",
+          height: "calc(100dvh - 10px)",
+          minHeight: "calc(100vh - 10px)",
+          overflow: "hidden"
+        }}
+      >
         <div className="glass-panel" style={{ padding: "40px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", maxWidth: "300px", textAlign: "center" }}>
           <div style={{ fontSize: "3rem", animation: "pulse 1.5s infinite" }}>🌐</div>
           <h3 style={{ fontFamily: "'Cinzel', serif", fontSize: "1.25rem", color: "#e4ca56", margin: 0, fontWeight: "900", letterSpacing: "1px" }}>MATCHMAKING</h3>
@@ -2432,7 +2445,17 @@ export default function Boards() {
     const isHost = connectedPlayers[0] === playerName;
 
     return (
-      <div className="lobby-suit-bg w-full min-h-screen flex flex-col items-center justify-center text-white p-6" style={{ maxWidth: "420px", margin: "0 auto", borderRadius: "24px" }}>
+      <div 
+        className="lobby-suit-bg w-full flex flex-col items-center justify-center text-white p-6" 
+        style={{ 
+          maxWidth: "420px", 
+          margin: "0 auto", 
+          borderRadius: "24px",
+          height: "calc(100dvh - 10px)",
+          minHeight: "calc(100vh - 10px)",
+          overflow: "hidden"
+        }}
+      >
         <div className="glass-panel w-full" style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "16px", textAlign: "center" }}>
           <h3 style={{ fontFamily: "'Cinzel', serif", fontSize: "1.3rem", color: "#ecc94b", margin: 0, fontWeight: "900", letterSpacing: "1px" }}>
             PRIVATE LOBBY
