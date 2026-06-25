@@ -277,6 +277,13 @@ export default function Store({ onBuyCoins, playerCoins }) {
         }}>
           {[
             {
+              key: "reroll",
+              name: "Card Redraw",
+              desc: "Swap any card in your hand with a random card from the remaining deck during your turn.",
+              price: 1500,
+              icon: "🔄"
+            },
+            {
               key: "shield",
               name: "Chip Guard",
               desc: "Shield one of your chips on the board from being removed by opponent's One-Eyed Jacks.",
@@ -289,13 +296,6 @@ export default function Store({ onBuyCoins, playerCoins }) {
               desc: "Temporarily turn one of your hand cards into a Two-Eyed Jack (Wild Card) for this turn.",
               price: 5000,
               icon: "🃏"
-            },
-            {
-              key: "reroll",
-              name: "Card Redraw",
-              desc: "Swap any card in your hand with a random card from the remaining deck during your turn.",
-              price: 1500,
-              icon: "🔄"
             }
           ].map((booster) => (
             <div

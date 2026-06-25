@@ -469,8 +469,8 @@ export default function Boards() {
   const [playersList, setPlayersList] = useState([]);
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
   const [connectedPlayers, setConnectedPlayers] = useState([]);
-  const [playerLimit, setPlayerLimit] = useState(8);
-  const [gameMode, setGameMode] = useState("8_players");
+  const [playerLimit, setPlayerLimit] = useState(2);
+  const [gameMode, setGameMode] = useState("2_players");
   const [friendsTouchStart, setFriendsTouchStart] = useState(null);
   const [friendsTouchEnd, setFriendsTouchEnd] = useState(null);
   const [turnTimeLeft, setTurnTimeLeft] = useState(60);
