@@ -3032,76 +3032,7 @@ export default function Boards() {
               </div>
             )}
 
-            {/* Hand Container Panel */}
-            <div style={{ position: 'relative', width: '100%' }}>
-              <PlayerDeck
-                socket={socket}
-                playerHand={yourHand}
-                selectCard={selectCard}
-                setSelectCard={setSelectCard}
-                setHoveredCard={setHoveredCard}
-                currentPlayerIndex={currentPlayerIndex}
-                playingAs={playingAs}
-                setHoveredCardId={setHoveredCardId}
-                cards={cards}
-                roomId={room}
-                boosterMode={boosterMode}
-                setBoosterMode={setBoosterMode}
-                setBoosters={setBoosters}
-                setUsedBoosters={setUsedBoosters}
-                players={playersList}
-              />
-              {spyOpponentHand && (
-                <div style={{
-                  position: 'absolute',
-                  top: 0, left: 0, right: 0, bottom: 0,
-                  background: 'rgba(10, 7, 26, 0.95)',
-                  backdropFilter: 'blur(8px)',
-                  borderRadius: '16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '12px',
-                  border: '2px solid #10d9d2',
-                  boxShadow: '0 0 20px rgba(16, 217, 210, 0.4)',
-                  zIndex: 10,
-                  animation: 'fadeIn 0.2s ease-out'
-                }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: '900', color: '#10d9d2', letterSpacing: '1px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    🔍 SPYING OPPONENT'S HAND ({spyTimeLeft.toFixed(1)}s)
-                  </div>
-                  
-                  {/* Progress Bar */}
-                  <div style={{ width: '80%', height: '5px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden', marginBottom: '12px' }}>
-                    <div style={{
-                      width: `${(spyTimeLeft / 3) * 100}%`,
-                      height: '100%',
-                      background: 'linear-gradient(90deg, #10d9d2, #00f2fe)',
-                      boxShadow: '0 0 8px #10d9d2',
-                      transition: 'width 0.1s linear'
-                    }} />
-                  </div>
 
-                  {/* Opponent's cards */}
-                  <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                    {spyOpponentHand.map((card, idx) => (
-                      <img 
-                        key={idx} 
-                        src={card.img && ("/" + card.img.replace('../', ''))} 
-                        alt="Opponent Card"
-                        style={{
-                          height: '52px',
-                          borderRadius: '4px',
-                          border: '1px solid rgba(255,255,255,0.2)',
-                          boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
 
             {/* Quit & Rules Buttons Row */}
             <div className="action-buttons-row" style={{ display: "flex", gap: "8px", marginTop: "auto", flexShrink: 0 }}>
@@ -3139,6 +3070,76 @@ export default function Boards() {
               </button>
             </div>
           </div>
+        </div>
+        {/* Hand Container Panel */}
+        <div style={{ position: 'relative', width: '100%', maxWidth: '600px', margin: '10px auto 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+          <PlayerDeck
+            socket={socket}
+            playerHand={yourHand}
+            selectCard={selectCard}
+            setSelectCard={setSelectCard}
+            setHoveredCard={setHoveredCard}
+            currentPlayerIndex={currentPlayerIndex}
+            playingAs={playingAs}
+            setHoveredCardId={setHoveredCardId}
+            cards={cards}
+            roomId={room}
+            boosterMode={boosterMode}
+            setBoosterMode={setBoosterMode}
+            setBoosters={setBoosters}
+            setUsedBoosters={setUsedBoosters}
+            players={playersList}
+          />
+          {spyOpponentHand && (
+            <div style={{
+              position: 'absolute',
+              top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(10, 7, 26, 0.95)',
+              backdropFilter: 'blur(8px)',
+              borderRadius: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '12px',
+              border: '2px solid #10d9d2',
+              boxShadow: '0 0 20px rgba(16, 217, 210, 0.4)',
+              zIndex: 10,
+              animation: 'fadeIn 0.2s ease-out'
+            }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: '900', color: '#10d9d2', letterSpacing: '1px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                🔍 SPYING OPPONENT'S HAND ({spyTimeLeft.toFixed(1)}s)
+              </div>
+              
+              {/* Progress Bar */}
+              <div style={{ width: '80%', height: '5px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden', marginBottom: '12px' }}>
+                <div style={{
+                  width: `${(spyTimeLeft / 3) * 100}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #10d9d2, #00f2fe)',
+                  boxShadow: '0 0 8px #10d9d2',
+                  transition: 'width 0.1s linear'
+                }} />
+              </div>
+
+              {/* Opponent's cards */}
+              <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                {spyOpponentHand.map((card, idx) => (
+                  <img 
+                    key={idx} 
+                    src={card.img && ("/" + card.img.replace('../', ''))} 
+                    alt="Opponent Card"
+                    style={{
+                      height: '52px',
+                      borderRadius: '4px',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
       {voiceChatEnabled && playersList.length > 0 && (

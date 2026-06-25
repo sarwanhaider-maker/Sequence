@@ -324,13 +324,14 @@ body {
 
 /* Hand Container */
 .hand-container {
-  width: 100%;
+  width: auto;
+  max-width: 600px;
   background: var(--panel-bg);
   backdrop-filter: blur(15px);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 8px 10px;
-  margin-top: 0;
+  padding: 8px 16px;
+  margin: 10px auto 0 auto;
   box-shadow: 0 10px 25px rgba(0,0,0,0.3);
   display: flex;
   flex-direction: column;
@@ -350,9 +351,9 @@ body {
 .hand-cards {
   display: flex;
   justify-content: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  max-width: 260px;
+  gap: 8px;
+  flex-wrap: nowrap;
+  max-width: none;
 }
 
 .hand-cards img {
