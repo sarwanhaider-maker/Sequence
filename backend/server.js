@@ -15,8 +15,71 @@ const config = require('./config/config');
 dotenv.config();
 
 const app = express();
+app.use(express.json());
+
+// --- Admin Analytics: in-memory daily player tracker ---
+const dailyStats = new Map(); // key: 'YYYY-MM-DD', value: Set of playerNames
+const sessionLog = []; // [{name, joinedAt}] — rolling list of recent connections
+
+function getTodayKey() {
+    return new Date().toISOString().split('T')[0];
+}
+
+function recordPlayerSeen(playerName) {
+    if (!playerName || playerName.startsWith('bot_')) return;
+    const today = getTodayKey();
+    if (!dailyStats.has(today)) dailyStats.set(today, new Set());
+    const isNew = !dailyStats.get(today).has(playerName);
+    dailyStats.get(today).add(playerName);
+    if (isNew) {
+        sessionLog.unshift({ name: playerName, joinedAt: new Date().toISOString() });
+        if (sessionLog.length > 200) sessionLog.pop(); // cap log at 200 entries
+    }
+}
+
 app.get('/health', (req, res) => {
     res.status(200).send('OK');
+});
+
+// Admin-only stats endpoint (local use only)
+app.get('/admin/stats', async (req, res) => {
+    try {
+        const activeRooms = await Room.find({});
+        const activeGames = await Game.find({});
+
+        // Build list of currently connected player names
+        const livePlayerNames = new Set();
+        activeGames.forEach(game => {
+            game.players.forEach(p => {
+                if (p.name && !p.name.startsWith('Bot') && !p.socketId?.startsWith('bot_')) {
+                    livePlayerNames.add(p.name);
+                }
+            });
+        });
+
+        // Build daily breakdown for last 7 days
+        const last7Days = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const key = d.toISOString().split('T')[0];
+            last7Days.push({ date: key, players: dailyStats.has(key) ? dailyStats.get(key).size : 0 });
+        }
+
+        res.json({
+            timestamp: new Date().toISOString(),
+            liveNow: livePlayerNames.size,
+            livePlayerNames: Array.from(livePlayerNames),
+            activeRooms: activeRooms.length,
+            activeGames: activeGames.length,
+            todayTotal: dailyStats.has(getTodayKey()) ? dailyStats.get(getTodayKey()).size : 0,
+            last7Days,
+            recentSessions: sessionLog.slice(0, 50)
+        });
+    } catch (err) {
+        console.error('Admin stats error:', err);
+        res.status(500).json({ error: err.message });
+    }
 });
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -477,6 +540,7 @@ async function startGameForRoom(roomId, playerSockets, playerNames, gameMode) {
 
         newGame.players.forEach(player => {
             if (!isBot(player.socketId)) {
+                recordPlayerSeen(player.name); // Track for admin analytics
                 io.to(player.socketId).emit('OpponentFound', {
                     yourHand: player.hand,
                     playingAs: player.index,
