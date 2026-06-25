@@ -11,6 +11,7 @@ const { getBotMove, isBot } = require('./controllers/botController');
 const Game = require('./models/Game');
 const Room = require('./models/room');
 const Session = require('./models/session');
+const PlayerStat = require('./models/PlayerStat');
 const config = require('./config/config');
 
 dotenv.config();
@@ -19,23 +20,24 @@ const app = express();
 app.use(cors({ origin: '*', methods: ['GET','POST','OPTIONS'] })); // Allow browser access to REST endpoints
 app.use(express.json());
 
-// --- Admin Analytics: in-memory daily player tracker ---
-const dailyStats = new Map(); // key: 'YYYY-MM-DD', value: Set of playerNames
-const sessionLog = []; // [{name, joinedAt}] — rolling list of recent connections
-
+// --- Admin Analytics: persistent DB-backed player tracker ---
 function getTodayKey() {
     return new Date().toISOString().split('T')[0];
 }
 
-function recordPlayerSeen(playerName) {
-    if (!playerName || playerName.startsWith('bot_')) return;
+// Save player session to MongoDB (upsert — one record per player per day)
+async function recordPlayerSeen(playerName) {
+    if (!playerName || playerName.toLowerCase().startsWith('bot')) return;
     const today = getTodayKey();
-    if (!dailyStats.has(today)) dailyStats.set(today, new Set());
-    const isNew = !dailyStats.get(today).has(playerName);
-    dailyStats.get(today).add(playerName);
-    if (isNew) {
-        sessionLog.unshift({ name: playerName, joinedAt: new Date().toISOString() });
-        if (sessionLog.length > 200) sessionLog.pop(); // cap log at 200 entries
+    try {
+        await PlayerStat.findOneAndUpdate(
+            { playerName, date: today },
+            { $setOnInsert: { playerName, date: today, firstSeenAt: new Date() } },
+            { upsert: true, new: true }
+        );
+    } catch (err) {
+        // Ignore duplicate key errors (race condition), log others
+        if (err.code !== 11000) console.error('recordPlayerSeen error:', err);
     }
 }
 
@@ -43,30 +45,62 @@ app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
-// Admin-only stats endpoint (local use only)
+// Admin-only stats endpoint — all data from MongoDB (survives server restarts)
 app.get('/admin/stats', async (req, res) => {
     try {
-        const activeRooms = await Room.find({});
-        const activeGames = await Game.find({});
+        const today = getTodayKey();
+        const [activeRooms, activeGames] = await Promise.all([
+            Room.find({}),
+            Game.find({})
+        ]);
 
-        // Build list of currently connected player names
+        // Live players: human players currently in an active game
         const livePlayerNames = new Set();
         activeGames.forEach(game => {
             game.players.forEach(p => {
-                if (p.name && !p.name.startsWith('Bot') && !p.socketId?.startsWith('bot_')) {
+                if (p.name && !p.name.toLowerCase().startsWith('bot') && !p.socketId?.startsWith('bot_')) {
                     livePlayerNames.add(p.name);
                 }
             });
         });
 
-        // Build daily breakdown for last 7 days
+        // Today's unique player count from DB
+        const todayTotal = await PlayerStat.countDocuments({ date: today });
+
+        // Last 7 days — one DB query using aggregation
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+        const sevenDaysAgoKey = sevenDaysAgo.toISOString().split('T')[0];
+
+        const dayCounts = await PlayerStat.aggregate([
+            { $match: { date: { $gte: sevenDaysAgoKey } } },
+            { $group: { _id: '$date', players: { $sum: 1 } } },
+            { $sort: { _id: 1 } }
+        ]);
+
+        // Build full 7-day array (fill missing days with 0)
+        const dayCountMap = {};
+        dayCounts.forEach(d => { dayCountMap[d._id] = d.players; });
         const last7Days = [];
         for (let i = 6; i >= 0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
             const key = d.toISOString().split('T')[0];
-            last7Days.push({ date: key, players: dailyStats.has(key) ? dailyStats.get(key).size : 0 });
+            last7Days.push({ date: key, players: dayCountMap[key] || 0 });
         }
+
+        // Recent 50 sessions from DB, newest first
+        const recentDocs = await PlayerStat.find({})
+            .sort({ firstSeenAt: -1 })
+            .limit(50)
+            .lean();
+        const recentSessions = recentDocs.map(d => ({
+            name: d.playerName,
+            joinedAt: d.firstSeenAt
+        }));
+
+        // All-time total unique players
+        const allTimeTotal = await PlayerStat.distinct('playerName').then(arr => arr.length);
 
         res.json({
             timestamp: new Date().toISOString(),
@@ -74,9 +108,10 @@ app.get('/admin/stats', async (req, res) => {
             livePlayerNames: Array.from(livePlayerNames),
             activeRooms: activeRooms.length,
             activeGames: activeGames.length,
-            todayTotal: dailyStats.has(getTodayKey()) ? dailyStats.get(getTodayKey()).size : 0,
+            todayTotal,
+            allTimeTotal,
             last7Days,
-            recentSessions: sessionLog.slice(0, 50)
+            recentSessions
         });
     } catch (err) {
         console.error('Admin stats error:', err);

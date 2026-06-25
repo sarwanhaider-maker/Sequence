@@ -131,6 +131,12 @@
     <div class="stat-value" id="active-games">&mdash;</div>
     <div class="stat-sub">Ongoing matches</div>
   </div>
+  <div class="stat-card" style="--accent:#f472b6">
+    <div class="stat-icon">&#127775;</div>
+    <div class="stat-label">All-Time Players</div>
+    <div class="stat-value" id="all-time-total" style="background:linear-gradient(135deg,#fff,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent">&mdash;</div>
+    <div class="stat-sub">Total unique players ever &mdash; saved in DB</div>
+  </div>
 </div>
 <div class="two-col">
   <div class="panel">
@@ -171,11 +177,12 @@
     }
   }
   function renderStats(data) {
-    document.getElementById('live-now').textContent    = data.liveNow    != null ? data.liveNow    : 0;
-    document.getElementById('today-total').textContent = data.todayTotal != null ? data.todayTotal : 0;
-    document.getElementById('active-rooms').textContent  = data.activeRooms  != null ? data.activeRooms  : 0;
-    document.getElementById('active-games').textContent  = data.activeGames  != null ? data.activeGames  : 0;
-    document.getElementById('last-updated').textContent  = 'Updated ' + new Date(data.timestamp).toLocaleTimeString();
+    document.getElementById('live-now').textContent       = data.liveNow       != null ? data.liveNow       : 0;
+    document.getElementById('today-total').textContent    = data.todayTotal    != null ? data.todayTotal    : 0;
+    document.getElementById('active-rooms').textContent   = data.activeRooms   != null ? data.activeRooms   : 0;
+    document.getElementById('active-games').textContent   = data.activeGames   != null ? data.activeGames   : 0;
+    document.getElementById('all-time-total').textContent = data.allTimeTotal  != null ? data.allTimeTotal  : 0;
+    document.getElementById('last-updated').textContent   = 'Updated ' + new Date(data.timestamp).toLocaleTimeString();
     var max = Math.max.apply(null, (data.last7Days || []).map(function(d){return d.players;}));
     if (max < 1) max = 1;
     var chartEl = document.getElementById('chart-bars');
@@ -198,7 +205,7 @@
     }
     var sessEl = document.getElementById('sessions-container');
     if (!data.recentSessions || data.recentSessions.length === 0) {
-      sessEl.innerHTML = '<div class="empty-msg">No sessions yet &mdash; players appear here once they start a game for the first time today.</div>';
+      sessEl.innerHTML = '<div class="empty-msg">No sessions yet &mdash; players appear here once they start a game. Data is saved permanently in the database.</div>';
     } else {
       var rows = data.recentSessions.map(function(s, i) {
         return '<tr><td style="color:var(--muted)">' + (i+1) + '</td><td><div style="display:flex;align-items:center;gap:8px"><div class="player-avatar" style="width:24px;height:24px;font-size:0.65rem">' + s.name.charAt(0).toUpperCase() + '</div>' + esc(s.name) + '</div></td><td><span class="time-badge">' + new Date(s.joinedAt).toLocaleTimeString() + '</span></td><td style="color:var(--muted)">' + new Date(s.joinedAt).toLocaleDateString() + '</td></tr>';
