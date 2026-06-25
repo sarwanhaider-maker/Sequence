@@ -3023,6 +3023,25 @@ export default function Boards() {
                 How to Play
               </button>
               <button
+                onClick={() => setSettingsOpen(true)}
+                style={{
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid var(--border-color)",
+                  color: "#c3bee0",
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 0
+                }}
+                title="Settings"
+              >
+                ⚙️
+              </button>
+              <button
                 onClick={handleExitRoom}
                 className="btn-quit"
                 style={{ flex: 1, margin: 0, padding: "8px", fontSize: "0.85rem" }}

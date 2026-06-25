@@ -552,15 +552,25 @@ body {
 
   body {
     padding: 4px;
-    justify-content: center;
+    justify-content: flex-start !important;
     overflow-y: auto !important;
+  }
+
+  #game-screen {
+    flex: none !important;
+    height: auto !important;
+    min-height: 100% !important;
   }
 
   .game-layout {
     flex-direction: column;
     align-items: center;
+    justify-content: flex-start !important;
     gap: 8px;
     width: 100%;
+    height: auto !important;
+    min-height: 0 !important;
+    flex: none !important;
   }
 
   .board-container {

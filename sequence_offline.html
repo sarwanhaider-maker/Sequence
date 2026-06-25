@@ -229,12 +229,16 @@
     @media (max-width: 768px) {
       body {
         padding: 4px;
-        justify-content: center;
+        justify-content: flex-start !important;
+        height: auto !important;
+        min-height: 100% !important;
+        overflow-y: auto !important;
       }
 
       #game-screen.active {
         padding: 0 4px;
-        height: 100vh;
+        height: auto !important;
+        min-height: 100% !important;
         width: 100%;
         display: flex;
         flex-direction: column;
@@ -250,8 +254,11 @@
       .game-layout {
         flex-direction: column;
         align-items: center;
+        justify-content: flex-start !important;
         gap: 8px;
         width: 100%;
+        height: auto !important;
+        flex: none !important;
       }
 
       /* Scale board container for mobile screen width */
