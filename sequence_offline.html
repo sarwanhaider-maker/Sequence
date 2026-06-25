@@ -749,6 +749,28 @@
           </p>
         </div>
 
+        <!-- Step 5: Tactic Cards (Boosters) -->
+        <div class="wizard-step" data-step="5" style="display: none;">
+          <h3 style="font-family: 'Cinzel', serif; font-size: 1.3rem; color: var(--accent-gold); margin-bottom: 12px; letter-spacing: 1px;">Tactic Cards (Boosters)</h3>
+          <div style="max-height: 160px; overflow-y: auto; padding-right: 5px; text-align: left;">
+            <p style="color: #d1cde3; font-size: 0.82rem; line-height: 1.4; margin-bottom: 6px;">
+              ⚡ **EMP / Shield Breaker**: Removes shield/protection from an opponent's chip.
+            </p>
+            <p style="color: #d1cde3; font-size: 0.82rem; line-height: 1.4; margin-bottom: 6px;">
+              🛡️ **Chip Guard**: Shields one of your own placed chips so opponents cannot remove it.
+            </p>
+            <p style="color: #d1cde3; font-size: 0.82rem; line-height: 1.4; margin-bottom: 6px;">
+              🔄 **Card Redraw**: Discard one of your hand cards and draw a fresh replacement.
+            </p>
+            <p style="color: #d1cde3; font-size: 0.82rem; line-height: 1.4; margin-bottom: 6px;">
+              🔍 **Spying Glass**: Peek at any opponent's hand cards secretly for 3 seconds.
+            </p>
+            <p style="color: #d1cde3; font-size: 0.82rem; line-height: 1.4; margin-bottom: 6px;">
+              🔀 **Hand Exchange**: Select one card from your hand to swap with a random card of an opponent.
+            </p>
+          </div>
+        </div>
+
       </div>
 
       <!-- Dot Indicators -->
@@ -757,6 +779,7 @@
         <span class="wizard-dot" data-step="2"></span>
         <span class="wizard-dot" data-step="3"></span>
         <span class="wizard-dot" data-step="4"></span>
+        <span class="wizard-dot" data-step="5"></span>
       </div>
 
       <!-- Controls -->
@@ -2162,7 +2185,7 @@
     });
 
     let currentWizardStep = 1;
-    const totalWizardSteps = 4;
+    const totalWizardSteps = 5;
 
     function showWizard() {
       currentWizardStep = 1;

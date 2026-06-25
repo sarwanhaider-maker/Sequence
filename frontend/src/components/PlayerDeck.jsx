@@ -1,7 +1,7 @@
 import React from 'react';
 import Swal from 'sweetalert2';
 
-const PlayerDeck = ({ socket, playerHand, selectCard, setSelectCard, setHoveredCard, playingAs, currentPlayerIndex, setHoveredCardId, cards, roomId, boosterMode, setBoosterMode, setBoosters, setUsedBoosters }) => {
+const PlayerDeck = ({ socket, playerHand, selectCard, setSelectCard, setHoveredCard, playingAs, currentPlayerIndex, setHoveredCardId, cards, roomId, boosterMode, setBoosterMode, setBoosters, setUsedBoosters, players }) => {
 
   const isDeadCard = (card) => {
     if (!card.matches || card.matches.length === 0) return false;
@@ -69,15 +69,48 @@ const PlayerDeck = ({ socket, playerHand, selectCard, setSelectCard, setHoveredC
       }
 
       if (boosterMode === 'handExchange') {
-          socket?.emit('use_booster_hand_exchange', { roomId, handCardId: card.id });
+          const otherPlayers = (players || []).filter((p, idx) => idx !== playingAs);
 
-          setBoosters(prev => {
-              const next = { ...prev, handExchange: Math.max(0, prev.handExchange - 1) };
-              localStorage.setItem("seq_boosters", JSON.stringify(next));
-              return next;
-          });
-          setUsedBoosters(prev => ({ ...prev, handExchange: true }));
-          setBoosterMode(null);
+          const triggerHandExchange = (targetSocketId) => {
+              socket?.emit('use_booster_hand_exchange', { roomId, handCardId: card.id, targetSocketId });
+
+              setBoosters(prev => {
+                  const next = { ...prev, handExchange: Math.max(0, prev.handExchange - 1) };
+                  localStorage.setItem("seq_boosters", JSON.stringify(next));
+                  return next;
+              });
+              setUsedBoosters(prev => ({ ...prev, handExchange: true }));
+              setBoosterMode(null);
+          };
+
+          if (otherPlayers.length > 1) {
+              const inputOptions = {};
+              otherPlayers.forEach(p => {
+                  inputOptions[p.socketId] = `${p.name} (${p.team.toUpperCase()} Team)`;
+              });
+
+              Swal.fire({
+                  title: "Select Opponent to Exchange Hand With",
+                  input: "radio",
+                  inputOptions: inputOptions,
+                  inputValidator: (value) => {
+                      if (!value) {
+                          return "You need to select a player!";
+                      }
+                  },
+                  showCancelButton: true,
+                  confirmButtonText: "Exchange",
+                  confirmButtonColor: "var(--accent-cyan)",
+                  background: '#1a123a',
+                  color: '#fff'
+              }).then((result) => {
+                  if (result.isConfirmed) {
+                      triggerHandExchange(result.value);
+                  }
+              });
+          } else {
+              triggerHandExchange(otherPlayers[0]?.socketId);
+          }
           return;
       }
 

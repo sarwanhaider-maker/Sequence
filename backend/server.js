@@ -782,7 +782,7 @@ io.on("connection", async (socket) => {
     });
 
     socket.on('use_booster_spy', async (data) => {
-        const { roomId } = data;
+        const { roomId, targetSocketId } = data;
         try {
             let game = await Game.findOne({ roomId: roomId });
             if (!game) return;
@@ -795,7 +795,13 @@ io.on("connection", async (socket) => {
             }
 
             // Find the opponent player
-            let opponentPlayer = game.players.find(p => p.socketId !== socket.id);
+            let opponentPlayer;
+            if (targetSocketId) {
+                opponentPlayer = game.players.find(p => p.socketId === targetSocketId);
+            } else {
+                opponentPlayer = game.players.find(p => p.socketId !== socket.id);
+            }
+
             if (opponentPlayer) {
                 // Send opponent's hand to the active player privately
                 socket.emit('booster_spy_result', { opponentHand: opponentPlayer.hand });
@@ -841,7 +847,7 @@ io.on("connection", async (socket) => {
     });
 
     socket.on('use_booster_hand_exchange', async (data) => {
-        const { roomId, handCardId } = data;
+        const { roomId, handCardId, targetSocketId } = data;
         try {
             let game = await Game.findOne({ roomId: roomId });
             if (!game) return;
@@ -854,9 +860,13 @@ io.on("connection", async (socket) => {
             }
 
             // Find opponent
-            let opponentIndex = game.players.findIndex(p => p.socketId !== socket.id);
-            if (opponentIndex === -1) return;
-            let opponentPlayer = game.players[opponentIndex];
+            let opponentPlayer;
+            if (targetSocketId) {
+                opponentPlayer = game.players.find(p => p.socketId === targetSocketId);
+            } else {
+                opponentPlayer = game.players.find(p => p.socketId !== socket.id);
+            }
+            if (!opponentPlayer) return;
 
             // Find selected card in current player's hand
             let currentCardIndex = currentPlayer.hand.findIndex(c => c.id === handCardId);

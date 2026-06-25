@@ -689,14 +689,47 @@ export default function Boards() {
     }
 
     if (type === 'spy') {
-      socket?.emit('use_booster_spy', { roomId: room });
-      setBoosters(prev => {
-        const next = { ...prev, spy: Math.max(0, prev.spy - 1) };
-        localStorage.setItem("seq_boosters", JSON.stringify(next));
-        return next;
-      });
-      setUsedBoosters(prev => ({ ...prev, spy: true }));
-      setBoosterMode(null);
+      const otherPlayers = playersList.filter((p, idx) => idx !== playingAs);
+
+      const triggerSpy = (targetSocketId) => {
+        socket?.emit('use_booster_spy', { roomId: room, targetSocketId });
+        setBoosters(prev => {
+          const next = { ...prev, spy: Math.max(0, prev.spy - 1) };
+          localStorage.setItem("seq_boosters", JSON.stringify(next));
+          return next;
+        });
+        setUsedBoosters(prev => ({ ...prev, spy: true }));
+        setBoosterMode(null);
+      };
+
+      if (otherPlayers.length > 1) {
+        const inputOptions = {};
+        otherPlayers.forEach(p => {
+          inputOptions[p.socketId] = `${p.name} (${p.team.toUpperCase()} Team)`;
+        });
+
+        Swal.fire({
+          title: "Select Opponent to Spy On",
+          input: "radio",
+          inputOptions: inputOptions,
+          inputValidator: (value) => {
+            if (!value) {
+              return "You need to select a player!";
+            }
+          },
+          showCancelButton: true,
+          confirmButtonText: "Spy",
+          confirmButtonColor: "var(--accent-cyan)",
+          background: '#1a123a',
+          color: '#fff'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            triggerSpy(result.value);
+          }
+        });
+      } else {
+        triggerSpy(otherPlayers[0]?.socketId);
+      }
       return;
     }
 
@@ -1837,10 +1870,31 @@ export default function Boards() {
                 </p>
               </div>
             )}
+
+            {wizardStep === 5 && (
+              <div className="wizard-step" style={{ textAlign: "left", width: "100%" }}>
+                <h3 style={{ fontFamily: "'Cinzel', serif", fontSize: "1.25rem", color: "var(--accent-gold)", marginBottom: "10px", textAlign: "center", letterSpacing: "1px" }}>Tactic Cards (Boosters)</h3>
+                <p style={{ color: "#d1cde3", fontSize: "0.82rem", lineHeight: "1.4", marginBottom: "6px" }}>
+                  ⚡ **EMP / Shield Breaker**: Removes shield/protection from an opponent's chip.
+                </p>
+                <p style={{ color: "#d1cde3", fontSize: "0.82rem", lineHeight: "1.4", marginBottom: "6px" }}>
+                  🛡️ **Chip Guard**: Shields one of your own placed chips so opponents cannot remove it.
+                </p>
+                <p style={{ color: "#d1cde3", fontSize: "0.82rem", lineHeight: "1.4", marginBottom: "6px" }}>
+                  🔄 **Card Redraw**: Discard one of your hand cards and draw a fresh replacement.
+                </p>
+                <p style={{ color: "#d1cde3", fontSize: "0.82rem", lineHeight: "1.4", marginBottom: "6px" }}>
+                  🔍 **Spying Glass**: Peek at any opponent's hand cards secretly for 3 seconds.
+                </p>
+                <p style={{ color: "#d1cde3", fontSize: "0.82rem", lineHeight: "1.4", marginBottom: "6px" }}>
+                  🔀 **Hand Exchange**: Select one card from your hand to swap with a random card of an opponent.
+                </p>
+              </div>
+            )}
           </div>
 
           <div style={{ display: "flex", gap: "8px", margin: "15px 0" }}>
-            {[1, 2, 3, 4].map(step => (
+            {[1, 2, 3, 4, 5].map(step => (
               <span key={step} onClick={() => setWizardStep(step)} className={`wizard-dot ${wizardStep === step ? 'active' : ''}`}></span>
             ))}
           </div>
@@ -1851,7 +1905,7 @@ export default function Boards() {
             )}
             <button
               onClick={() => {
-                if (wizardStep < 4) {
+                if (wizardStep < 5) {
                   setWizardStep(prev => prev + 1);
                 } else {
                   setShowWizard(false);
@@ -1861,7 +1915,7 @@ export default function Boards() {
               className="btn-setup btn-setup-primary"
               style={{ flex: 1, margin: 0, padding: "12px", fontSize: "0.95rem", borderRadius: "10px" }}
             >
-              {wizardStep === 4 ? "Got It!" : "Next"}
+              {wizardStep === 5 ? "Got It!" : "Next"}
             </button>
           </div>
         </div>
@@ -2961,6 +3015,7 @@ export default function Boards() {
                 setBoosterMode={setBoosterMode}
                 setBoosters={setBoosters}
                 setUsedBoosters={setUsedBoosters}
+                players={playersList}
               />
               {spyOpponentHand && (
                 <div style={{
