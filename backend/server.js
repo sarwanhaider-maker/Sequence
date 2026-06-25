@@ -111,17 +111,22 @@ async function advanceGameTurn(roomId) {
 
     try {
         let game = await Game.findOne({ roomId });
-        if (!game) return;
+        if (!game || !game.players || game.players.length === 0) return;
 
         let currentIndex = game.players.findIndex(p => p.isTurn);
-        if (currentIndex === -1) return;
+        if (currentIndex === -1) {
+            console.log(`No active turn player found during advanceGameTurn in room ${roomId}. Resetting to first player.`);
+            game.players[0].isTurn = true;
+            await Game.updateOne({ roomId }, { $set: { players: game.players } });
+            currentIndex = 0;
+        } else {
+            // Move to the next player
+            game.players[currentIndex].isTurn = false;
+            let nextIndex = (currentIndex + 1) % game.players.length;
+            game.players[nextIndex].isTurn = true;
 
-        // Move to the next player
-        game.players[currentIndex].isTurn = false;
-        let nextIndex = (currentIndex + 1) % game.players.length;
-        game.players[nextIndex].isTurn = true;
-
-        await Game.updateOne({ roomId }, { $set: { players: game.players } });
+            await Game.updateOne({ roomId }, { $set: { players: game.players } });
+        }
 
         // Retrieve updated game data
         let latestGame = await Game.findOne({ roomId });
@@ -160,56 +165,64 @@ async function advanceGameTurn(roomId) {
  * Automatically plays a random valid move for the player whose turn timed out.
  */
 function makeAutoMoveForPlayer(game, activePlayer) {
-    // 1. Try to find a normal card with at least one unoccupied matching cell
-    const normalCards = activePlayer.hand.filter(c => c.id <= 100);
-    const validNormalMoves = [];
-    for (const card of normalCards) {
-        if (card.matches && card.matches.length > 0) {
-            for (const cellId of card.matches) {
-                const cell = game.cards[cellId - 1];
-                if (cell && cell.selected !== "True") {
-                    validNormalMoves.push({ cardId: cellId, selectedCard: card.id });
+    try {
+        if (!activePlayer || !Array.isArray(activePlayer.hand)) {
+            return null;
+        }
+
+        // 1. Try to find a normal card with at least one unoccupied matching cell
+        const normalCards = activePlayer.hand.filter(c => c && c.id <= 100);
+        const validNormalMoves = [];
+        for (const card of normalCards) {
+            if (card.matches && card.matches.length > 0) {
+                for (const cellId of card.matches) {
+                    const cell = game.cards && game.cards[cellId - 1];
+                    if (cell && cell.selected !== "True") {
+                        validNormalMoves.push({ cardId: cellId, selectedCard: card.id });
+                    }
                 }
             }
         }
-    }
 
-    if (validNormalMoves.length > 0) {
-        // Pick a random valid normal move
-        return validNormalMoves[Math.floor(Math.random() * validNormalMoves.length)];
-    }
-
-    // 2. If no normal moves, check for Two-Eyed Jack (Wild, ID 101-104)
-    const wildCard = activePlayer.hand.find(c => c.id > 100 && c.id <= 104);
-    if (wildCard) {
-        // Find any unoccupied cell (excluding corners: 1, 10, 91, 100)
-        const cornerIndices = [1, 10, 91, 100];
-        const unoccupiedCells = game.cards.filter(c => !cornerIndices.includes(c.id) && c.selected !== "True");
-        if (unoccupiedCells.length > 0) {
-            const randomCell = unoccupiedCells[Math.floor(Math.random() * unoccupiedCells.length)];
-            return { cardId: randomCell.id, selectedCard: wildCard.id };
+        if (validNormalMoves.length > 0) {
+            // Pick a random valid normal move
+            return validNormalMoves[Math.floor(Math.random() * validNormalMoves.length)];
         }
-    }
 
-    // 3. Check for One-Eyed Jack (Remover, ID 105-108)
-    const removerCard = activePlayer.hand.find(c => c.id > 104 && c.id <= 108);
-    if (removerCard) {
-        // Find any opponent chip that is not protected (not shielded and not part of a completed sequence/protected pattern)
-        const opponentTeamColors = ["red", "blue", "green"].filter(color => color !== activePlayer.team);
-        const removableCells = [];
-        for (const cell of game.cards) {
-            if (cell.selected === "True" && opponentTeamColors.includes(cell.selectedby) && !cell.shielded) {
-                // Check if cell is in any protected pattern
-                const isProtected = (game.protectedPatterns || []).some(pattern => pattern.includes(cell.id));
-                if (!isProtected) {
-                    removableCells.push(cell);
-                }
+        // 2. If no normal moves, check for Two-Eyed Jack (Wild, ID 101-104)
+        const wildCard = activePlayer.hand.find(c => c && c.id > 100 && c.id <= 104);
+        if (wildCard) {
+            // Find any unoccupied cell (excluding corners: 1, 10, 91, 100)
+            const cornerIndices = [1, 10, 91, 100];
+            const unoccupiedCells = (game.cards || []).filter(c => c && !cornerIndices.includes(c.id) && c.selected !== "True");
+            if (unoccupiedCells.length > 0) {
+                const randomCell = unoccupiedCells[Math.floor(Math.random() * unoccupiedCells.length)];
+                return { cardId: randomCell.id, selectedCard: wildCard.id };
             }
         }
-        if (removableCells.length > 0) {
-            const randomCell = removableCells[Math.floor(Math.random() * removableCells.length)];
-            return { cardId: randomCell.id, selectedCard: removerCard.id };
+
+        // 3. Check for One-Eyed Jack (Remover, ID 105-108)
+        const removerCard = activePlayer.hand.find(c => c && c.id > 104 && c.id <= 108);
+        if (removerCard) {
+            // Find any opponent chip that is not protected (not shielded and not part of a completed sequence/protected pattern)
+            const opponentTeamColors = ["red", "blue", "green"].filter(color => color !== activePlayer.team);
+            const removableCells = [];
+            for (const cell of (game.cards || [])) {
+                if (cell && cell.selected === "True" && opponentTeamColors.includes(cell.selectedby) && !cell.shielded) {
+                    // Check if cell is in any protected pattern
+                    const isProtected = (game.protectedPatterns || []).some(pattern => pattern.includes(cell.id));
+                    if (!isProtected) {
+                        removableCells.push(cell);
+                    }
+                }
+            }
+            if (removableCells.length > 0) {
+                const randomCell = removableCells[Math.floor(Math.random() * removableCells.length)];
+                return { cardId: randomCell.id, selectedCard: removerCard.id };
+            }
         }
+    } catch (e) {
+        console.error("Error in makeAutoMoveForPlayer: ", e);
     }
 
     return null;
@@ -220,10 +233,14 @@ async function handleTurnTimeout(roomId) {
 
     try {
         let game = await Game.findOne({ roomId });
-        if (!game) return;
+        if (!game || !game.players || game.players.length === 0) return;
 
         let currentIndex = game.players.findIndex(p => p.isTurn);
-        if (currentIndex === -1) return;
+        if (currentIndex === -1) {
+            console.log(`No active turn player found during timeout in room ${roomId}. Advancing.`);
+            await advanceGameTurn(roomId);
+            return;
+        }
 
         let activePlayer = game.players[currentIndex];
 
@@ -231,9 +248,9 @@ async function handleTurnTimeout(roomId) {
         const move = makeAutoMoveForPlayer(game, activePlayer);
         if (!move) {
             console.log(`No valid move for timeout player ${activePlayer.name} — discarding first card.`);
-            if (activePlayer.hand.length > 0) {
+            if (activePlayer.hand && activePlayer.hand.length > 0) {
                 activePlayer.hand.splice(0, 1);
-                if (game.shuffledDeck.length > 0) {
+                if (game.shuffledDeck && game.shuffledDeck.length > 0) {
                     const newCard = game.shuffledDeck.shift();
                     activePlayer.hand.push(newCard);
                 }
@@ -247,11 +264,11 @@ async function handleTurnTimeout(roomId) {
         const result = gameController.handleCardSelection(
             game, move.cardId, game.shuffledDeck, game.cards, activePlayer.socketId, move.selectedCard
         );
-        if (!result.success) {
-            console.error(`Auto-play move failed: ${result.message} — discarding card.`);
-            if (activePlayer.hand.length > 0) {
+        if (!result || !result.success) {
+            console.error(`Auto-play move failed for ${activePlayer.name} — discarding card.`);
+            if (activePlayer.hand && activePlayer.hand.length > 0) {
                 activePlayer.hand.splice(0, 1);
-                if (game.shuffledDeck.length > 0) {
+                if (game.shuffledDeck && game.shuffledDeck.length > 0) {
                     const newCard = game.shuffledDeck.shift();
                     activePlayer.hand.push(newCard);
                 }
@@ -270,7 +287,10 @@ async function handleTurnTimeout(roomId) {
         }});
 
         let latestGame = await Game.findOne({ roomId });
-        if (!latestGame) return;
+        if (!latestGame) {
+            await advanceGameTurn(roomId);
+            return;
+        }
 
         // 3. Scan for completed sequences (patterns)
         let patternResult = gameController.Pattern(latestGame, latestGame.cards);
@@ -308,6 +328,12 @@ async function handleTurnTimeout(roomId) {
 
     } catch (err) {
         console.error(`Error in handleTurnTimeout for room ${roomId}:`, err);
+        // Force recovery by advancing turn so the match doesn't hang
+        try {
+            await advanceGameTurn(roomId);
+        } catch (advErr) {
+            console.error(`Double fault: failed to advance turn in recovery:`, advErr);
+        }
     }
 }
 
@@ -486,7 +512,7 @@ async function triggerBotTurn(roomId, botSocketId, difficulty) {
     clearTurnTimer(roomId);
     try {
         let game = await Game.findOne({ roomId });
-        if (!game) return;
+        if (!game || !game.players || game.players.length === 0) return;
 
         // Verify it's still this bot's turn
         const currentPlayer = game.players.find(p => p.isTurn);
@@ -526,8 +552,17 @@ async function triggerBotTurn(roomId, botSocketId, difficulty) {
             const result = gameController.handleCardSelection(
                 game, move.cardId, game.shuffledDeck, game.cards, botSocketId, move.selectedCard
             );
-            if (!result.success) {
-                console.error(`Bot move failed: ${result.message}`);
+            if (!result || !result.success) {
+                console.error(`Bot move failed: ${result ? result.message : 'No result'} — auto-discarding card.`);
+                if (currentPlayer.hand && currentPlayer.hand.length > 0) {
+                    currentPlayer.hand.splice(0, 1);
+                    if (game.shuffledDeck && game.shuffledDeck.length > 0) {
+                        const newCard = game.shuffledDeck.shift();
+                        currentPlayer.hand.push(newCard);
+                    }
+                }
+                await Game.updateOne({ roomId }, { $set: { players: game.players, shuffledDeck: game.shuffledDeck } });
+                await advanceGameTurn(roomId);
                 return;
             }
 
@@ -540,7 +575,10 @@ async function triggerBotTurn(roomId, botSocketId, difficulty) {
         }
 
         let latestGame = await Game.findOne({ roomId });
-        if (!latestGame) return;
+        if (!latestGame) {
+            await advanceGameTurn(roomId);
+            return;
+        }
 
         let patternResult = gameController.Pattern(latestGame, latestGame.cards);
         if (patternResult.game) {
@@ -574,6 +612,12 @@ async function triggerBotTurn(roomId, botSocketId, difficulty) {
         }
     } catch (err) {
         console.error(`Error in triggerBotTurn for room ${roomId}:`, err);
+        // Force recovery by advancing turn so the match doesn't hang
+        try {
+            await advanceGameTurn(roomId);
+        } catch (advErr) {
+            console.error(`Double fault: failed to advance turn in bot recovery:`, advErr);
+        }
     }
 }
 

@@ -84,28 +84,62 @@ const PlayerDeck = ({ socket, playerHand, selectCard, setSelectCard, setHoveredC
           };
 
           if (otherPlayers.length > 1) {
-              const inputOptions = {};
+              let targetHtml = `<div style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">`;
               otherPlayers.forEach(p => {
-                  inputOptions[p.socketId] = `${p.name} (${p.team.toUpperCase()} Team)`;
+                const teamColor = p.team === 'blue' ? '#3b82f6' : p.team === 'red' ? '#ef4444' : p.team === 'green' ? '#22c55e' : '#fff';
+                const rbgVal = p.team === 'blue' ? '59, 130, 246' : p.team === 'red' ? '239, 68, 68' : p.team === 'green' ? '34, 197, 94' : '255, 255, 255';
+                targetHtml += `
+                  <button class="target-player-btn" data-socketid="${p.socketId}" style="
+                    display: flex;
+                    align-items: center;
+                    gap: 15px;
+                    width: 100%;
+                    background: rgba(25, 20, 45, 0.6);
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 14px;
+                    padding: 14px 20px;
+                    color: #fff;
+                    font-family: inherit;
+                    font-size: 0.95rem;
+                    text-align: left;
+                    cursor: pointer;
+                    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+                  " onmouseover="this.style.background='rgba(${rbgVal}, 0.12)'; this.style.borderColor='${teamColor}'; this.style.boxShadow='0 0 15px rgba(${rbgVal}, 0.4)'; this.style.transform='translateY(-2px)';"
+                     onmouseout="this.style.background='rgba(25, 20, 45, 0.6)'; this.style.borderColor='rgba(255, 255, 255, 0.08)'; this.style.boxShadow='0 4px 6px rgba(0, 0, 0, 0.15)'; this.style.transform='none';">
+                     <div style="width: 12px; height: 12px; border-radius: 50%; background: ${teamColor}; box-shadow: 0 0 10px ${teamColor}; flex-shrink: 0;"></div>
+                     <div style="flex: 1;">
+                       <div style="font-weight: 700; color: #fff; font-size: 1rem; margin-bottom: 2px;">${p.name}</div>
+                       <div style="font-size: 0.72rem; color: #b0a9c9; text-transform: uppercase; letter-spacing: 0.8px;">${p.team} Team</div>
+                     </div>
+                     <div style="font-size: 1.2rem; opacity: 0.9; text-shadow: 0 0 8px ${teamColor};">🔀</div>
+                  </button>
+                `;
               });
+              targetHtml += `</div>`;
 
               Swal.fire({
                   title: "Select Opponent to Exchange Hand With",
-                  input: "radio",
-                  inputOptions: inputOptions,
-                  inputValidator: (value) => {
-                      if (!value) {
-                          return "You need to select a player!";
-                      }
-                  },
+                  html: targetHtml,
+                  showConfirmButton: false,
                   showCancelButton: true,
-                  confirmButtonText: "Exchange",
-                  confirmButtonColor: "var(--accent-cyan)",
-                  background: '#1a123a',
-                  color: '#fff'
-              }).then((result) => {
-                  if (result.isConfirmed) {
-                      triggerHandExchange(result.value);
+                  cancelButtonText: "Cancel",
+                  cancelButtonColor: "rgba(255, 255, 255, 0.12)",
+                  background: '#150d2a',
+                  color: '#fff',
+                  customClass: {
+                      popup: 'premium-target-popup',
+                      title: 'premium-target-title'
+                  },
+                  didOpen: () => {
+                      const buttons = Swal.getHtmlContainer().querySelectorAll('.target-player-btn');
+                      buttons.forEach(btn => {
+                          btn.addEventListener('click', () => {
+                              const targetSocketId = btn.getAttribute('data-socketid');
+                              Swal.close();
+                              triggerHandExchange(targetSocketId);
+                          });
+                      });
                   }
               });
           } else {
