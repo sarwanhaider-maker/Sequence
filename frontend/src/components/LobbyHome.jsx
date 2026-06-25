@@ -1,20 +1,20 @@
 import React from "react";
 import Swal from "sweetalert2";
 
-export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boosters = { shield: 0, wildUpgrade: 0, reroll: 0 }, onGoToStore }) {
+export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boosters = {}, onGoToStore, activeDock = ["shield", "wildUpgrade"], onCustomizeDock }) {
   
   const showTacticInfo = (tacticKey) => {
     const tacticsConfig = {
       wildUpgrade: {
         name: "Wild Upgrade 🃏",
         desc: "Upgrades any standard card in your hand to a Two-Eyed Jack (Wild Card) for the duration of your turn.",
-        icon: "♣",
+        icon: "🃏",
         count: boosters.wildUpgrade || 0
       },
       reroll: {
         name: "Card Redraw 🔄",
         desc: "Exchanges any card in your hand with a new card drawn from the deck.",
-        icon: "💡",
+        icon: "🔄",
         count: boosters.reroll || 0
       },
       shield: {
@@ -22,6 +22,24 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
         desc: "Protects one of your placed chips on the board from being removed by opponent's One-Eyed Jacks.",
         icon: "🛡️",
         count: boosters.shield || 0
+      },
+      spy: {
+        name: "Spying Glass 🔍",
+        desc: "Spy on your opponent's cards in their hand for 3 seconds during your turn.",
+        icon: "🔍",
+        count: boosters.spy || 0
+      },
+      emp: {
+        name: "Shield Breaker ⚡",
+        desc: "Remove the Chip Guard protection shield from an opponent's chip on the board.",
+        icon: "⚡",
+        count: boosters.emp || 0
+      },
+      handExchange: {
+        name: "Hand Exchange 🔀",
+        desc: "Swap one of your hand cards with a random card from your opponent's hand.",
+        icon: "🔀",
+        count: boosters.handExchange || 0
       }
     };
 
@@ -32,7 +50,7 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
       title: tactic.name,
       html: `
         <div style="text-align: center; margin-bottom: 15px;">
-          <span style="font-size: 3rem;">${tacticKey === 'shield' ? '🛡️' : tacticKey === 'wildUpgrade' ? '🃏' : '🔄'}</span>
+          <span style="font-size: 3rem;">${tactic.icon}</span>
         </div>
         <p style="color: #d1cde3; font-size: 0.95rem; line-height: 1.5; margin-bottom: 15px;">${tactic.desc}</p>
         <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 10px;">
@@ -236,106 +254,74 @@ export default function LobbyHome({ onPlayOnline, onPlayFriends, onPractice, boo
           <span style={{ fontSize: "0.68rem", fontWeight: "900", color: "#b0a9c9", letterSpacing: "1.5px", textTransform: "uppercase" }}>
             TACTIC CARDS
           </span>
-          <div style={{ display: "flex", gap: "8px", justifyContent: "center", width: "100%" }}>
-            {/* Tactic 1: Wild Upgrade */}
-            <div 
-              className="tactic-card-lobby"
-              onClick={() => showTacticInfo('wildUpgrade')}
-              style={{
-                background: "white",
-                borderRadius: "8px",
-                width: "44px",
-                height: "56px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "4px 0",
-                border: "1px solid #cbd5e0",
-                position: "relative",
-                boxShadow: "0 4px 6px rgba(0,0,0,0.2)"
-              }}
-              title="Wild Upgrade"
-            >
-              <span style={{ color: "#e53e3e", fontSize: "1.2rem", lineHeight: "1" }}>♣</span>
-              <span style={{ 
-                fontSize: "0.62rem", 
-                fontWeight: "900", 
-                color: "white", 
-                background: "#dd6b20", 
-                padding: "1px 6px", 
-                borderRadius: "10px" 
-              }}>
-                {boosters.wildUpgrade || 0}
-              </span>
-            </div>
+          <div style={{ display: "flex", gap: "10px", justifyContent: "center", width: "100%" }}>
+            {activeDock.map(key => {
+              const count = boosters[key] || 0;
+              const def = {
+                shield: { name: 'Chip Guard', icon: '🛡️' },
+                wildUpgrade: { name: 'Wild Upgrade', icon: '🃏' },
+                reroll: { name: 'Card Redraw', icon: '🔄' },
+                spy: { name: 'Spying Glass', icon: '🔍' },
+                emp: { name: 'Shield Breaker', icon: '⚡' },
+                handExchange: { name: 'Hand Exchange', icon: '🔀' }
+              }[key] || { name: 'Unknown', icon: '❓' };
 
-            {/* Tactic 2: Card Redraw */}
-            <div 
-              className="tactic-card-lobby"
-              onClick={() => showTacticInfo('reroll')}
-              style={{
-                background: "white",
-                borderRadius: "8px",
-                width: "44px",
-                height: "56px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "4px 0",
-                border: "1px solid #cbd5e0",
-                position: "relative",
-                boxShadow: "0 4px 6px rgba(0,0,0,0.2)"
-              }}
-              title="Card Redraw"
-            >
-              <span style={{ color: "#2d3748", fontSize: "1.1rem", lineHeight: "1" }}>💡</span>
-              <span style={{ 
-                fontSize: "0.62rem", 
-                fontWeight: "900", 
-                color: "white", 
-                background: "#dd6b20", 
-                padding: "1px 6px", 
-                borderRadius: "10px" 
-              }}>
-                {boosters.reroll || 0}
-              </span>
-            </div>
-
-            {/* Tactic 3: Chip Guard */}
-            <div 
-              className="tactic-card-lobby"
-              onClick={() => showTacticInfo('shield')}
-              style={{
-                background: "white",
-                borderRadius: "8px",
-                width: "44px",
-                height: "56px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "4px 0",
-                border: "1px solid #cbd5e0",
-                position: "relative",
-                boxShadow: "0 4px 6px rgba(0,0,0,0.2)"
-              }}
-              title="Chip Guard"
-            >
-              <span style={{ color: "#2d3748", fontSize: "1.1rem", lineHeight: "1" }}>🛡️</span>
-              <span style={{ 
-                fontSize: "0.62rem", 
-                fontWeight: "900", 
-                color: "white", 
-                background: "#dd6b20", 
-                padding: "1px 6px", 
-                borderRadius: "10px" 
-              }}>
-                {boosters.shield || 0}
-              </span>
-            </div>
+              return (
+                <div 
+                  key={key}
+                  className="tactic-card-lobby"
+                  onClick={() => showTacticInfo(key)}
+                  style={{
+                    background: "white",
+                    borderRadius: "8px",
+                    width: "46px",
+                    height: "58px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "4px 0",
+                    border: "1px solid #cbd5e0",
+                    position: "relative",
+                    boxShadow: "0 4px 6px rgba(0,0,0,0.2)",
+                    cursor: "pointer"
+                  }}
+                  title={def.name}
+                >
+                  <span style={{ fontSize: "1.25rem", lineHeight: "1.2" }}>{def.icon}</span>
+                  <span style={{ 
+                    fontSize: "0.62rem", 
+                    fontWeight: "900", 
+                    color: "white", 
+                    background: "#dd6b20", 
+                    padding: "1px 6px", 
+                    borderRadius: "10px" 
+                  }}>
+                    {count}
+                  </span>
+                </div>
+              );
+            })}
           </div>
+          <button
+            onClick={onCustomizeDock}
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--accent-cyan)",
+              fontSize: "0.65rem",
+              fontWeight: "800",
+              cursor: "pointer",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
+              marginTop: "2px",
+              padding: "2px 6px",
+              borderRadius: "4px",
+              transition: "all 0.2s"
+            }}
+          >
+            Edit Dock ⚙️
+          </button>
         </div>
 
         {/* Right Side icon: Watch Ad */}

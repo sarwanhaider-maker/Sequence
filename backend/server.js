@@ -781,6 +781,111 @@ io.on("connection", async (socket) => {
         }
     });
 
+    socket.on('use_booster_spy', async (data) => {
+        const { roomId } = data;
+        try {
+            let game = await Game.findOne({ roomId: roomId });
+            if (!game) return;
+
+            let currentTurnIndex = game.players.findIndex(p => p.isTurn);
+            let currentPlayer = game.players[currentTurnIndex];
+            if (socket.id !== currentPlayer.socketId) {
+                console.log("Not this player's turn to use booster");
+                return;
+            }
+
+            // Find the opponent player
+            let opponentPlayer = game.players.find(p => p.socketId !== socket.id);
+            if (opponentPlayer) {
+                // Send opponent's hand to the active player privately
+                socket.emit('booster_spy_result', { opponentHand: opponentPlayer.hand });
+                
+                // Notify the opponent that a spying glass was used on them
+                socket.to(opponentPlayer.socketId).emit('booster_spy_notification', {
+                    message: `${currentPlayer.name} used Spying Glass on you!`
+                });
+            }
+        } catch (err) {
+            console.error("Error using spy booster: ", err);
+        }
+    });
+
+    socket.on('use_booster_emp', async (data) => {
+        const { roomId, cardId } = data;
+        try {
+            let game = await Game.findOne({ roomId: roomId });
+            if (!game) return;
+
+            let currentTurnIndex = game.players.findIndex(p => p.isTurn);
+            let currentPlayer = game.players[currentTurnIndex];
+            if (socket.id !== currentPlayer.socketId) {
+                console.log("Not this player's turn to use booster");
+                return;
+            }
+
+            let cardIndex = cardId - 1;
+            let cardObj = game.cards[cardIndex];
+            if (cardObj && cardObj.selected === "True" && cardObj.selectedby !== currentPlayer.team && cardObj.shielded) {
+                cardObj.shielded = false; // Remove shield
+                
+                await Game.updateOne({ roomId: roomId }, { $set: { cards: game.cards } });
+
+                let latestGame = await Game.findOne({ roomId: roomId });
+                if (latestGame) {
+                    broadcastGameState(latestGame);
+                }
+            }
+        } catch (err) {
+            console.error("Error using emp booster: ", err);
+        }
+    });
+
+    socket.on('use_booster_hand_exchange', async (data) => {
+        const { roomId, handCardId } = data;
+        try {
+            let game = await Game.findOne({ roomId: roomId });
+            if (!game) return;
+
+            let currentTurnIndex = game.players.findIndex(p => p.isTurn);
+            let currentPlayer = game.players[currentTurnIndex];
+            if (socket.id !== currentPlayer.socketId) {
+                console.log("Not this player's turn to use booster");
+                return;
+            }
+
+            // Find opponent
+            let opponentIndex = game.players.findIndex(p => p.socketId !== socket.id);
+            if (opponentIndex === -1) return;
+            let opponentPlayer = game.players[opponentIndex];
+
+            // Find selected card in current player's hand
+            let currentCardIndex = currentPlayer.hand.findIndex(c => c.id === handCardId);
+            if (currentCardIndex !== -1 && opponentPlayer.hand.length > 0) {
+                let randomOpponentIndex = Math.floor(Math.random() * opponentPlayer.hand.length);
+                
+                // Swap the two cards
+                let currentCard = currentPlayer.hand[currentCardIndex];
+                let opponentCard = opponentPlayer.hand[randomOpponentIndex];
+
+                currentPlayer.hand[currentCardIndex] = opponentCard;
+                opponentPlayer.hand[randomOpponentIndex] = currentCard;
+
+                await Game.updateOne({ roomId: roomId }, { $set: { players: game.players } });
+
+                let latestGame = await Game.findOne({ roomId: roomId });
+                if (latestGame) {
+                    broadcastGameState(latestGame);
+                }
+
+                // Send private swap feedback messages
+                socket.emit('booster_effect_msg', { text: `You swapped your card for opponent's ${opponentCard.id > 100 ? 'Jack' : 'Card'}!` });
+                socket.to(opponentPlayer.socketId).emit('booster_effect_msg', { text: `Opponent swapped a card with your hand!` });
+            }
+        } catch (err) {
+            console.error("Error using hand exchange booster: ", err);
+        }
+    });
+
     socket.on('Boardcardclicked', async (data) => {
         const { roomId, cardId, selectedCard } = data;
         clearTurnTimer(roomId);

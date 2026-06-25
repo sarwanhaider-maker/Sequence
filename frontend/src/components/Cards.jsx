@@ -3,6 +3,25 @@ import Swal from "sweetalert2";
 
 export default function Cards({ roomId, socket, selectCard, setSelectCard, cards, hoveredCard, playingAs, currentPlayerIndex, protectedPatterns, hoveredCardId, myTeam, boosterMode, setBoosterMode, setBoosters, setUsedBoosters, lastMove }) {
 
+    function playEmpSound() {
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(300, ctx.currentTime);
+            osc.frequency.linearRampToValueAtTime(80, ctx.currentTime + 0.4);
+            gain.gain.setValueAtTime(0.2, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.4);
+        } catch(e) {}
+    }
+
     function handleClick(cardId, selectCard, socket, card) {
         if (boosterMode === 'shield') {
             if (card.selected === "True" && card.selectedby === myTeam && !card.shielded) {
@@ -29,6 +48,42 @@ export default function Cards({ roomId, socket, selectCard, setSelectCard, cards
                 Swal.fire({
                     title: "Invalid Target",
                     text: "You can only shield your own unshielded chips!",
+                    icon: "error",
+                    background: '#1a123a',
+                    color: '#fff',
+                    confirmButtonColor: "var(--accent-cyan)"
+                });
+            }
+            return;
+        }
+
+        if (boosterMode === 'emp') {
+            if (card.selected === "True" && card.selectedby !== myTeam && card.shielded) {
+                socket?.emit('use_booster_emp', { roomId, cardId });
+                
+                // Deduct booster count
+                setBoosters(prev => {
+                    const next = { ...prev, emp: Math.max(0, prev.emp - 1) };
+                    localStorage.setItem("seq_boosters", JSON.stringify(next));
+                    return next;
+                });
+                setUsedBoosters(prev => ({ ...prev, emp: true }));
+                setBoosterMode(null);
+                
+                playEmpSound();
+
+                Swal.fire({
+                    title: "Shield Broken!",
+                    text: "The opponent's chip protection has been removed.",
+                    icon: "success",
+                    background: '#1a123a',
+                    color: '#fff',
+                    confirmButtonColor: "var(--accent-cyan)"
+                });
+            } else {
+                Swal.fire({
+                    title: "Invalid Target",
+                    text: "You can only target opponent's shielded chips!",
                     icon: "error",
                     background: '#1a123a',
                     color: '#fff',
@@ -80,6 +135,10 @@ export default function Cards({ roomId, socket, selectCard, setSelectCard, cards
             return card.selected && card.selected === "True" && card.selectedby === myTeam && !card.shielded;
         }
 
+        if (boosterMode === 'emp') {
+            return card.selected && card.selected === "True" && card.selectedby !== myTeam && card.shielded;
+        }
+
         if (!activeCardId) return false;
         
         // Two-eyed Jack (Wild) - ID 101 to 104
@@ -117,7 +176,7 @@ export default function Cards({ roomId, socket, selectCard, setSelectCard, cards
                                 />
                             )} 
                             {card.selected && card.selected === "True" && (
-                                <div className={`chip chip-${card.selectedby} ${card.shielded ? 'shielded-chip' : ''}`}>
+                                <div className={`chip chip-${card.selectedby} ${card.shielded ? 'shielded-chip' : ''} ${boosterMode === 'emp' && card.selectedby !== myTeam && card.shielded ? 'emp-targetable' : ''}`}>
                                     {card.shielded && (
                                         <div className="shield-overlay">
                                             🛡️

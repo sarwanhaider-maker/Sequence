@@ -103,7 +103,7 @@ export default function Store({ onBuyCoins, playerCoins }) {
         
         // Update booster count in localStorage
         const savedBoostersStr = localStorage.getItem("seq_boosters");
-        let boostersObj = { shield: 0, wildUpgrade: 0, reroll: 0 };
+        let boostersObj = { shield: 0, wildUpgrade: 0, reroll: 0, spy: 0, handExchange: 0, emp: 0 };
         if (savedBoostersStr) {
           try {
             boostersObj = JSON.parse(savedBoostersStr);
@@ -284,6 +284,13 @@ export default function Store({ onBuyCoins, playerCoins }) {
               icon: "🔄"
             },
             {
+              key: "emp",
+              name: "Shield Breaker",
+              desc: "Remove the Chip Guard protection shield from an opponent's chip on the board.",
+              price: 3000,
+              icon: "⚡"
+            },
+            {
               key: "shield",
               name: "Chip Guard",
               desc: "Shield one of your chips on the board from being removed by opponent's One-Eyed Jacks.",
@@ -296,6 +303,20 @@ export default function Store({ onBuyCoins, playerCoins }) {
               desc: "Temporarily turn one of your hand cards into a Two-Eyed Jack (Wild Card) for this turn.",
               price: 5000,
               icon: "🃏"
+            },
+            {
+              key: "handExchange",
+              name: "Hand Exchange",
+              desc: "Swap one of your hand cards with a random card from your opponent's hand.",
+              price: 10000,
+              icon: "🔀"
+            },
+            {
+              key: "spy",
+              name: "Spying Glass",
+              desc: "Spy on your opponent's cards in their hand for 3 seconds during your turn.",
+              price: 20000,
+              icon: "🔍"
             }
           ].map((booster) => (
             <div

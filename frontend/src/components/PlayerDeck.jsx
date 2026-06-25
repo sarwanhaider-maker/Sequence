@@ -68,6 +68,19 @@ const PlayerDeck = ({ socket, playerHand, selectCard, setSelectCard, setHoveredC
           return;
       }
 
+      if (boosterMode === 'handExchange') {
+          socket?.emit('use_booster_hand_exchange', { roomId, handCardId: card.id });
+
+          setBoosters(prev => {
+              const next = { ...prev, handExchange: Math.max(0, prev.handExchange - 1) };
+              localStorage.setItem("seq_boosters", JSON.stringify(next));
+              return next;
+          });
+          setUsedBoosters(prev => ({ ...prev, handExchange: true }));
+          setBoosterMode(null);
+          return;
+      }
+
       if (isDeadCard(card)) {
           socket?.emit('deadCardClicked', { roomId, cardId: card.id });
           return;
@@ -99,7 +112,7 @@ const PlayerDeck = ({ socket, playerHand, selectCard, setSelectCard, setHoveredC
             key={card.id} 
             src={card.img && ("/" + card.img.replace('../', ''))} 
             alt={`Card ${card.id}`}
-            className={`hand-card ${selectCard === card.id ? 'selected' : ''} ${card.isUpgradedWild ? 'wild-upgraded' : ''}`}
+            className={`hand-card ${selectCard === card.id ? 'selected' : ''} ${card.isUpgradedWild ? 'wild-upgraded' : ''} ${boosterMode === 'handExchange' ? 'exchange-targetable' : ''}`}
             onClick={() => playingAs === currentPlayerIndex && handleCardClick(card)}
             onMouseEnter={() => handleMouseEnter(card)}
             onMouseLeave={handleMouseLeave} 

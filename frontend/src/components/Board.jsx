@@ -18,6 +18,7 @@ import DailyBonus from "./DailyBonus";
 import Store from "./Store";
 import StakesCarousel from "./StakesCarousel";
 import { useVoiceChat, VoiceChatControls } from "./VoiceChatManager";
+import ActiveDockModal from "./ActiveDockModal";
 
 const FRIENDS_MODES = [
   { value: "2_players", name: "One Vs One", playersCount: "2 Players", limit: 2, seq: 2, teamFormat: "Solo Match (1v1)", board: "STANDARD" },
@@ -299,6 +300,80 @@ class GameSounds {
     }
   }
 
+  static playSpy() {
+    this.triggerVibration(80);
+    if (!this.isSoundEnabled()) return;
+    try {
+      this.initAudio();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(1200, now + 0.3);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    } catch(e) {}
+  }
+
+  static playEmp() {
+    this.triggerVibration(150);
+    if (!this.isSoundEnabled()) return;
+    try {
+      this.initAudio();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(300, now);
+      osc.frequency.linearRampToValueAtTime(80, now + 0.4);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    } catch(e) {}
+  }
+
+  static playSwap() {
+    this.triggerVibration(80);
+    if (!this.isSoundEnabled()) return;
+    try {
+      this.initAudio();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(this.ctx.destination);
+      
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(600, now);
+      osc1.frequency.linearRampToValueAtTime(200, now + 0.25);
+      
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(200, now);
+      osc2.frequency.linearRampToValueAtTime(600, now + 0.25);
+
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+      osc1.start(now);
+      osc1.stop(now + 0.25);
+      osc2.start(now);
+      osc2.stop(now + 0.25);
+    } catch(e) {}
+  }
+
   static playTurnAlert() {
     this.triggerVibration(100);
     if (!this.isSoundEnabled()) return;
@@ -526,21 +601,53 @@ export default function Boards() {
     const saved = localStorage.getItem("seq_boosters");
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        return {
+          shield: parsed.shield || 0,
+          wildUpgrade: parsed.wildUpgrade || 0,
+          reroll: parsed.reroll || 0,
+          spy: parsed.spy || 0,
+          emp: parsed.emp || 0,
+          handExchange: parsed.handExchange || 0
+        };
       } catch (e) {}
     }
-    return { shield: 0, wildUpgrade: 0, reroll: 0 };
+    return { shield: 0, wildUpgrade: 0, reroll: 0, spy: 0, emp: 0, handExchange: 0 };
+  };
+
+  const getInitialActiveDock = () => {
+    const saved = localStorage.getItem("seq_active_boosters");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.slice(0, 2);
+        }
+      } catch (e) {}
+    }
+    return ["shield", "wildUpgrade"]; // default active dock
   };
 
   const [boosters, setBoosters] = useState(getInitialBoosters());
-  const [usedBoosters, setUsedBoosters] = useState({ shield: false, wildUpgrade: false, reroll: false });
-  const [boosterMode, setBoosterMode] = useState(null); // 'shield' | 'wildUpgrade' | 'reroll' | null
+  const [usedBoosters, setUsedBoosters] = useState({ shield: false, wildUpgrade: false, reroll: false, spy: false, emp: false, handExchange: false });
+  const [boosterMode, setBoosterMode] = useState(null); // 'shield' | 'wildUpgrade' | 'reroll' | 'spy' | 'emp' | 'handExchange' | null
+
+  // Active dock customization states
+  const [activeDock, setActiveDock] = useState(getInitialActiveDock());
+  const [isCustomizingDock, setIsCustomizingDock] = useState(false);
+
+  // Spying Glass state
+  const [spyOpponentHand, setSpyOpponentHand] = useState(null);
+  const [spyTimeLeft, setSpyTimeLeft] = useState(0);
 
   useEffect(() => {
     setBoosters(getInitialBoosters());
+    setActiveDock(getInitialActiveDock());
     if (!playOnline && !inCustomGame) {
-      setUsedBoosters({ shield: false, wildUpgrade: false, reroll: false });
+      setUsedBoosters({ shield: false, wildUpgrade: false, reroll: false, spy: false, emp: false, handExchange: false });
       setBoosterMode(null);
+      setSpyOpponentHand(null);
+      setSpyTimeLeft(0);
     }
   }, [activeTab, playOnline, inCustomGame]);
 
@@ -581,6 +688,18 @@ export default function Boards() {
       return;
     }
 
+    if (type === 'spy') {
+      socket?.emit('use_booster_spy', { roomId: room });
+      setBoosters(prev => {
+        const next = { ...prev, spy: Math.max(0, prev.spy - 1) };
+        localStorage.setItem("seq_boosters", JSON.stringify(next));
+        return next;
+      });
+      setUsedBoosters(prev => ({ ...prev, spy: true }));
+      setBoosterMode(null);
+      return;
+    }
+
     if (boosterMode === type) {
       setBoosterMode(null);
       return;
@@ -592,9 +711,19 @@ export default function Boards() {
     if (type === 'shield') msg = "Select one of your chips on the board to shield it.";
     if (type === 'wildUpgrade') msg = "Select a card in your hand to turn it into a Wild card.";
     if (type === 'reroll') msg = "Select a card in your hand to redraw/exchange it.";
+    if (type === 'emp') msg = "Select an opponent's shielded chip to remove its shield.";
+    if (type === 'handExchange') msg = "Select one of your hand cards to swap with opponent.";
+
+    const titleMap = {
+      shield: '🛡️ Chip Guard',
+      wildUpgrade: '🃏 Wild Upgrade',
+      reroll: '🔄 Card Redraw',
+      emp: '⚡ Shield Breaker',
+      handExchange: '🔀 Hand Exchange'
+    };
 
     Swal.fire({
-      title: `${type === 'shield' ? '🛡️ Chip Guard' : type === 'wildUpgrade' ? '🃏 Wild Upgrade' : '🔄 Card Redraw'} Mode Active`,
+      title: `${titleMap[type] || 'Tactic'} Mode Active`,
       text: msg,
       icon: "info",
       toast: true,
@@ -1234,6 +1363,60 @@ export default function Boards() {
       setVoiceChatEnabled(!!data.voiceChatEnabled);
     });
 
+    socket.on("booster_spy_result", (data) => {
+      setSpyOpponentHand(data.opponentHand);
+      setSpyTimeLeft(3.0);
+      GameSounds.playSpy();
+      
+      const startTime = Date.now();
+      const duration = 3000;
+      
+      const spyInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, (duration - elapsed) / 1000);
+        setSpyTimeLeft(remaining);
+        
+        if (remaining <= 0) {
+          clearInterval(spyInterval);
+          setSpyOpponentHand(null);
+        }
+      }, 100);
+    });
+
+    socket.on("booster_spy_notification", (data) => {
+      GameSounds.triggerVibration(150);
+      Swal.fire({
+        title: "⚠️ Warning!",
+        text: data.message,
+        icon: "warning",
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 3500,
+        background: '#7f1d1d',
+        color: '#fff',
+        iconColor: '#fecaca'
+      });
+    });
+
+    socket.on("booster_effect_msg", (data) => {
+      if (data.text.includes("swap") || data.text.includes("swapped")) {
+        GameSounds.playSwap();
+      }
+      Swal.fire({
+        title: "Booster Used",
+        text: data.text,
+        icon: "info",
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 3500,
+        background: '#1e1b4b',
+        color: '#fff',
+        iconColor: '#38bdf8'
+      });
+    });
+
     // Handle successful rejoin after reconnect — server sends game state back
     socket.on("rejoin_room_success", (data) => {
       console.log("Rejoined room successfully after reconnect", data);
@@ -1280,6 +1463,9 @@ export default function Boards() {
       socket.off("room_creation_error");
       socket.off("room_update");
       socket.off("rejoin_room_success");
+      socket.off("booster_spy_result");
+      socket.off("booster_spy_notification");
+      socket.off("booster_effect_msg");
     };
   }, [socket]);
 
@@ -2054,6 +2240,8 @@ export default function Boards() {
               {activeTab === "HOME" && (
                 <LobbyHome 
                   boosters={boosters}
+                  activeDock={activeDock}
+                  onCustomizeDock={() => setIsCustomizingDock(true)}
                   onPlayOnline={(val) => {
                     if (typeof val === 'number') {
                       updateCoins(val);
@@ -2387,6 +2575,25 @@ export default function Boards() {
           onSaveProfile={handleSaveProfile}
           stats={stats}
         />
+
+        <ActiveDockModal
+          isOpen={isCustomizingDock}
+          onClose={() => setIsCustomizingDock(false)}
+          boosters={boosters}
+          activeDock={activeDock}
+          onSaveActiveDock={(newDock) => {
+            setActiveDock(newDock);
+            localStorage.setItem("seq_active_boosters", JSON.stringify(newDock));
+            Swal.fire({
+              title: "Loadout Saved!",
+              text: "Your active tactic cards dock has been updated.",
+              icon: "success",
+              background: '#1a123a',
+              color: '#fff',
+              confirmButtonColor: "var(--accent-cyan)"
+            });
+          }}
+        />
       </div>
     );
   }
@@ -2704,12 +2911,17 @@ export default function Boards() {
             {/* Tactic Cards Dock */}
             {playingAs !== -1 && (
               <div className="booster-dock">
-                <span style={{ marginRight: '4px', fontSize: '0.75rem', fontWeight: '800', color: '#b0a9c9' }}>TACTICS:</span>
-                {[
-                  { key: 'shield', name: 'Chip Guard', icon: '🛡️' },
-                  { key: 'wildUpgrade', name: 'Wild Upgrade', icon: '🃏' },
-                  { key: 'reroll', name: 'Card Redraw', icon: '🔄' }
-                ].map(booster => {
+                         {activeDock.map(key => {
+                  const def = {
+                    shield: { name: 'Chip Guard', icon: '🛡️' },
+                    wildUpgrade: { name: 'Wild Upgrade', icon: '🃏' },
+                    reroll: { name: 'Card Redraw', icon: '🔄' },
+                    spy: { name: 'Spying Glass', icon: '🔍' },
+                    emp: { name: 'Shield Breaker', icon: '⚡' },
+                    handExchange: { name: 'Hand Exchange', icon: '🔀' }
+                  }[key];
+                  if (!def) return null;
+                  const booster = { key, ...def };
                   const count = boosters[booster.key] || 0;
                   const isUsed = usedBoosters[booster.key];
                   const isDisabled = count <= 0 || isUsed || playingAs !== currentPlayerIndex;
@@ -2733,22 +2945,74 @@ export default function Boards() {
             )}
 
             {/* Hand Container Panel */}
-            <PlayerDeck
-              socket={socket}
-              playerHand={yourHand}
-              selectCard={selectCard}
-              setSelectCard={setSelectCard}
-              setHoveredCard={setHoveredCard}
-              currentPlayerIndex={currentPlayerIndex}
-              playingAs={playingAs}
-              setHoveredCardId={setHoveredCardId}
-              cards={cards}
-              roomId={room}
-              boosterMode={boosterMode}
-              setBoosterMode={setBoosterMode}
-              setBoosters={setBoosters}
-              setUsedBoosters={setUsedBoosters}
-            />
+            <div style={{ position: 'relative', width: '100%' }}>
+              <PlayerDeck
+                socket={socket}
+                playerHand={yourHand}
+                selectCard={selectCard}
+                setSelectCard={setSelectCard}
+                setHoveredCard={setHoveredCard}
+                currentPlayerIndex={currentPlayerIndex}
+                playingAs={playingAs}
+                setHoveredCardId={setHoveredCardId}
+                cards={cards}
+                roomId={room}
+                boosterMode={boosterMode}
+                setBoosterMode={setBoosterMode}
+                setBoosters={setBoosters}
+                setUsedBoosters={setUsedBoosters}
+              />
+              {spyOpponentHand && (
+                <div style={{
+                  position: 'absolute',
+                  top: 0, left: 0, right: 0, bottom: 0,
+                  background: 'rgba(10, 7, 26, 0.95)',
+                  backdropFilter: 'blur(8px)',
+                  borderRadius: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '12px',
+                  border: '2px solid #10d9d2',
+                  boxShadow: '0 0 20px rgba(16, 217, 210, 0.4)',
+                  zIndex: 10,
+                  animation: 'fadeIn 0.2s ease-out'
+                }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: '900', color: '#10d9d2', letterSpacing: '1px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    🔍 SPYING OPPONENT'S HAND ({spyTimeLeft.toFixed(1)}s)
+                  </div>
+                  
+                  {/* Progress Bar */}
+                  <div style={{ width: '80%', height: '5px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden', marginBottom: '12px' }}>
+                    <div style={{
+                      width: `${(spyTimeLeft / 3) * 100}%`,
+                      height: '100%',
+                      background: 'linear-gradient(90deg, #10d9d2, #00f2fe)',
+                      boxShadow: '0 0 8px #10d9d2',
+                      transition: 'width 0.1s linear'
+                    }} />
+                  </div>
+
+                  {/* Opponent's cards */}
+                  <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                    {spyOpponentHand.map((card, idx) => (
+                      <img 
+                        key={idx} 
+                        src={card.img && ("/" + card.img.replace('../', ''))} 
+                        alt="Opponent Card"
+                        style={{
+                          height: '52px',
+                          borderRadius: '4px',
+                          border: '1px solid rgba(255,255,255,0.2)',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Quit & Rules Buttons Row */}
             <div className="action-buttons-row" style={{ display: "flex", gap: "8px", marginTop: "auto", flexShrink: 0 }}>
