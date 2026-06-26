@@ -1062,3 +1062,196 @@ body.theme-classic .lobby-suit-bg {
     transform: translateY(-6px) scale(1.05);
   }
 }
+
+/* ==========================================================================
+   ROUTE A: HIGH-END PSEUDO-3D STYLING & ANIMATIONS
+   ========================================================================== */
+
+/* Extruded Wood Table Edge for Board Container */
+.board-container {
+  background: linear-gradient(135deg, #4d3326 0%, #2e1d15 100%) !important;
+  border-top: 2px solid #5a3c2d !important;
+  border-left: 2px solid #5a3c2d !important;
+  border-right: 2px solid #1a100c !important;
+  border-bottom: 2px solid #1a100c !important;
+  box-shadow: 
+    0 1px 0px rgba(255, 255, 255, 0.15) inset,
+    0 6px 0px #1a110a,                 /* 3D wooden rim edge */
+    0 20px 45px rgba(0, 0, 0, 0.75) !important; /* Ground drop shadow */
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* 3D card perspective tilt hovers on board cells */
+.card {
+  transform-style: preserve-3d;
+  perspective: 500px;
+  transition: transform 0.28s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.28s ease, border-color 0.28s ease !important;
+}
+
+.card:hover:not(.corner) {
+  transform: perspective(500px) rotateX(8deg) rotateY(-8deg) translateZ(10px) scale(1.08) !important;
+  box-shadow: 0 16px 28px rgba(0,0,0,0.5), 0 0 8px rgba(255,255,255,0.15) !important;
+  z-index: 20 !important;
+}
+
+/* 3D Clay Poker Chips */
+.chip {
+  width: 78% !important;
+  height: 78% !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 
+    0 3px 0px rgba(0, 0, 0, 0.45),               /* 3D extruded chip edge */
+    0 5px 8px rgba(0, 0, 0, 0.55),               /* Soft drop shadow on card */
+    inset 0 2px 3px rgba(255, 255, 255, 0.45),   /* Specular lighting */
+    inset 0 -2px 3px rgba(0, 0, 0, 0.35) !important; /* Bottom depth shadow */
+}
+
+/* Classic poker chip design details overlay */
+.chip::before {
+  content: '';
+  position: absolute;
+  top: 15%; left: 15%; right: 15%; bottom: 15%;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 255, 255, 0.32);
+  pointer-events: none;
+}
+
+.chip::after {
+  content: '';
+  position: absolute;
+  top: 30%; left: 30%; right: 30%; bottom: 30%;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  pointer-events: none;
+}
+
+/* 3D Hand Cards perspective lifts */
+.hand-card {
+  transition: transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.25s ease !important;
+  perspective: 350px;
+}
+
+.hand-card:hover {
+  transform: translateY(-12px) perspective(350px) rotateX(12deg) scale(1.08) !important;
+  box-shadow: 0 14px 28px rgba(0,0,0,0.5), 0 0 10px rgba(255,255,255,0.12) !important;
+  z-index: 25;
+}
+
+.hand-card.selected {
+  transform: translateY(-16px) perspective(350px) rotateX(12deg) scale(1.08) !important;
+  box-shadow: 0 0 12px 4px var(--accent-gold) !important;
+  border: 2px solid var(--accent-gold);
+  z-index: 30;
+}
+
+/* Skeuomorphic 3D Play Banners */
+.btn-play-banner-3d {
+  position: relative;
+  border: none;
+  border-radius: 20px;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.12s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+  text-align: left;
+  user-select: none;
+}
+
+.btn-play-banner-3d:hover {
+  transform: translateY(-3px);
+}
+
+.btn-play-banner-3d:active {
+  transform: translateY(4px) !important;
+  border-bottom-width: 0px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+}
+
+.btn-play-online-3d {
+  background: linear-gradient(135deg, #ecc94b 0%, #dd6b20 100%) !important;
+  border-bottom: 5px solid #9c470f !important;
+  box-shadow: 0 6px 20px rgba(221,107,32,0.35), inset 0 1px 1px rgba(255,255,255,0.2) !important;
+}
+.btn-play-online-3d:hover {
+  box-shadow: 0 12px 28px rgba(221,107,32,0.55) !important;
+}
+
+.btn-play-friends-3d {
+  background: linear-gradient(135deg, #10d9d2 0%, #008080 100%) !important;
+  border-bottom: 5px solid #005c5c !important;
+  box-shadow: 0 6px 20px rgba(16,217,210,0.25), inset 0 1px 1px rgba(255,255,255,0.2) !important;
+}
+.btn-play-friends-3d:hover {
+  box-shadow: 0 12px 28px rgba(16,217,210,0.45) !important;
+}
+
+.btn-play-practice-3d {
+  background: linear-gradient(135deg, #b83280 0%, #702459 100%) !important;
+  border-bottom: 5px solid #4f153b !important;
+  box-shadow: 0 6px 20px rgba(184,50,128,0.25), inset 0 1px 1px rgba(255,255,255,0.2) !important;
+}
+.btn-play-practice-3d:hover {
+  box-shadow: 0 12px 28px rgba(184,50,128,0.45) !important;
+}
+
+/* Skeuomorphic 3D Action & Utility Buttons */
+.btn-3d-action {
+  position: relative;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+  transition: all 0.12s cubic-bezier(0.25, 0.8, 0.25, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-3d-action:hover {
+  transform: translateY(-2px);
+}
+
+.btn-3d-action:active {
+  transform: translateY(4px) !important;
+  border-bottom-width: 0px !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3) !important;
+}
+
+/* Mail Envelope Button (3D) */
+.btn-3d-mail {
+  background: linear-gradient(135deg, #ecc94b, #d69e2e) !important;
+  border-bottom: 4px solid #8e6812 !important;
+  box-shadow: 0 4px 10px rgba(228,202,86,0.3) !important;
+}
+.btn-3d-mail:hover {
+  box-shadow: 0 8px 16px rgba(228,202,86,0.5) !important;
+}
+
+/* In-game booster buttons skeuomorphic overrides */
+.booster-button {
+  border-bottom: 4px solid rgba(124, 58, 237, 0.6) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255,255,255,0.1) !important;
+  transition: all 0.12s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+}
+
+.booster-button:hover:not(.disabled) {
+  transform: translateY(-3px) scale(1.02) !important;
+  border-bottom: 6px solid var(--accent-cyan) !important;
+  box-shadow: 0 8px 16px rgba(16, 217, 210, 0.3) !important;
+}
+
+.booster-button:active:not(.disabled) {
+  transform: translateY(4px) scale(0.98) !important;
+  border-bottom-width: 0px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important;
+}
+
+.booster-button.active {
+  background: linear-gradient(135deg, #10d9d2 0%, #0d9691 100%) !important;
+  border-bottom: 0px !important;
+  transform: translateY(4px) !important;
+}
+

@@ -19,6 +19,7 @@ import Store from "./Store";
 import StakesCarousel from "./StakesCarousel";
 import { useVoiceChat, VoiceChatControls } from "./VoiceChatManager";
 import ActiveDockModal from "./ActiveDockModal";
+import Fallback3DIcon from "./Fallback3DIcon";
 
 const FRIENDS_MODES = [
   { value: "2_players", name: "One Vs One", playersCount: "2 Players", limit: 2, seq: 2, teamFormat: "Solo Match (1v1)", board: "STANDARD" },
@@ -3123,7 +3124,9 @@ export default function Boards() {
                       onClick={() => handleActivateBooster(booster.key)}
                       title={`${booster.name} (${count} left)`}
                     >
-                      <span className="booster-icon-display">{booster.icon}</span>
+                      <span className="booster-icon-display" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "30px" }}>
+                        <Fallback3DIcon iconKey={`tactic_${booster.key}`} fallback={booster.icon} style={{ width: "28px", height: "28px" }} />
+                      </span>
                       <span className="booster-label-display">{booster.name}</span>
                       {count > 0 && <span className="booster-count-badge">{count}</span>}
                     </button>
