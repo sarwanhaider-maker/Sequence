@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sequence 3D Interface Demo (Three.js)</title>
+  <!-- Outfit Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Import Three.js and OrbitControls from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <style>
+    :root {
+      --bg-color: #05020c;
+      --accent-cyan: #10d9d2;
+      --accent-gold: #ecc94b;
+      --panel-bg: rgba(28, 19, 58, 0.65);
+      --border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--bg-color);
+      color: #white;
+    }
+
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+
+    /* --- UNO STYLE 3D HUD OVERLAY --- */
+    .hud-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px 20px;
+    }
+
+    /* Top Bar HUD */
+    .hud-top {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: auto;
+    }
+
+    /* Profile Capsule */
+    .profile-capsule {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, rgba(22, 16, 50, 0.85) 0%, rgba(12, 8, 30, 0.95) 100%);
+      border: 1px solid var(--border-color);
+      padding: 6px 16px 6px 8px;
+      border-radius: 30px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    }
+
+    .profile-avatar-ring {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px solid #ef4444; /* Neon avatar frame */
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+      background: #110c26;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .profile-avatar-emoji {
+      font-size: 1.6rem;
+    }
+
+    .profile-level-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: #ef4444;
+      color: white;
+      font-size: 0.58rem;
+      font-weight: 800;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #110c26;
+    }
+
+    .profile-name-stack {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .profile-name {
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: white;
+    }
+
+    .profile-xp-bar {
+      width: 80px;
+      height: 6px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      margin-top: 4px;
+      overflow: hidden;
+    }
+
+    .profile-xp-fill {
+      width: 40%;
+      height: 100%;
+      background: #10d9d2;
+      box-shadow: 0 0 8px #10d9d2;
+    }
+
+    /* Currency Container */
+    .currency-dock {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .currency-capsule {
+      display: flex;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 6px 12px 6px 8px;
+      border-radius: 20px;
+      gap: 8px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+    }
+
+    .currency-icon-3d {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.15rem;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));
+    }
+
+    .currency-value {
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: white;
+    }
+
+    .currency-add-btn {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #48bb78;
+      border: none;
+      border-bottom: 2px solid #2f855a;
+      color: white;
+      font-size: 0.8rem;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      margin-left: 2px;
+    }
+
+    /* Bottom HUD Navigation */
+    .hud-bottom {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: auto;
+    }
+
+    /* Left Side: Dynamic Controls */
+    .view-controls {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-hud-3d {
+      background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+      color: white;
+      border: none;
+      border-bottom: 4px solid #4c1d95;
+      padding: 10px 18px;
+      border-radius: 14px;
+      font-weight: 800;
+      font-size: 0.85rem;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
+      transition: all 0.1s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-hud-3d:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(124, 58, 237, 0.5);
+    }
+
+    .btn-hud-3d:active {
+      transform: translateY(4px);
+      border-bottom-width: 0px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }
+
+    .btn-hud-3d.secondary {
+      background: linear-gradient(135deg, #10d9d2 0%, #0891b2 100%);
+      border-bottom-color: #0e7490;
+      color: #05020c;
+      box-shadow: 0 4px 12px rgba(16, 217, 210, 0.25);
+    }
+    .btn-hud-3d.secondary:hover {
+      box-shadow: 0 6px 16px rgba(16, 217, 210, 0.4);
+    }
+
+    /* Right Side Tabs */
+    .bottom-menu-dock {
+      display: flex;
+      gap: 14px;
+    }
+
+    .menu-dock-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      border: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+
+    .menu-dock-btn.yellow {
+      background: linear-gradient(135deg, #ecc94b 0%, #d69e2e 100%);
+      border-bottom: 4px solid #9c7316;
+      box-shadow: 0 4px 10px rgba(228,202,86,0.3);
+    }
+    .menu-dock-btn.yellow:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 14px rgba(228,202,86,0.45);
+    }
+    .menu-dock-btn.yellow:active {
+      transform: translateY(4px);
+      border-bottom-width: 0px;
+    }
+
+    .menu-icon-label {
+      font-size: 1.4rem;
+      line-height: 1;
+    }
+
+    .menu-text-label {
+      font-size: 0.58rem;
+      font-weight: 800;
+      color: #3b2806;
+      margin-top: 2px;
+      text-transform: uppercase;
+    }
+
+    /* Toast overlay */
+    .info-toast {
+      position: absolute;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(16, 217, 210, 0.15);
+      border: 1px solid var(--accent-cyan);
+      backdrop-filter: blur(10px);
+      padding: 8px 18px;
+      border-radius: 30px;
+      color: var(--accent-cyan);
+      font-size: 0.82rem;
+      font-weight: 700;
+      box-shadow: 0 0 15px rgba(16, 217, 210, 0.2);
+      pointer-events: auto;
+      text-align: center;
+      letter-spacing: 0.5px;
+      animation: pulseGlow 2s infinite ease-in-out;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 10px rgba(16, 217, 210, 0.2); }
+      50% { box-shadow: 0 0 22px rgba(16, 217, 210, 0.5); transform: translateX(-50%) scale(1.02); }
+    }
+
+    /* Screen Instructions Banner */
+    .instruction-tooltip {
+      position: absolute;
+      bottom: 90px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.78rem;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Three.js Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- HUD Interface -->
+  <div class="hud-overlay">
+    
+    <!-- Top Bar -->
+    <div class="hud-top">
+      
+      <!-- Profile -->
+      <div class="profile-capsule">
+        <div class="profile-avatar-ring">
+          <span class="profile-avatar-emoji">🤖</span>
+          <div class="profile-level-badge">1</div>
+        </div>
+        <div class="profile-name-stack">
+          <span class="profile-name">Sarwan Haider</span>
+          <div class="profile-xp-bar">
+            <div class="profile-xp-fill"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Currency Docks -->
+      <div class="currency-dock">
+        <div class="currency-capsule">
+          <span class="currency-icon-3d">🪙</span>
+          <span class="currency-value">550</span>
+          <button class="currency-add-btn">+</button>
+        </div>
+        <div class="currency-capsule">
+          <span class="currency-icon-3d">💎</span>
+          <span class="currency-value">0</span>
+          <button class="currency-add-btn">+</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Active Toast Banner -->
+    <div class="info-toast" id="mode-toast">
+      3D LOBBY MODE ACTIVE (UNO GRAPHICS REFERENCE)
+    </div>
+
+    <!-- Help Instruction -->
+    <div class="instruction-tooltip" id="drag-hint">
+      Swipe to spin the 3D Earth and interact with the floating mode cards!
+    </div>
+
+    <!-- Bottom Navigation Controls -->
+    <div class="hud-bottom">
+      
+      <!-- Left side view switchers -->
+      <div class="view-controls">
+        <button class="btn-hud-3d" id="btn-toggle-view">
+          Switch to 3D Board 🎮
+        </button>
+        <button class="btn-hud-3d secondary" id="btn-reset-cam">
+          Reset Cam 🔄
+        </button>
+      </div>
+
+      <!-- Right menu tabs -->
+      <div class="bottom-menu-dock">
+        <button class="menu-dock-btn yellow" onclick="alert('Settings modal placeholder')">
+          <span class="menu-icon-label">⚙️</span>
+          <span class="menu-text-label">Settings</span>
+        </button>
+        <button class="menu-dock-btn yellow" onclick="alert('Tutorial wizard placeholder')">
+          <span class="menu-icon-label">📖</span>
+          <span class="menu-text-label">Tutorial</span>
+        </button>
+        <button class="menu-dock-btn yellow" onclick="alert('Store directory placeholder')">
+          <span class="menu-icon-label">🛒</span>
+          <span class="menu-text-label">Store</span>
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Three.js Engine Logic -->
+  <script>
+    // --- STATE MANAGER ---
+    let currentMode = 'LOBBY'; // LOBBY or BOARD
+    
+    // --- THREEJS SETUP ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x05020c);
+    
+    // Ambient Fog
+    scene.fog = new THREE.FogExp2(0x05020c, 0.015);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 0, 10);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    container.appendChild(renderer.domElement);
+
+    // Orbit Controls
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 - 0.05; // Don't camera-rotate below table
+    controls.minDistance = 3;
+    controls.maxDistance = 20;
+
+    // --- LIGHTS SETUP ---
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    scene.add(ambientLight);
+
+    const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    mainLight.position.set(5, 10, 5);
+    mainLight.castShadow = true;
+    mainLight.shadow.mapSize.width = 1024;
+    mainLight.shadow.mapSize.height = 1024;
+    mainLight.shadow.bias = -0.001;
+    scene.add(mainLight);
+
+    // Soft teal/purple atmospheric lights
+    const cyanLight = new THREE.PointLight(0x10d9d2, 1.5, 15);
+    cyanLight.position.set(-6, 2, -3);
+    scene.add(cyanLight);
+
+    const purpleLight = new THREE.PointLight(0x8b5cf6, 1.5, 15);
+    purpleLight.position.set(6, -2, 3);
+    scene.add(purpleLight);
+
+    // --- 3D LOBBY OBJECTS ---
+    const lobbyGroup = new THREE.Group();
+    scene.add(lobbyGroup);
+
+    // Spinning Earth Sphere (Lobby background)
+    // We create blue/green ocean/continent layout procedurally via canvas to work offline instantly
+    const earthCanvas = document.createElement('canvas');
+    earthCanvas.width = 512;
+    earthCanvas.height = 256;
+    const ctx = earthCanvas.getContext('2d');
+    ctx.fillStyle = '#0b2447'; // Ocean blue
+    ctx.fillRect(0, 0, 512, 256);
+    
+    // Draw some stylized procedural green continents
+    ctx.fillStyle = '#195738';
+    ctx.beginPath();
+    ctx.arc(100, 100, 60, 0, Math.PI*2);
+    ctx.arc(140, 130, 45, 0, Math.PI*2);
+    ctx.arc(320, 120, 80, 0, Math.PI*2);
+    ctx.arc(280, 80, 50, 0, Math.PI*2);
+    ctx.arc(420, 150, 40, 0, Math.PI*2);
+    ctx.arc(200, 200, 30, 0, Math.PI*2);
+    ctx.fill();
+
+    const earthTexture = new THREE.CanvasTexture(earthCanvas);
+    const earthGeo = new THREE.SphereGeometry(2.4, 32, 32);
+    const earthMat = new THREE.MeshStandardMaterial({
+      map: earthTexture,
+      roughness: 0.8,
+      metalness: 0.1,
+      bumpScale: 0.05
+    });
+    const earthMesh = new THREE.Mesh(earthGeo, earthMat);
+    earthMesh.position.set(0, -0.6, -1);
+    lobbyGroup.add(earthMesh);
+
+    // Dynamic 3D Lobby Card Banners ("Classic Mode" & "Play Friends")
+    // Created as thick beveled 3D boxes
+    const cardBanners = [];
+    
+    function createLobbyCard(text, subtitle, icon, colorHex, positionX) {
+      const cardCanvas = document.createElement('canvas');
+      cardCanvas.width = 256;
+      cardCanvas.height = 360;
+      const c = cardCanvas.getContext('2d');
+
+      // Rounded rectangle card base
+      c.fillStyle = '#110c26';
+      c.fillRect(0, 0, 256, 360);
+
+      // Gradient accent banner
+      const grad = c.createLinearGradient(0, 0, 0, 360);
+      grad.addColorStop(0, colorHex);
+      grad.addColorStop(1, '#05020c');
+      c.fillStyle = grad;
+      c.fillRect(10, 10, 236, 340);
+
+      // Card border stroke
+      c.strokeStyle = 'rgba(255,255,255,0.1)';
+      c.lineWidth = 4;
+      c.strokeRect(10, 10, 236, 340);
+
+      // Large central emoji icon
+      c.font = '78px Outfit';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillStyle = '#fff';
+      c.fillText(icon, 128, 140);
+
+      // Title Text
+      c.font = 'bold 22px Cinzel';
+      c.fillStyle = '#ffffff';
+      c.fillText(text, 128, 250);
+
+      // Subtitle Text
+      c.font = '600 13px Outfit';
+      c.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      c.fillText(subtitle, 128, 280);
+
+      // Bottom highlight tag
+      c.font = '800 11px Outfit';
+      c.fillStyle = colorHex;
+      c.fillText("SELECT TO JOIN MATCH", 128, 315);
+
+      const cardTex = new THREE.CanvasTexture(cardCanvas);
+      const cardGeo = new THREE.BoxGeometry(1.6, 2.2, 0.08);
+      const cardMat = new THREE.MeshStandardMaterial({
+        map: cardTex,
+        roughness: 0.15,
+        metalness: 0.2
+      });
+      const cardMesh = new THREE.Mesh(cardGeo, cardMat);
+      cardMesh.position.set(positionX, -0.2, 1.8);
+      cardMesh.rotation.y = positionX > 0 ? -0.15 : 0.15;
+      
+      cardMesh.userData = {
+        origY: cardMesh.position.y,
+        origRotY: cardMesh.rotation.y,
+        hoverSpeed: 1.5 + Math.random(),
+        text: text
+      };
+
+      lobbyGroup.add(cardMesh);
+      cardBanners.push(cardMesh);
+    }
+
+    createLobbyCard("CLASSIC MODE", "Play Standard Lobbies", "🃏", "#d69e2e", -1.4);
+    createLobbyCard("PLAY FRIENDS", "Custom Private Rooms", "👥", "#10d9d2", 1.4);
+
+
+    // --- 3D BOARD GAME OBJECTS ---
+    const boardGroup = new THREE.Group();
+    scene.add(boardGroup);
+    boardGroup.visible = false; // Hidden on startup
+
+    // Physical Mahogany/Wood Game Table Base
+    const tableGeo = new THREE.BoxGeometry(9.6, 0.3, 7.2);
+    // Draw wood grain texture procedurally
+    const tableCanvas = document.createElement('canvas');
+    tableCanvas.width = 256;
+    tableCanvas.height = 256;
+    const wCtx = tableCanvas.getContext('2d');
+    wCtx.fillStyle = '#3a2012'; // Base dark wood
+    wCtx.fillRect(0,0,256,256);
+    wCtx.fillStyle = '#26140a'; // Darker grains
+    for(let i=0; i<30; i++){
+      wCtx.fillRect(0, Math.random()*256, 256, Math.random()*6);
+    }
+    const tableTex = new THREE.CanvasTexture(tableCanvas);
+    const tableMat = new THREE.MeshStandardMaterial({
+      map: tableTex,
+      roughness: 0.45,
+      metalness: 0.1,
+      bumpScale: 0.05
+    });
+    const tableMesh = new THREE.Mesh(tableGeo, tableMat);
+    tableMesh.position.y = -0.15;
+    tableMesh.receiveShadow = true;
+    boardGroup.add(tableMesh);
+
+    // Beveled Border rim
+    const rimGeo = new THREE.BoxGeometry(9.9, 0.4, 7.5);
+    const rimMat = new THREE.MeshStandardMaterial({ color: 0x1b110a, roughness: 0.3 });
+    const rimMesh = new THREE.Mesh(rimGeo, rimMat);
+    rimMesh.position.y = -0.12;
+    rimMesh.receiveShadow = true;
+    boardGroup.add(rimMesh);
+
+    // 10x10 Sequence board cells (card grid)
+    // We map real textures from `/assests/*.png` directory. We write text labels as fallbacks if images aren't loaded.
+    const boardCells = [];
+    const rows = 10;
+    const cols = 10;
+    const cellWidth = 0.88;
+    const cellHeight = 0.64;
+    const cellSpacing = 0.03;
+
+    // Load actual cards for representation
+    const cardBackTex = new THREE.TextureLoader().load('/assests/1B.png'); // Card Back
+
+    for(let r=0; r<rows; r++) {
+      for(let c=0; c<cols; c++) {
+        const id = r * cols + c + 1;
+        const isCorner = (r===0 && c===0) || (r===0 && c===9) || (r===9 && c===0) || (r===9 && c===9);
+
+        // Procedural face for card front
+        const cardCanvas = document.createElement('canvas');
+        cardCanvas.width = 128;
+        cardCanvas.height = 178;
+        const cCtx = cardCanvas.getContext('2d');
+        cCtx.fillStyle = '#ffffff';
+        cCtx.fillRect(0, 0, 128, 178);
+
+        // Draw nice card border
+        cCtx.strokeStyle = isCorner ? '#ecc94b' : '#334155';
+        cCtx.lineWidth = 6;
+        cCtx.strokeRect(3, 3, 122, 172);
+
+        if(isCorner) {
+          cCtx.fillStyle = '#f6ad55';
+          cCtx.fillRect(6,6,116,166);
+          cCtx.font = 'bold 36px Outfit';
+          cCtx.fillStyle = '#7b341e';
+          cCtx.textAlign = 'center';
+          cCtx.textBaseline = 'middle';
+          cCtx.fillText('★', 64, 89);
+        } else {
+          // Draw standard suit markings
+          const suits = ['♠', '♥', '♦', '♣'];
+          const suit = suits[Math.floor(Math.random() * 4)];
+          const vals = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+          const val = vals[Math.floor(Math.random() * 13)];
+          
+          cCtx.font = 'bold 30px Outfit';
+          cCtx.fillStyle = (suit === '♥' || suit === '♦') ? '#ef4444' : '#0f172a';
+          cCtx.textAlign = 'left';
+          cCtx.fillText(val + suit, 14, 38);
+          
+          cCtx.font = '64px Outfit';
+          cCtx.textAlign = 'center';
+          cCtx.fillText(suit, 64, 100);
+        }
+
+        const cellTex = new THREE.CanvasTexture(cardCanvas);
+        const cellGeo = new THREE.BoxGeometry(cellWidth, 0.02, cellHeight);
+        
+        // Multi-material box so the top has card face and sides are white card edges
+        const materials = [
+          new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 }), // right
+          new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 }), // left
+          new THREE.MeshStandardMaterial({ map: cellTex, roughness: 0.2 }),   // top (face)
+          new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 }), // bottom
+          new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 }), // front
+          new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 })  // back
+        ];
+
+        const cellMesh = new THREE.Mesh(cellGeo, materials);
+        
+        // Arrange cell coordinates centered on table top
+        const xPos = (c - (cols - 1)/2) * (cellWidth + cellSpacing);
+        const zPos = (r - (rows - 1)/2) * (cellHeight + cellSpacing);
+        
+        cellMesh.position.set(xPos, 0.01, zPos);
+        cellMesh.castShadow = true;
+        cellMesh.receiveShadow = true;
+        boardGroup.add(cellMesh);
+        boardCells.push(cellMesh);
+
+        // Place a few 3D chips procedurally to show depth
+        if (!isCorner && Math.random() < 0.22) {
+          const colors = [0x0074d9, 0xff4136, 0x2ecc40]; // blue, red, green
+          const teamColor = colors[Math.floor(Math.random() * 3)];
+          
+          // Cylinder representing thick 3D poker chip
+          const chipGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.08, 24);
+          const chipMat = new THREE.MeshStandardMaterial({
+            color: teamColor,
+            roughness: 0.15,
+            metalness: 0.1
+          });
+          const chipMesh = new THREE.Mesh(chipGeo, chipMat);
+          chipMesh.position.set(xPos, 0.06, zPos);
+          chipMesh.castShadow = true;
+          chipMesh.receiveShadow = true;
+          boardGroup.add(chipMesh);
+
+          // White dashes decals on chip edge
+          const dashRingGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.082, 16);
+          const dashRingMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.75,
+            roughness: 0.5
+          });
+          const dashRingMesh = new THREE.Mesh(dashRingGeo, dashRingMat);
+          dashRingMesh.position.set(xPos, 0.06, zPos);
+          boardGroup.add(dashRingMesh);
+        }
+      }
+    }
+
+    // Stacked Box representing Card Deck
+    const deckGeo = new THREE.BoxGeometry(0.85, 0.35, 1.25);
+    const deckMat = new THREE.MeshStandardMaterial({ color: 0x8b5cf6, roughness: 0.3 }); // Purple deck wrapper
+    const deckMesh = new THREE.Mesh(deckGeo, deckMat);
+    deckMesh.position.set(4.0, 0.18, 2.8);
+    deckMesh.rotation.y = 0.25;
+    deckMesh.castShadow = true;
+    boardGroup.add(deckMesh);
+
+
+    // --- RENDERING LOOP ---
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const elapsedTime = clock.getElapsedTime();
+
+      // Lobby view animations
+      if (currentMode === 'LOBBY') {
+        // Spin the Earth sphere
+        earthMesh.rotation.y = elapsedTime * 0.07;
+        
+        // Hover/Float lobby card banners dynamically
+        cardBanners.forEach((card) => {
+          card.position.y = card.userData.origY + Math.sin(elapsedTime * card.userData.hoverSpeed) * 0.15;
+          card.rotation.y = card.userData.origRotY + Math.cos(elapsedTime * 0.5) * 0.05;
+        });
+      } else {
+        // Board mode: subtle rotational swing to table lighting for premium specular glare
+        cyanLight.position.x = -6 + Math.sin(elapsedTime * 0.5) * 2;
+        purpleLight.position.x = 6 + Math.cos(elapsedTime * 0.5) * 2;
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    
+    animate();
+
+    // --- VIEW TOGGLE MANAGER ---
+    const btnToggle = document.getElementById('btn-toggle-view');
+    const btnReset = document.getElementById('btn-reset-cam');
+    const toast = document.getElementById('mode-toast');
+    const hint = document.getElementById('drag-hint');
+
+    btnToggle.addEventListener('click', () => {
+      if (currentMode === 'LOBBY') {
+        // Switch to BOARD
+        currentMode = 'BOARD';
+        lobbyGroup.visible = false;
+        boardGroup.visible = true;
+        
+        // Move camera to typical Sequence board perspective angle
+        camera.position.set(0, 7.5, 6.5);
+        controls.target.set(0, 0, 0);
+        
+        btnToggle.innerText = "Switch to 3D Lobby 🌐";
+        toast.innerText = "3D GAME BOARD ACTIVE (WOOD TABLE & CHIPS)";
+        hint.innerText = "Drag to rotate table, pinch to zoom in/out of cells!";
+      } else {
+        // Switch to LOBBY
+        currentMode = 'LOBBY';
+        lobbyGroup.visible = true;
+        boardGroup.visible = false;
+        
+        // Move camera back to front facing Lobby view
+        camera.position.set(0, 0, 10);
+        controls.target.set(0, 0, 0);
+        
+        btnToggle.innerText = "Switch to 3D Board 🎮";
+        toast.innerText = "3D LOBBY MODE ACTIVE (UNO GRAPHICS REFERENCE)";
+        hint.innerText = "Swipe to spin the 3D Earth and interact with the floating mode cards!";
+      }
+    });
+
+    btnReset.addEventListener('click', () => {
+      if (currentMode === 'LOBBY') {
+        camera.position.set(0, 0, 10);
+      } else {
+        camera.position.set(0, 7.5, 6.5);
+      }
+      controls.target.set(0, 0, 0);
+    });
+
+    // Window resize handler
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
